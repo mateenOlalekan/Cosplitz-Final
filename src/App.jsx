@@ -18,6 +18,8 @@ const ForgetPassword = lazy(() => import("./pages/Auth/ForgetPassword"));
 const VerifyEmail = lazy(() => import("./pages/Auth/VerifyEmail"));
 const PasswordResetSuccess = lazy(() => import("./pages/Auth/PasswordReset"));
 
+const MainOverview = lazy(() =>import("./pages/Dashboard/Main"))
+
 function App() {
 
 
@@ -35,8 +37,12 @@ function App() {
         {/* Password Recovery */}
         <Route path="/forgot-password" element={<ForgetPassword />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
-        <Route path="/password-reset-success" element={<PasswordResetSuccess />}        />
+        <Route path="/password-reset-success" element={<PasswordResetSuccess />}/>
 
+        <Route element={<ProtectedRoute />}>
+          <Route path='/Main' element={<MainOverview/>}/>
+        </Route>
+        
       </Routes>
 
     </Suspense>

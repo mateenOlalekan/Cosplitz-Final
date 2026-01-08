@@ -1,46 +1,37 @@
-// src/services/authApi.js - PRODUCTION READY REFACTORED
+// src/services/authApi.js - PRODUCTION READY WITH BETTER ERROR HANDLING
 const API_BASE_URL = "https://cosplitz-backend.onrender.com/api";
 
-/* Get authentication token from storage * Prioritizes sessionStorage (short-lived) over localStorage */
 function getAuthToken() {
   try {
-    return (
-      sessionStorage.getItem("authToken") || 
-      localStorage.getItem("authToken") || 
-      null
-    );
-  } catch (error) {
-    console.error("Error accessing storage:", error);
+    return sessionStorage.getItem("authToken") || localStorage.getItem("authToken") || null;
+  } catch {
     return null;
   }
 }
 
-/**
- * Generic request handler with comprehensive error handling
- */
 async function request(path, options = {}) {
   const url = `${API_BASE_URL}${path}`;
+
+  const defaultHeaders = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  };
+
   const token = getAuthToken();
   const isFormData = options.body instanceof FormData;
 
-  // Build headers
   const headers = {
-    ...(isFormData ? {} : {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    }),
+    ...(isFormData ? {} : defaultHeaders),
     ...(options.headers || {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
-  // Build request options
   const finalOptions = {
     method: options.method || "GET",
     headers,
     ...options,
   };
 
-  // Stringify body if needed
   if (finalOptions.body && !isFormData && typeof finalOptions.body === "object") {
     finalOptions.body = JSON.stringify(finalOptions.body);
   }
@@ -48,26 +39,24 @@ async function request(path, options = {}) {
   let response;
   try {
     response = await fetch(url, finalOptions);
-  } catch (error) {
-    console.error("Network error:", error);
+  } catch (err) {
+    console.error("Network error:", err);
     return {
       status: 0,
-      data: { message: "Network error. Please check your connection." },
+      data: { message: "Network error. Please check your connection and try again." },
       error: true,
     };
   }
 
-  // Parse response
   let json = null;
   try {
     const text = await response.text();
     json = text ? JSON.parse(text) : null;
-  } catch (parseError) {
-    console.error("JSON parse error:", parseError);
+  } catch {
     json = { message: "Invalid response from server." };
   }
 
-  // Check if we're in an auth flow
+  // Identify auth flow pages
   const isAuthFlow = 
     window.location.pathname.includes("/register") ||
     window.location.pathname.includes("/verify") ||
@@ -79,10 +68,14 @@ async function request(path, options = {}) {
   // Handle 401 - Unauthorized
   if (response.status === 401) {
     if (!isAuthFlow) {
-      // Clear all auth data
-      clearAuthStorage();
+      try {
+        sessionStorage.clear();
+        localStorage.removeItem("authToken");
+        localStorage.removeItem("userInfo");
+      } catch (e) {
+        console.warn("Failed to clear storage:", e);
+      }
 
-      // Redirect to login
       if (!window.location.pathname.includes("/login")) {
         setTimeout(() => {
           window.location.href = "/login";
@@ -98,23 +91,43 @@ async function request(path, options = {}) {
     };
   }
 
-  // Handle other status codes
-  const statusHandlers = {
-    400: { message: "Invalid request data." },
-    404: { message: "Resource not found." },
-    409: { message: "This email is already registered." },
-    500: { message: "Server error. Please try again later." },
-  };
-
-  if (statusHandlers[response.status] || response.status >= 500) {
+  // Handle 400 - Bad Request
+  if (response.status === 400) {
     return {
-      status: response.status,
-      data: json || statusHandlers[response.status] || statusHandlers[500],
+      status: 400,
+      data: json || { message: "Invalid request data." },
       error: true,
     };
   }
 
-  // Generic error handling
+  // Handle 409 - Conflict (duplicate email)
+  if (response.status === 409) {
+    return {
+      status: 409,
+      data: json || { message: "This email is already registered." },
+      error: true,
+    };
+  }
+
+  // Handle 404 - Not Found
+  if (response.status === 404) {
+    return {
+      status: 404,
+      data: json || { message: "Resource not found." },
+      error: true,
+    };
+  }
+
+  // Handle 500 - Server Error
+  if (response.status >= 500) {
+    return {
+      status: response.status,
+      data: json || { message: "Server error. Please try again later." },
+      error: true,
+    };
+  }
+
+  // Handle non-OK responses
   if (!response.ok) {
     return {
       status: response.status,
@@ -123,7 +136,6 @@ async function request(path, options = {}) {
     };
   }
 
-  // Success
   return {
     status: response.status,
     data: json,
@@ -131,48 +143,16 @@ async function request(path, options = {}) {
   };
 }
 
-/**
- * Clear all authentication data from storage
- */
-function clearAuthStorage() {
-  try {
-    sessionStorage.removeItem("authToken");
-    sessionStorage.removeItem("userInfo");
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("userInfo");
-  } catch (error) {
-    console.warn("Failed to clear storage:", error);
-  }
-}
-
-/**
- * Authentication service
- */
 export const authService = {
-  /**
-   * Register new user
-   */
+  /** REGISTER – POST /api/register/ */
   register: async (userData) => {
     try {
-      const response = await request("/register/", {
+      return await request("/register/", {
         method: "POST",
         body: userData,
       });
-      
-      // Enhanced error handling for duplicate emails
-      if (response.error && response.status === 409) {
-        return {
-          ...response,
-          data: {
-            ...response.data,
-            message: "This email address is already registered. Please use a different email or try logging in.",
-          },
-        };
-      }
-      
-      return response;
-    } catch (error) {
-      console.error("Registration service error:", error);
+    } catch (err) {
+      console.error("Registration service error:", err);
       return {
         status: 0,
         data: { message: "Registration failed. Please try again." },
@@ -181,9 +161,7 @@ export const authService = {
     }
   },
 
-  /**
-   * Login user
-   */
+  /** LOGIN – POST /api/login/ */
   login: async (credentials) => {
     try {
       const response = await request("/login/", {
@@ -195,8 +173,8 @@ export const authService = {
       });
       
       return response;
-    } catch (error) {
-      console.error("Login service error:", error);
+    } catch (err) {
+      console.error("Login service error:", err);
       return {
         status: 0,
         data: { message: "Login failed. Please try again." },
@@ -205,14 +183,12 @@ export const authService = {
     }
   },
 
-  /**
-   * Get current user info
-   */
+  /** USER INFO – GET /api/user/info */
   getUserInfo: async () => {
     try {
       return await request("/user/info", { method: "GET" });
-    } catch (error) {
-      console.error("Get user info error:", error);
+    } catch (err) {
+      console.error("Get user info error:", err);
       return {
         status: 0,
         data: { message: "Failed to fetch user information." },
@@ -221,9 +197,7 @@ export const authService = {
     }
   },
 
-  /**
-   * Request OTP for user
-   */
+  /** GET OTP – GET /api/otp/{id}/ */
   getOTP: async (userId) => {
     try {
       if (!userId) {
@@ -234,8 +208,8 @@ export const authService = {
         };
       }
       return await request(`/otp/${userId}/`, { method: "GET" });
-    } catch (error) {
-      console.error("Get OTP error:", error);
+    } catch (err) {
+      console.error("Get OTP error:", err);
       return {
         status: 0,
         data: { message: "Failed to send OTP. Please try again." },
@@ -244,30 +218,31 @@ export const authService = {
     }
   },
 
-  /**
-   * Verify OTP code
-   */
+  /** VERIFY OTP – POST /api/verify_otp */
   verifyOTP: async (identifier, otp) => {
     try {
       if (!identifier || !otp) {
         return {
           status: 400,
-          data: { message: "Email and OTP are required." },
+          data: { message: "Email/User ID and OTP are required." },
           error: true,
         };
       }
       
-      // Accept either email or userId
-      const body = /@/.test(identifier) 
-        ? { email: identifier.toLowerCase().trim(), otp: otp.toString().trim() }
-        : { user_id: identifier, otp: otp.toString().trim() };
+      // Accept either email or userId - determine which one it is
+      let body;
+      if (typeof identifier === 'string' && identifier.includes('@')) {
+        body = { email: identifier.toLowerCase().trim(), otp: otp.toString().trim() };
+      } else {
+        body = { user_id: identifier, otp: otp.toString().trim() };
+      }
       
       return await request("/verify_otp", {
         method: "POST",
         body: body,
       });
-    } catch (error) {
-      console.error("Verify OTP error:", error);
+    } catch (err) {
+      console.error("Verify OTP error:", err);
       return {
         status: 0,
         data: { message: "OTP verification failed. Please try again." },
@@ -276,28 +251,36 @@ export const authService = {
     }
   },
 
-  /**
-   * Resend OTP
-   */
+  /** RESEND OTP – Same as getOTP */
   resendOTP: async (userId) => {
     return await authService.getOTP(userId);
   },
 
-  /**
-   * Logout user
-   */
+  /** LOGOUT */
   logout: async () => {
     try {
       const response = await request("/logout/", { method: "POST" });
       
       // Clear storage regardless of response
-      clearAuthStorage();
+      try {
+        sessionStorage.clear();
+        localStorage.removeItem("authToken");
+        localStorage.removeItem("userInfo");
+      } catch (e) {
+        console.warn("Failed to clear storage:", e);
+      }
       
       return response;
-    } catch (error) {
-      console.error("Logout error:", error);
+    } catch (err) {
+      console.error("Logout error:", err);
       // Still clear storage on error
-      clearAuthStorage();
+      try {
+        sessionStorage.clear();
+        localStorage.removeItem("authToken");
+        localStorage.removeItem("userInfo");
+      } catch (e) {
+        console.warn("Failed to clear storage:", e);
+      }
       return {
         status: 0,
         data: { message: "Logout completed locally." },
@@ -306,17 +289,15 @@ export const authService = {
     }
   },
 
-  /**
-   * Request password reset
-   */
+  /** FORGOT PASSWORD */
   forgotPassword: async (email) => {
     try {
       return await request("/forgot-password/", {
         method: "POST",
         body: { email: email.toLowerCase().trim() },
       });
-    } catch (error) {
-      console.error("Forgot password error:", error);
+    } catch (err) {
+      console.error("Forgot password error:", err);
       return {
         status: 0,
         data: { message: "Failed to send password reset email." },
@@ -325,17 +306,15 @@ export const authService = {
     }
   },
 
-  /**
-   * Reset password with token
-   */
+  /** RESET PASSWORD */
   resetPassword: async (data) => {
     try {
       return await request("/reset-password/", {
         method: "POST",
         body: data,
       });
-    } catch (error) {
-      console.error("Reset password error:", error);
+    } catch (err) {
+      console.error("Reset password error:", err);
       return {
         status: 0,
         data: { message: "Password reset failed. Please try again." },
@@ -345,9 +324,24 @@ export const authService = {
   },
 };
 
+// Export other services as needed
+export const dashboardService = {
+  getOverview: async () => {
+    try {
+      return await request("/dashboard/overview", { method: "GET" });
+    } catch (err) {
+      console.error("Dashboard overview error:", err);
+      return {
+        status: 0,
+        data: { message: "Failed to load dashboard." },
+        error: true,
+      };
+    }
+  },
+};
+
 export default {
   request,
   authService,
-  getAuthToken,
-  clearAuthStorage,
-}; 
+  dashboardService,
+};

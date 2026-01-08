@@ -1,16 +1,33 @@
-import { Navigate, Outlet } from "react-router-dom";
-import useAuthStore from "../store/authStore";
+// src/routes/ProtectedRoute.jsx
+import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { useEffect } from "react";
+import { useAuthStore } from "../store/authStore";
+import Loading from "../components/Home/Loading";
 
-const ProtectedRoute = () => {
-  const { user, isAuthenticated, loading } = useAuthStore();
+export default function ProtectedRoute() {
+  const location = useLocation();
 
-  if (loading) return null; // or loader if you want
+  const {user,token,isLoading,initializeAuth,} = useAuthStore();
 
-  if (!isAuthenticated || !user) {
-    return <Navigate to="/login" replace />;
+  // Initialize auth ONCE
+  useEffect(() => {
+    if (!user && token) {
+      initializeAuth();
+    }
+  }, [user, token, initializeAuth]);
+
+  // Still loading auth state
+  if (isLoading) {
+    return <Loading />;
   }
 
-  return <Outlet />;
-};
+  // Not authenticated → redirect
+  if (!token || !user) {
+    return (
+      <Navigate to="/login" replace state={{ from: location }}/>
+    );
+  }
 
-export default ProtectedRoute;
+  // Authenticated → allow access
+  return <Outlet />;
+}
