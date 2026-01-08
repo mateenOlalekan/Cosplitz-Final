@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Search, CircleX, Filter } from "lucide-react";
 import Avatar from "../../assets/Avatar.svg";
-import SelectedHeader from "../../components/Headers/Location";
+
 
 export default function CosplitzNotifications() {
   const [activeTab, setActiveTab] = useState("all");
