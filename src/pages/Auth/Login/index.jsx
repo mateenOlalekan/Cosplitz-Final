@@ -1,5 +1,5 @@
-// src/pages/Auth/Login/index.jsx - CREATE THIS FILE
-import React, { useState } from "react";
+// src/pages/Auth/Login/index.jsx
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { authService } from "../../../services/authApi";
 import { useAuthStore } from "../../../store/authStore";
@@ -8,7 +8,6 @@ import { FcGoogle } from "react-icons/fc";
 import { PiAppleLogoBold } from "react-icons/pi";
 import { Eye, EyeOff } from "lucide-react";
 import logo from "../../../assets/logo.svg";
-import LeftPanel from "../../../components/Home/LeftPanel";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -23,6 +22,11 @@ export default function Login() {
   const error = useAuthStore((state) => state.error);
   const setUser = useAuthStore((state) => state.setUser);
   const setToken = useAuthStore((state) => state.setToken);
+  const initializeAuth = useAuthStore((state) => state.initializeAuth);
+
+  useEffect(() => {
+    initializeAuth();
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -31,6 +35,13 @@ export default function Login() {
 
     if (!email || !password) {
       setError("Please fill in both email and password.");
+      setLoading(false);
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError("Please enter a valid email address.");
       setLoading(false);
       return;
     }
@@ -86,18 +97,29 @@ export default function Login() {
   };
 
   return (
-    <div className="flex md:bg-[#F7F5F9] bg-white w-full h-screen justify-center overflow-hidden md:px-6 md:py-4 rounded-2xl">
+    <div className="flex bg-[#F7F5F9] w-full h-screen justify-center overflow-hidden md:px-6 md:py-4 rounded-2xl">
       <div className="flex max-w-screen-2xl w-full h-full rounded-xl overflow-hidden">
-        {/* LEFT */}
-        <LeftPanel />
+        {/* LEFT - You need to create or import LeftPanel component */}
+        <div className="hidden lg:flex w-1/2 bg-[#F8EACD] rounded-xl p-6 items-center justify-center">
+          <div className="w-full flex flex-col items-center">
+            <div className="bg-gradient-to-br max-w-lg from-[#FAF3E8] to-[#F8EACD] mt-4 p-4 rounded-2xl shadow-sm text-center">
+              <h1 className="text-3xl font-semibold text-[#2D0D23] mb-1">
+                Welcome Back to Cosplitz
+              </h1>
+              <p className="text-xl font-medium text-[#4B4B4B] leading-relaxed">
+                Sign in to continue sharing expenses with your community.
+              </p>
+            </div>
+          </div>
+        </div>
 
         {/* RIGHT */}
-        <div className="flex flex-1 flex-col items-center p-3  overflow-y-auto">
-          <div className="w-full mb-4 flex justify-center md:justify-start items-center md:items-start mt-10">
+        <div className="flex flex-1 flex-col items-center p-3 overflow-y-auto">
+          <div className="w-full mb-4 flex justify-center md:justify-start items-center md:items-start">
             <img src={logo} alt="Logo" className="h-10 md:h-12" />
           </div>
 
-          <div className="w-full max-w-2xl p-5 rounded-xl shadow-none md:shadow-md border-none  md:border-gray-100 bg-none md:bg-white space-y-6">
+          <div className="w-full max-w-2xl p-5 rounded-xl shadow-none md:shadow-md border-none md:border border-gray-100 bg-white space-y-6">
             <h1 className="text-2xl sm:text-3xl text-center font-bold text-gray-900">
               Welcome Back
             </h1>
@@ -111,7 +133,7 @@ export default function Login() {
               </div>
             )}
 
-            <div className="grid grid-cols-1  gap-2 mb-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -142,60 +164,60 @@ export default function Login() {
             </div>
 
             <form onSubmit={handleLogin} className="space-y-3">
-<div className="mb-4">
-  <label className="text-sm font-medium text-gray-700 mb-1 block">
-    Email Address *
-  </label>
-  <div className="relative">
-    <input
-      type="email"
-      value={email}
-      onChange={(e) => {
-        setEmail(e.target.value);
-        if (error) clearError();
-      }}
-      placeholder="Enter your email"
-      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-colors"
-      required
-    />
-  </div>
-</div>
+              <div className="mb-4">
+                <label className="text-sm font-medium text-gray-700 mb-1 block">
+                  Email Address *
+                </label>
+                <div className="relative">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (error) clearError();
+                    }}
+                    placeholder="Enter your email"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-colors"
+                    required
+                  />
+                </div>
+              </div>
 
-<div className="mb-4">
-  <label className="text-sm font-medium text-gray-700 mb-1 block">
-    Password *
-  </label>
-  <div className="relative">
-    <input
-      type={showPassword ? "text" : "password"}
-      value={password}
-      onChange={(e) => {
-        setPassword(e.target.value);
-        if (error) clearError();
-      }}
-      placeholder="Enter your password"
-      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-colors pr-10"
-      required
-    />
-    <button
-      type="button"
-      onClick={() => setShowPassword(!showPassword)}
-      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
-    >
-      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-    </button>
-  </div>
-</div>
+              <div className="mb-4">
+                <label className="text-sm font-medium text-gray-700 mb-1 block">
+                  Password *
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (error) clearError();
+                    }}
+                    placeholder="Enter your password"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-colors pr-10"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
 
               <div className="flex justify-between items-center">
                 <label className="flex gap-2 text-sm text-gray-600 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={remember}
-                      onChange={(e) => setRemember(e.target.checked)}
-                      className="rounded focus:ring-green-500"
-                    />
-                    <span>Remember me</span>
+                  <input
+                    type="checkbox"
+                    checked={remember}
+                    onChange={(e) => setRemember(e.target.checked)}
+                    className="rounded focus:ring-green-500"
+                  />
+                  <span>Remember me</span>
                 </label>
                 <Link
                   to="/forgot-password"

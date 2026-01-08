@@ -20,6 +20,8 @@ export default function Register() {
   const error = useAuthStore((state) => state.error);
   const setPendingVerification = useAuthStore((state) => state.setPendingVerification);
   const completeRegistration = useAuthStore((state) => state.completeRegistration);
+  const setUser = useAuthStore((state) => state.setUser);
+  const setToken = useAuthStore((state) => state.setToken);
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -88,16 +90,14 @@ export default function Register() {
       const response = await authService.register(registrationData);
       console.log("REGISTER RESPONSE =>", response);
 
-      // Check for duplicate email error
-      if (response.error) {
+      if (response?.error) {
         const errorMessage = response.data?.message || response.message || "Registration failed.";
         
-        // Check if error indicates duplicate email
         if (errorMessage.toLowerCase().includes("already exists") || 
             errorMessage.toLowerCase().includes("already registered") ||
             errorMessage.toLowerCase().includes("email taken") ||
             errorMessage.toLowerCase().includes("duplicate") ||
-            response.status === 409) { // 409 Conflict is common for duplicates
+            response.status === 409) {
           
           setError("This email address is already registered. Please use a different email or try logging in.");
         } else {
@@ -112,7 +112,7 @@ export default function Register() {
       const userEmail = response.data?.user?.email || response.data?.email || formData.email;
 
       if (!backendUserId) {
-        setError("Registration worked, but user ID is missing. Try logging in.");
+        setError("Registration succeeded, but user ID is missing. Please contact support.");
         setLoading(false);
         return;
       }
@@ -137,7 +137,7 @@ export default function Register() {
           const otpResponse = await authService.getOTP(backendUserId);
           console.log("OTP Response:", otpResponse);
           
-          if (otpResponse.error) {
+          if (otpResponse?.error) {
             console.warn("OTP sending failed:", otpResponse.data?.message);
           }
         } catch (otpError) {
@@ -149,7 +149,6 @@ export default function Register() {
       console.error("REGISTRATION ERROR =>", err);
       const errorMessage = err.message || "Network error.";
       
-      // Check for duplicate email in network errors
       if (errorMessage.toLowerCase().includes("already exists") || 
           errorMessage.toLowerCase().includes("409")) {
         setError("This email address is already registered. Please use a different email or try logging in.");
@@ -176,9 +175,33 @@ export default function Register() {
       console.log("Auto-login response:", loginResponse);
       
       if (loginResponse.success && loginResponse.data?.token) {
-        // Complete registration
-        completeRegistration(
-          {
+        // Store token and user data
+        setToken(loginResponse.data.token, true);
+        
+        // Get user info
+        try {
+          const userInfo = await authService.getUserInfo();
+          if (userInfo.success && userInfo.data) {
+            setUser(userInfo.data);
+            completeRegistration(userInfo.data, loginResponse.data.token);
+          } else {
+            // Create user object from registration data
+            const userData = {
+              id: userId,
+              email: registeredEmail || formData.email,
+              first_name: formData.firstName,
+              last_name: formData.lastName,
+              name: `${formData.firstName} ${formData.lastName}`,
+              role: "user",
+              is_active: true,
+              email_verified: true,
+            };
+            setUser(userData);
+            completeRegistration(userData, loginResponse.data.token);
+          }
+        } catch (userInfoError) {
+          console.warn("Could not fetch user info:", userInfoError);
+          const userData = {
             id: userId,
             email: registeredEmail || formData.email,
             first_name: formData.firstName,
@@ -187,11 +210,11 @@ export default function Register() {
             role: "user",
             is_active: true,
             email_verified: true,
-          },
-          loginResponse.data.token
-        );
+          };
+          setUser(userData);
+          completeRegistration(userData, loginResponse.data.token);
+        }
       } else {
-        // OTP verified but login failed
         console.warn("Auto-login failed, but email is verified. User can login manually.");
       }
       
