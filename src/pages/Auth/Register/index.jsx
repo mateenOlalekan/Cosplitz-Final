@@ -1,28 +1,26 @@
+// index.jsx (Register page) - REFACTORED
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import loginlogo from "../../../assets/login.jpg";
 import logo from "../../../assets/logo.svg";
-import { authService } from "../../../services/authApi";
 import { useAuthStore } from "../../../store/authStore";
 import EmailVerificationStep from "./EmailVerificationStep";
 import RegistrationForm from "./RegistrationForm";
 import Successful from "./Successful";
 
 export default function Register() {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [userId, setUserId] = useState(null);
-  const [registeredEmail, setRegisteredEmail] = useState("");
   const navigate = useNavigate();
   
-  const setError = useAuthStore((state) => state.setError);
-  const clearError = useAuthStore((state) => state.clearError);
-  const error = useAuthStore((state) => state.error);
-  const setPendingVerification = useAuthStore((state) => state.setPendingVerification);
-  const completeRegistration = useAuthStore((state) => state.completeRegistration);
-  const setUser = useAuthStore((state) => state.setUser);
-  const setToken = useAuthStore((state) => state.setToken);
+  const { 
+    register, 
+    isLoading, 
+    error, 
+    clearError, 
+    tempRegister,
+    isAuthenticated 
+  } = useAuthStore();
 
+  const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -38,25 +36,35 @@ export default function Register() {
     { id: 3, label: "Success", description: "Account created successfully" },
   ];
 
+  // Check if already authenticated
+  useEffect(() => {
+    if (isAuthenticated()) {
+      navigate("/dashboard");
+    }
+  }, [isAuthenticated, navigate]);
+
+  // Clear errors when switching steps
   useEffect(() => {
     clearError();
-  }, [currentStep]);
+  }, [currentStep, clearError]);
+
+  const handleInputChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (error) clearError();
+  };
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     clearError();
-    setLoading(true);
 
     // Validation
     if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
-      setError("Please fill out all required fields.");
-      setLoading(false);
+      useAuthStore.getState().setError("Please fill out all required fields.");
       return;
     }
 
     if (!formData.agreeToTerms) {
-      setError("Please agree to the terms & conditions.");
-      setLoading(false);
+      useAuthStore.getState().setError("Please agree to the terms & conditions.");
       return;
     }
 
@@ -66,15 +74,7 @@ export default function Register() {
       /\d/.test(formData.password);
 
     if (!passwordValid) {
-      setError("Password must contain at least 8 characters, one uppercase letter, and a number.");
-      setLoading(false);
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      setError("Please enter a valid email address.");
-      setLoading(false);
+      useAuthStore.getState().setError("Password must contain at least 8 characters, one uppercase letter, and a number.");
       return;
     }
 
@@ -86,150 +86,15 @@ export default function Register() {
       nationality: formData.nationality || "",
     };
 
-    try {
-      const response = await authService.register(registrationData);
-      console.log("REGISTER RESPONSE =>", response);
-
-      if (response?.error) {
-        const errorMessage = response.data?.message || response.message || "Registration failed.";
-        
-        if (errorMessage.toLowerCase().includes("already exists") || 
-            errorMessage.toLowerCase().includes("already registered") ||
-            errorMessage.toLowerCase().includes("email taken") ||
-            errorMessage.toLowerCase().includes("duplicate") ||
-            response.status === 409) {
-          
-          setError("This email address is already registered. Please use a different email or try logging in.");
-        } else {
-          setError(errorMessage);
-        }
-        setLoading(false);
-        return;
-      }
-
-      // Extract user information
-      const backendUserId = response.data?.user?.id || response.data?.user_id || response.data?.id;
-      const userEmail = response.data?.user?.email || response.data?.email || formData.email;
-
-      if (!backendUserId) {
-        setError("Registration succeeded, but user ID is missing. Please contact support.");
-        setLoading(false);
-        return;
-      }
-
-      setUserId(backendUserId);
-      setRegisteredEmail(userEmail);
-
-      // Store pending verification
-      setPendingVerification({
-        email: userEmail,
-        userId: backendUserId,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-      });
-
-      // Move to Step 2
+    const result = await register(registrationData);
+    
+    if (result.success && result.requiresVerification) {
       setCurrentStep(2);
-
-      // Auto-send OTP
-      setTimeout(async () => {
-        try {
-          const otpResponse = await authService.getOTP(backendUserId);
-          console.log("OTP Response:", otpResponse);
-          
-          if (otpResponse?.error) {
-            console.warn("OTP sending failed:", otpResponse.data?.message);
-          }
-        } catch (otpError) {
-          console.error("OTP sending error:", otpError);
-        }
-      }, 500);
-
-    } catch (err) {
-      console.error("REGISTRATION ERROR =>", err);
-      const errorMessage = err.message || "Network error.";
-      
-      if (errorMessage.toLowerCase().includes("already exists") || 
-          errorMessage.toLowerCase().includes("409")) {
-        setError("This email address is already registered. Please use a different email or try logging in.");
-      } else {
-        setError(errorMessage);
-      }
-      setLoading(false);
     }
   };
 
-  const handleInputChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (error) clearError();
-  };
-
-  const handleEmailVerificationSuccess = async () => {
-    try {
-      // Auto-login after verification
-      const loginResponse = await authService.login({
-        email: registeredEmail || formData.email,
-        password: formData.password
-      });
-      
-      console.log("Auto-login response:", loginResponse);
-      
-      if (loginResponse.success && loginResponse.data?.token) {
-        // Store token and user data
-        setToken(loginResponse.data.token, true);
-        
-        // Get user info
-        try {
-          const userInfo = await authService.getUserInfo();
-          if (userInfo.success && userInfo.data) {
-            setUser(userInfo.data);
-            completeRegistration(userInfo.data, loginResponse.data.token);
-          } else {
-            // Create user object from registration data
-            const userData = {
-              id: userId,
-              email: registeredEmail || formData.email,
-              first_name: formData.firstName,
-              last_name: formData.lastName,
-              name: `${formData.firstName} ${formData.lastName}`,
-              role: "user",
-              is_active: true,
-              email_verified: true,
-            };
-            setUser(userData);
-            completeRegistration(userData, loginResponse.data.token);
-          }
-        } catch (userInfoError) {
-          console.warn("Could not fetch user info:", userInfoError);
-          const userData = {
-            id: userId,
-            email: registeredEmail || formData.email,
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-            name: `${formData.firstName} ${formData.lastName}`,
-            role: "user",
-            is_active: true,
-            email_verified: true,
-          };
-          setUser(userData);
-          completeRegistration(userData, loginResponse.data.token);
-        }
-      } else {
-        console.warn("Auto-login failed, but email is verified. User can login manually.");
-      }
-      
-      // Always go to step 3 (Successful page)
-      setCurrentStep(3);
-      
-    } catch (err) {
-      console.error("Auto-login failed:", err);
-      // Still go to successful page even if auto-login fails
-      setCurrentStep(3);
-    }
-  };
-
-  const handleVerificationFailed = (msg) => {
-    setError(msg);
+  const handleEmailVerificationSuccess = () => {
+    setCurrentStep(3);
   };
 
   const handleBackToStep1 = () => {
@@ -238,14 +103,13 @@ export default function Register() {
   };
 
   const handleSocialRegister = (provider) => {
-    console.log(`Social register with ${provider}`);
-    setError(`${provider} registration coming soon!`);
+    useAuthStore.getState().setError(`${provider} registration coming soon!`);
   };
 
   return (
     <div className="flex bg-[#F7F5F9] w-full h-screen justify-center overflow-hidden md:px-6 md:py-4 rounded-2xl">
       <div className="flex max-w-screen-2xl w-full h-full rounded-xl overflow-hidden">
-        {/* LEFT */}
+        {/* LEFT SIDE (Image) */}
         <div className="hidden lg:flex w-1/2 bg-[#F8EACD] rounded-xl p-6 items-center justify-center">
           <div className="w-full flex flex-col items-center">
             <img 
@@ -264,14 +128,14 @@ export default function Register() {
           </div>
         </div>
 
-        {/* RIGHT */}
+        {/* RIGHT SIDE (Form) */}
         <div className="flex flex-1 flex-col items-center p-3 sm:p-5 overflow-y-auto">
           <div className="w-full mb-4 flex justify-center md:justify-start items-center md:items-start">
             <img src={logo} alt="Logo" className="h-10 md:h-12" />
           </div>
 
           <div className="w-full max-w-2xl p-5 rounded-xl shadow-none md:shadow-md border-none md:border border-gray-100 bg-white">
-            {/* STEPS */}
+            {/* STEPS INDICATOR */}
             <div className="w-full flex flex-col items-center py-4 mb-4">
               <div className="flex items-center gap-2 justify-center mb-2">
                 {steps.map((s, i) => (
@@ -305,18 +169,17 @@ export default function Register() {
                 handleInputChange={handleInputChange}
                 handleFormSubmit={handleFormSubmit}
                 handleSocialRegister={handleSocialRegister}
-                loading={loading}
+                loading={isLoading}
                 error={error}
               />
             )}
 
             {currentStep === 2 && (
               <EmailVerificationStep
-                email={registeredEmail || formData.email}
-                userId={userId}
+                email={tempRegister?.email || formData.email}
+                userId={tempRegister?.userId}
                 onBack={handleBackToStep1}
                 onSuccess={handleEmailVerificationSuccess}
-                onVerificationFailed={handleVerificationFailed}
               />
             )}
 
