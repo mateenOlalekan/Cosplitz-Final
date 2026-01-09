@@ -1,17 +1,39 @@
-import { useState } from "react";
+// RegistrationForm.jsx - REFACTORED WITH ZOD
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FcGoogle } from "react-icons/fc";
 import { PiAppleLogoBold } from "react-icons/pi";
 import { Eye, EyeOff } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import PasswordValidation from "./PasswordValidation";
 
-function RegistrationForm({  formData,  handleInputChange,  handleFormSubmit,  handleSocialRegister,  loading,  error,}) {
-  const [showPassword, setShowPassword] = useState(false);
-  const [touchedFields, setTouchedFields] = useState({});
-  const [formErrors, setFormErrors] = useState({});
+// Define Zod schema for form validation
+const registrationSchema = z.object({
+  firstName: z.string().min(2, { message: "First name must be at least 2 characters" }).trim(),
+  lastName: z.string() .min(2, { message: "Last name must be at least 2 characters" }).trim(),
+  email: z.string() .email({ message: "Please enter a valid email address" }).min(5, { message: "Email must be at least 5 characters" }) .trim(),
+  nationality: z.string().or(z.literal("")),
+  password: z.string().min(8, { message: "Password must be at least 8 characters" }).regex(/[A-Z]/, { message: "Password must contain at least one uppercase letter" }).regex(/\d/, { message: "Password must contain at least one number" }),
+  agreeToTerms: z.boolean().refine((val) => val === true, {message: "You must agree to the terms & conditions",}),
+});
 
-  // Form fields configuration
+function RegistrationForm({ handleFormSubmit, handleSocialRegister, loading,error,}) {
+  const [showPassword, setShowPassword] = useState(false);
+  const {register,handleSubmit,watch,formState: { errors, isValid, touchedFields },setValue,trigger,} = useForm({resolver: zodResolver(registrationSchema),
+    mode: "onChange",
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      email: "",
+      nationality: "",
+      password: "",
+      agreeToTerms: false,
+    },
+  });
+
   const formFields = [
     { 
       key: "firstName", 
@@ -43,108 +65,36 @@ function RegistrationForm({  formData,  handleInputChange,  handleFormSubmit,  h
     },
   ];
 
-  // Handle field blur
-  const handleBlur = (field) => {
-    setTouchedFields((prev) => ({ ...prev, [field]: true }));
-    validateField(field, formData[field]);
-  };
+  // Watch password for validation display
+  const passwordValue = watch("password");
 
-  // Simple validation function
-  const validateField = (field, value) => {
-    let error = "";
-    
-    switch (field) {
-      case "firstName":
-      case "lastName":
-        if (value.length < 2) {
-          error = `${field === "firstName" ? "First" : "Last"} name must be at least 2 characters`;
-        }
-        break;
-        
-      case "email":
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(value)) {
-          error = "Please enter a valid email address";
-        }
-        break;
-        
-      case "password":
-        if (value.length < 8) {
-          error = "Password must be at least 8 characters";
-        } else if (!/[A-Z]/.test(value)) {
-          error = "Password must contain at least one uppercase letter";
-        } else if (!/\d/.test(value)) {
-          error = "Password must contain at least one number";
-        } 
-        break;
-        
-      case "agreeToTerms":
-        if (!value) {
-          error = "You must agree to the terms & conditions";
-        }
-        break;
-    }
-    
-    if (error) {
-      setFormErrors((prev) => ({ ...prev, [field]: error }));
-      return false;
-    } else {
-      setFormErrors((prev) => ({ ...prev, [field]: undefined }));
-      return true;
-    }
-  };
-
-  // Validate entire form
-  const isFormValid = () => {
-    // Required fields
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
-      return false;
-    }
-    
-    // Validate each field
-    const validations = [
-      validateField("firstName", formData.firstName),
-      validateField("lastName", formData.lastName),
-      validateField("email", formData.email),
-      validateField("password", formData.password),
-      validateField("agreeToTerms", formData.agreeToTerms),
-    ];
-    
-    return validations.every(v => v === true);
-  };
-
-  // Handle input change with validation
-  const handleInputChangeWithValidation = (field, value) => {
-    handleInputChange(field, value);
-    if (touchedFields[field]) {
-      validateField(field, value);
-    }
+  // Custom handler for checkbox to integrate with react-hook-form
+  const handleCheckboxChange = (e) => {
+    setValue("agreeToTerms", e.target.checked);
+    trigger("agreeToTerms");
   };
 
   // Handle form submission
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const onSubmit = (data) => {
+    // Transform data for API
+    const apiData = {
+      first_name: data.firstName,
+      last_name: data.lastName,
+      email: data.email,
+      nationality: data.nationality || undefined,
+      password: data.password,
+      agree_to_terms: data.agreeToTerms,
+    };
     
-    // Mark all required fields as touched
-    const requiredFields = ["firstName", "lastName", "email", "password", "agreeToTerms"];
-    const newTouched = {};
-    requiredFields.forEach(field => {
-      newTouched[field] = true;
-    });
-    setTouchedFields(newTouched);
-    
-    // Validate all fields
-    const isValid = isFormValid();
-    
-    if (isValid) {
-      handleFormSubmit(e);
-    } else {
-      // Show first error
-      const firstErrorField = Object.keys(formErrors).find(field => formErrors[field]);
-      if (firstErrorField) {
-        const input = document.querySelector(`[name="${firstErrorField}"]`);
-        if (input) input.focus();
-      }
+    // Create a synthetic event for compatibility
+    const syntheticEvent = { preventDefault: () => {} };
+    handleFormSubmit(syntheticEvent, apiData);
+  };
+
+  // Handle Enter key press in nationality field
+  const handleNationalityKeyPress = (e) => {
+    if (e.key === 'Enter' && isValid) {
+      handleSubmit(onSubmit)();
     }
   };
 
@@ -201,10 +151,10 @@ function RegistrationForm({  formData,  handleInputChange,  handleFormSubmit,  h
       )}
 
       {/* Registration Form */}
-      <form onSubmit={handleSubmit} className="space-y-2">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-2">
         {/* Form Fields */}
         {formFields.map((field) => {
-          const hasError = !!formErrors[field.key];
+          const hasError = !!errors[field.key];
           const isTouched = touchedFields[field.key];
           
           return (
@@ -215,13 +165,14 @@ function RegistrationForm({  formData,  handleInputChange,  handleFormSubmit,  h
               <div className="relative">
                 <input
                   type={field.type}
-                  value={formData[field.key]}
                   placeholder={field.placeholder}
-                  onChange={(e) => handleInputChangeWithValidation(field.key, e.target.value)}
-                  onBlur={() => handleBlur(field.key)}
+                  {...register(field.key)}
+                  onKeyDown={field.key === "nationality" ? handleNationalityKeyPress : undefined}
                   className={`w-full px-3 py-1.5 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors ${
                     hasError && isTouched
                       ? "border-red-400 focus:border-red-400" 
+                      : !errors[field.key] && isTouched
+                      ? "border-green-400 focus:border-green-600"
                       : "border-gray-300 focus:border-green-600"
                   } disabled:opacity-50`}
                   required={field.required}
@@ -232,7 +183,7 @@ function RegistrationForm({  formData,  handleInputChange,  handleFormSubmit,  h
               </div>
               {hasError && isTouched && (
                 <p id={`${field.key}-error`} className="text-red-500 text-xs mt-1">
-                  {formErrors[field.key]}
+                  {errors[field.key]?.message}
                 </p>
               )}
             </div>
@@ -247,18 +198,19 @@ function RegistrationForm({  formData,  handleInputChange,  handleFormSubmit,  h
           <div className="relative">
             <input
               type={showPassword ? "text" : "password"}
-              value={formData.password}
               placeholder="Create a strong password"
-              onChange={(e) => handleInputChangeWithValidation("password", e.target.value)}
-              onBlur={() => handleBlur("password")}
+              {...register("password")}
               className={`w-full px-3 py-1.5 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors pr-10 ${
-                formErrors.password && touchedFields.password
-                  ? "border-red-400 focus:border-red-400" : "border-gray-300 focus:border-green-600"
+                errors.password && touchedFields.password
+                  ? "border-red-400 focus:border-red-400" 
+                  : !errors.password && touchedFields.password
+                  ? "border-green-400 focus:border-green-600"
+                  : "border-gray-300 focus:border-green-600"
               } disabled:opacity-50`}
               required
               disabled={loading}
-              aria-invalid={!!formErrors.password && touchedFields.password}
-              aria-describedby={formErrors.password ? "password-error" : undefined}
+              aria-invalid={!!errors.password && touchedFields.password}
+              aria-describedby={errors.password ? "password-error" : undefined}
             />
             <button
               type="button"
@@ -270,12 +222,12 @@ function RegistrationForm({  formData,  handleInputChange,  handleFormSubmit,  h
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
-          {formErrors.password && touchedFields.password && (
+          {errors.password && touchedFields.password && (
             <p id="password-error" className="text-red-500 text-xs mt-1">
-              {formErrors.password}
+              {errors.password.message}
             </p>
           )}
-          <PasswordValidation password={formData.password} />
+          <PasswordValidation password={passwordValue} />
         </div>
 
         {/* Terms & Conditions */}
@@ -283,8 +235,8 @@ function RegistrationForm({  formData,  handleInputChange,  handleFormSubmit,  h
           <label className="flex items-start gap-3 text-sm text-gray-600 cursor-pointer">
             <input
               type="checkbox"
-              checked={formData.agreeToTerms}
-              onChange={(e) => handleInputChangeWithValidation("agreeToTerms", e.target.checked)}
+              {...register("agreeToTerms")}
+              onChange={handleCheckboxChange}
               className="mt-0.5 rounded focus:ring-green-500 text-green-600 disabled:opacity-50"
               disabled={loading}
             />
@@ -319,21 +271,21 @@ function RegistrationForm({  formData,  handleInputChange,  handleFormSubmit,  h
               . 
             </span>
           </label>
-          {formErrors.agreeToTerms && touchedFields.agreeToTerms && (
+          {errors.agreeToTerms && touchedFields.agreeToTerms && (
             <p className="text-red-500 text-xs mt-1 ml-7">
-              {formErrors.agreeToTerms}
+              {errors.agreeToTerms.message}
             </p>
           )}
         </div>
 
         {/* Submit Button */}
         <motion.button
-          whileHover={{ scale: isFormValid() && !loading ? 1.02 : 1 }}
-          whileTap={{ scale: isFormValid() && !loading ? 0.98 : 1 }}
+          whileHover={{ scale: isValid && !loading ? 1.02 : 1 }}
+          whileTap={{ scale: isValid && !loading ? 0.98 : 1 }}
           type="submit"
-          disabled={!isFormValid() || loading}
+          disabled={!isValid || loading}
           className={`w-full py-3 rounded-lg font-semibold mt-6 transition-all duration-200 ${
-            !isFormValid() || loading
+            !isValid || loading
               ? "bg-gray-300 text-gray-500 cursor-not-allowed"
               : "bg-green-600 text-white hover:bg-green-700"
           }`}
@@ -349,7 +301,7 @@ function RegistrationForm({  formData,  handleInputChange,  handleFormSubmit,  h
         </motion.button>
 
         {/* Login Link */}
-        <p className="text-center text-sm text-gray-600  pt-4 ">
+        <p className="text-center text-sm text-gray-600 pt-4">
           Already have an account?{" "}
           <Link 
             to="/login" 

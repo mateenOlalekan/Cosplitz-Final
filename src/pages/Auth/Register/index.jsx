@@ -1,4 +1,4 @@
-// src/pages/Auth/Register/index.jsx - FIXED WITH PROPER REDIRECT
+// src/pages/Auth/Register/index.jsx - UPDATED FOR ZOD INTEGRATION
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import loginlogo from "../../../assets/login.jpg";
@@ -19,19 +19,10 @@ export default function Register() {
     isAuthenticated,
     initializeAuth,
     register,
-    setPendingVerification,
     isAuthInitialized
   } = useAuthStore();
 
   const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    nationality: "",
-    password: "",
-    agreeToTerms: false,
-  });
 
   const steps = [
     { id: 1, label: "Account", description: "Create your account" },
@@ -43,7 +34,6 @@ export default function Register() {
     initializeAuth();
   }, [initializeAuth]);
 
-  // Only check authentication after auth is initialized
   useEffect(() => {
     if (isAuthInitialized() && isAuthenticated()) {
       navigate("/dashboard");
@@ -61,15 +51,11 @@ export default function Register() {
     }
   }, [tempRegister, currentStep]);
 
-  const handleInputChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const handleFormSubmit = async (e) => {
-    e.preventDefault();
+  const handleFormSubmit = async (e, formData) => {
+    // Prevent default if it's an event object
+    if (e && e.preventDefault) {
+      e.preventDefault();
+    }
     
     const result = await register({
       first_name: formData.firstName,
@@ -175,8 +161,6 @@ export default function Register() {
             {/* Step Content */}
             {currentStep === 1 && (
               <RegistrationForm
-                formData={formData}
-                handleInputChange={handleInputChange}
                 handleFormSubmit={handleFormSubmit}
                 handleSocialRegister={handleSocialRegister}
                 loading={isLoading}
