@@ -8,7 +8,7 @@ import DeleteAccountModal from "../Settings/DeleteAccount";
 export default function SettingsLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { isAuthenticated, isLoading, initializeAuth } = useAuthStore();
+  const { isAuthenticated, isLoading, initializeAuth, isAuthInitialized } = useAuthStore();
   
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -18,14 +18,15 @@ export default function SettingsLayout() {
     initializeAuth();
   }, [initializeAuth]);
 
+  // Only check authentication after auth is initialized
   useEffect(() => {
-    if (!isLoading && !isAuthenticated()) {
+    if (isAuthInitialized() && !isAuthenticated()) {
       navigate("/login", { 
         state: { from: window.location.pathname },
         replace: true 
       });
     }
-  }, [isAuthenticated, isLoading, navigate]);
+  }, [isAuthenticated, navigate, isAuthInitialized]);
 
   useEffect(() => {
     if (isLogoutModalOpen || isDeleteModalOpen) {
@@ -51,7 +52,8 @@ export default function SettingsLayout() {
     setIsDeleteModalOpen(false);
   };
 
-  if (isLoading) {
+  // Show loading while auth is initializing
+  if (isLoading || !isAuthInitialized()) {
     return (
       <div className="flex h-full items-center justify-center bg-[#F7F5F9]">
         <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin"></div>
@@ -59,6 +61,7 @@ export default function SettingsLayout() {
     );
   }
 
+  // Don't render anything if not authenticated
   if (!isAuthenticated()) {
     return null;
   }

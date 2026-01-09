@@ -1,4 +1,4 @@
-// src/pages/Auth/Register/index.jsx - FIXED
+// src/pages/Auth/Register/index.jsx - FIXED WITH PROPER REDIRECT
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import loginlogo from "../../../assets/login.jpg";
@@ -19,7 +19,8 @@ export default function Register() {
     isAuthenticated,
     initializeAuth,
     register,
-    setPendingVerification
+    setPendingVerification,
+    isAuthInitialized
   } = useAuthStore();
 
   const [currentStep, setCurrentStep] = useState(1);
@@ -40,11 +41,14 @@ export default function Register() {
 
   useEffect(() => {
     initializeAuth();
-    
-    if (isAuthenticated()) {
+  }, [initializeAuth]);
+
+  // Only check authentication after auth is initialized
+  useEffect(() => {
+    if (isAuthInitialized() && isAuthenticated()) {
       navigate("/dashboard");
     }
-  }, [isAuthenticated, navigate, initializeAuth]);
+  }, [isAuthenticated, navigate, isAuthInitialized]);
 
   useEffect(() => {
     clearError();
@@ -99,6 +103,18 @@ export default function Register() {
   const handleSocialRegister = (provider) => {
     useAuthStore.getState().setError(`${provider} registration coming soon!`);
   };
+
+  // Don't show anything while loading
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#F7F5F9]">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex bg-[#F7F5F9] w-full h-screen justify-center overflow-hidden md:px-6 md:py-4 rounded-2xl">

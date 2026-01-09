@@ -6,7 +6,7 @@ import userImg from "../../assets/user.svg";
 import { useAuthStore } from "../../store/authStore";
 
 const DashboardSidebar = ({ sidebarOpen, isMobile, setSidebarOpen, onLogout, onDelete }) => {
-  const { user, isAuthenticated, isLoading, initializeAuth } = useAuthStore();
+  const { user, isAuthenticated, isLoading, initializeAuth, isAuthInitialized } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -20,11 +20,12 @@ const DashboardSidebar = ({ sidebarOpen, isMobile, setSidebarOpen, onLogout, onD
     initializeAuth();
   }, [initializeAuth]);
 
+  // Only check authentication after auth is initialized
   useEffect(() => {
-    if (!isLoading && !isAuthenticated()) {
+    if (isAuthInitialized() && !isAuthenticated()) {
       navigate("/login");
     }
-  }, [isAuthenticated, isLoading, navigate]);
+  }, [isAuthenticated, navigate, isAuthInitialized]);
 
   const role = user?.role || (user?.is_admin ? "admin" : "user");
 
@@ -140,7 +141,8 @@ const DashboardSidebar = ({ sidebarOpen, isMobile, setSidebarOpen, onLogout, onD
     if (isMobile) setSidebarOpen(false);
   };
 
-  if (isLoading) {
+  // Show loading while auth is initializing
+  if (isLoading || !isAuthInitialized()) {
     return (
       <aside className="fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 z-50 flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin"></div>
@@ -148,6 +150,7 @@ const DashboardSidebar = ({ sidebarOpen, isMobile, setSidebarOpen, onLogout, onD
     );
   }
 
+  // Don't render sidebar if not authenticated
   if (!isAuthenticated()) {
     return null;
   }

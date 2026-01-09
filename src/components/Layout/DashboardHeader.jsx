@@ -11,6 +11,7 @@ function DashboardHeader({ setSidebarOpen, sidebarOpen, isMobile }) {
     useAuthStore.getState().logout();
   };
 
+  // Don't render header if not authenticated
   if (!isAuthenticated()) {
     return null;
   }

@@ -1,4 +1,4 @@
-// src/store/authStore.js - FINAL VERSION
+// src/store/authStore.js - DEBUGGED VERSION
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { authService } from "../services/authApi";
@@ -11,6 +11,7 @@ export const useAuthStore = create(
       error: null,
       isLoading: true,
       tempRegister: null,
+      isInitialized: false, // Add initialization flag
 
       // REGISTER ACTION
       register: async (userData) => {
@@ -176,7 +177,8 @@ export const useAuthStore = create(
           token: null, 
           error: null, 
           tempRegister: null,
-          isLoading: false 
+          isLoading: false,
+          isInitialized: true // Set initialized to true even after logout
         });
         
         try {
@@ -234,18 +236,30 @@ export const useAuthStore = create(
             token: token || null,
             user: user,
             isLoading: false,
+            isInitialized: true, // Mark as initialized
           });
         } catch (err) {
           console.error("Auth initialization error:", err);
-          set({ token: null, user: null, isLoading: false });
+          set({ 
+            token: null, 
+            user: null, 
+            isLoading: false,
+            isInitialized: true 
+          });
         }
       },
+
+      // Add a method to check if auth is initialized
+      isAuthInitialized: () => {
+        return get().isInitialized;
+      }
     }),
     {
       name: "auth-storage",
       partialize: (state) => ({
         token: state.token,
         user: state.user,
+        isInitialized: state.isInitialized, // Persist initialization state
       }),
     }
   )

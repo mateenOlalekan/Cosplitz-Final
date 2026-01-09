@@ -1,4 +1,4 @@
-// src/pages/Auth/Login/index.jsx - FIXED
+// src/pages/Auth/Login/index.jsx - FIXED WITH PROPER REDIRECT
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuthStore } from "../../../store/authStore";
@@ -18,16 +18,19 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  const { login, error, isLoading, clearError, isAuthenticated, initializeAuth } = useAuthStore();
+  const { login, error, isLoading, clearError, isAuthenticated, initializeAuth, isAuthInitialized } = useAuthStore();
 
   useEffect(() => {
     initializeAuth();
-    
-    if (isAuthenticated()) {
+  }, [initializeAuth]);
+
+  // Only check authentication after auth is initialized
+  useEffect(() => {
+    if (isAuthInitialized() && isAuthenticated()) {
       const from = location.state?.from?.pathname || "/dashboard";
       navigate(from, { replace: true });
     }
-  }, [isAuthenticated, navigate, location, initializeAuth]);
+  }, [isAuthenticated, navigate, location, isAuthInitialized]);
 
   useEffect(() => {
     if (error) {
@@ -97,7 +100,17 @@ export default function Login() {
     }
   };
 
-  const loading = isLoading || isSubmitting;
+  // Don't show anything while loading
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#F7F5F9]">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex bg-[#F7F5F9] w-full min-h-screen justify-center items-center md:px-6 md:py-4 rounded-2xl">
@@ -152,7 +165,7 @@ export default function Login() {
                   whileTap={{ scale: 0.98 }}
                   type="button"
                   onClick={() => handleSocialLogin("google")}
-                  disabled={loading}
+                  disabled={isSubmitting || isLoading}
                   className="flex items-center justify-center gap-3 px-3 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <FcGoogle size={20} />
@@ -164,7 +177,7 @@ export default function Login() {
                   whileTap={{ scale: 0.98 }}
                   type="button"
                   onClick={() => handleSocialLogin("apple")}
-                  disabled={loading}
+                  disabled={isSubmitting || isLoading}
                   className="flex items-center justify-center gap-3 px-3 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <PiAppleLogoBold size={20} />
@@ -194,7 +207,7 @@ export default function Login() {
                     placeholder="you@example.com"
                     className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-colors disabled:opacity-50"
                     required
-                    disabled={loading}
+                    disabled={isSubmitting || isLoading}
                     autoComplete="email"
                   />
                 </div>
@@ -215,14 +228,14 @@ export default function Login() {
                       placeholder="Enter your password"
                       className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-colors pr-10 disabled:opacity-50"
                       required
-                      disabled={loading}
+                      disabled={isSubmitting || isLoading}
                       autoComplete="current-password"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
-                      disabled={loading}
+                      disabled={isSubmitting || isLoading}
                       aria-label={showPassword ? "Hide password" : "Show password"}
                     >
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -235,7 +248,7 @@ export default function Login() {
                     <input
                       type="checkbox"
                       className="rounded focus:ring-green-500 text-green-600 disabled:opacity-50"
-                      disabled={loading}
+                      disabled={isSubmitting || isLoading}
                     />
                     <span>Remember me</span>
                   </label>
@@ -243,24 +256,24 @@ export default function Login() {
                     type="button"
                     onClick={handleForgotPassword}
                     className="text-sm text-green-600 hover:underline font-medium hover:text-green-700 transition-colors disabled:opacity-50"
-                    disabled={loading}
+                    disabled={isSubmitting || isLoading}
                   >
                     Forgot Password?
                   </button>
                 </div>
 
                 <motion.button
-                  whileHover={{ scale: loading ? 1 : 1.02 }}
-                  whileTap={{ scale: loading ? 1 : 0.98 }}
+                  whileHover={{ scale: isSubmitting || isLoading ? 1 : 1.02 }}
+                  whileTap={{ scale: isSubmitting || isLoading ? 1 : 0.98 }}
                   type="submit"
-                  disabled={loading}
+                  disabled={isSubmitting || isLoading}
                   className={`w-full bg-green-600 text-white py-3 rounded-lg font-semibold transition-all duration-200 ${
-                    loading 
+                    isSubmitting || isLoading 
                       ? "opacity-70 cursor-not-allowed" 
                       : "hover:bg-green-700"
                   }`}
                 >
-                  {loading ? (
+                  {isSubmitting || isLoading ? (
                     <span className="flex items-center justify-center gap-2">
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                       Signing In...
@@ -274,7 +287,7 @@ export default function Login() {
                   <button
                     type="button"
                     onClick={handleDemoLogin}
-                    disabled={loading}
+                    disabled={isSubmitting || isLoading}
                     className="text-sm text-gray-600 hover:text-gray-800 underline py-2 disabled:opacity-50"
                   >
                     Try demo account

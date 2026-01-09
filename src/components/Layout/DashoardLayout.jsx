@@ -9,7 +9,7 @@ export default function DashboardLayout() {
   const [isMobile, setIsMobile] = useState(false);
   
   const navigate = useNavigate();
-  const { isAuthenticated, isLoading, initializeAuth } = useAuthStore();
+  const { isAuthenticated, isLoading, initializeAuth, isAuthInitialized } = useAuthStore();
 
   useEffect(() => {
     initializeAuth();
@@ -26,16 +26,18 @@ export default function DashboardLayout() {
     return () => window.removeEventListener("resize", checkScreenSize);
   }, []);
 
+  // Only check authentication after auth is initialized
   useEffect(() => {
-    if (!isLoading && !isAuthenticated()) {
+    if (isAuthInitialized() && !isAuthenticated()) {
       navigate("/login", { 
         state: { from: window.location.pathname },
         replace: true 
       });
     }
-  }, [isAuthenticated, isLoading, navigate]);
+  }, [isAuthenticated, navigate, isAuthInitialized]);
 
-  if (isLoading) {
+  // Show loading while auth is initializing
+  if (isLoading || !isAuthInitialized()) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#F7F5F9]">
         <div className="text-center">
@@ -46,6 +48,7 @@ export default function DashboardLayout() {
     );
   }
 
+  // Don't render anything if not authenticated (will redirect via useEffect)
   if (!isAuthenticated()) {
     return null;
   }
