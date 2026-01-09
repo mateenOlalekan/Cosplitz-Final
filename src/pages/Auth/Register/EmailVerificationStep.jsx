@@ -1,39 +1,29 @@
-// src/pages/Auth/Register/EmailVerificationStep.jsx
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { useAuthStore } from "../../../store/authStore";
-import { ArrowLeft, Mail, RefreshCw } from "lucide-react";
 
-const EmailVerificationStep = ({
+import React, { useState, useEffect, useRef } from "react";
+import { authService } from "../../../services/authApi";
+import { ArrowLeft, Mail } from "lucide-react";
+
+export default function EmailVerificationStep({
   email,
   userId,
   onBack,
   onSuccess,
   onVerificationFailed,
-}) => {
+}) {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
   const [timer, setTimer] = useState(180); // 3 minutes
   const [isVerifying, setIsVerifying] = useState(false);
-  const [isResending, setIsResending] = useState(false);
   const inputRefs = useRef([]);
-
-  const { 
-    verifyOTP,
-    resendOTP,
-    clearError,
-    tempRegister,
-    isLoading: storeLoading 
-  } = useAuthStore();
-
-  const effectiveEmail = tempRegister?.email || email;
-  const effectiveUserId = tempRegister?.userId || userId;
 
   // Countdown timer
   useEffect(() => {
     if (timer <= 0) return;
 
     const interval = setInterval(() => {
-      setTimer((prev) => Math.max(0, prev - 1));
+      setTimer((t) => Math.max(0, t - 1));
     }, 1000);
 
     return () => clearInterval(interval);
@@ -47,64 +37,38 @@ const EmailVerificationStep = ({
   }, []);
 
   const handleChange = (value, index) => {
-    if (!/^\d?$/.test(value)) return;
+    // Only allow digits
+    if (!/^[0-9]?$/.test(value)) return;
 
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
     setError("");
-    clearError();
 
-    // Auto-focus next input
+    // Move to next input if value entered
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
 
-    // Auto-submit when all digits are filled
-    if (newOtp.every(digit => digit !== "")) {
+    // Auto-verify once all 6 digits are filled
+    if (newOtp.every((d) => d !== "") && !isVerifying) {
       handleVerify(newOtp.join(""));
     }
   };
 
-  const handleVerify = useCallback(async (otpCode) => {
-    if (!effectiveEmail || !effectiveUserId) {
-      setError("Verification data missing. Please try again.");
-      return;
-    }
-
-    setIsVerifying(true);
-    
-    try {
-      const result = await verifyOTP(effectiveUserId, otpCode);
-      
-      if (result.success) {
-        setError("");
-        onSuccess?.();
-      } else {
-        setError(result.error || "Invalid verification code. Please try again.");
-        setOtp(["", "", "", "", "", ""]);
-        inputRefs.current[0]?.focus();
-        onVerificationFailed?.(result.error);
-      }
-    } catch (err) {
-      setError("An unexpected error occurred. Please try again.");
-    } finally {
-      setIsVerifying(false);
-    }
-  }, [effectiveEmail, effectiveUserId, verifyOTP, onSuccess, onVerificationFailed]);
-
   const handleKeyDown = (index, e) => {
+    // Move to previous input on backspace if current is empty
     if (e.key === "Backspace") {
       if (!otp[index] && index > 0) {
         inputRefs.current[index - 1]?.focus();
-      } else if (otp[index]) {
-        const newOtp = [...otp];
-        newOtp[index] = "";
-        setOtp(newOtp);
       }
-    } else if (e.key === "ArrowRight" && index < 5) {
+    }
+    // Move to next input on arrow right
+    else if (e.key === "ArrowRight" && index < 5) {
       inputRefs.current[index + 1]?.focus();
-    } else if (e.key === "ArrowLeft" && index > 0) {
+    }
+    // Move to previous input on arrow left
+    else if (e.key === "ArrowLeft" && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
   };
@@ -113,133 +77,219 @@ const EmailVerificationStep = ({
     e.preventDefault();
     const pasted = e.clipboardData.getData("text/plain").trim();
 
+    // Validate pasted content is 6 digits
     if (/^\d{6}$/.test(pasted)) {
       const digits = pasted.split("");
       setOtp(digits);
       setError("");
+      
+      // Focus last input
       inputRefs.current[5]?.focus();
-      handleVerify(pasted);
+      
+      // Auto-verify
+      if (!isVerifying) {
+        handleVerify(pasted);
+      }
     } else {
       setError("Please paste a valid 6-digit code.");
     }
   };
 
-  const handleResend = async () => {
-    if (timer > 0 || !effectiveUserId) return;
+  const handleVerify = async (code = null) => {
+    const otpCode = code || otp.join("");
 
-    setIsResending(true);
+    if (otpCode.length !== 6) {
+      setError("Please enter the complete 6-digit code.");
+      return;
+    }
+
+    if (!email || !userId) {
+      setError("Missing email or user ID. Please try again.");
+      return;
+    }
+
+    // Prevent multiple simultaneous verifications
+    if (isVerifying) {
+      console.log("Verification already in progress");
+      return;
+    }
+
+    setIsVerifying(true);
+    setLoading(true);
     setError("");
-    clearError();
 
     try {
-      const result = await resendOTP(effectiveUserId);
+      console.log("Verifying OTP:", { email, code: otpCode });
+      const response = await authService.verifyOTP(email, otpCode);
       
-      if (result.success) {
-        setTimer(180);
+      console.log("OTP Verification Response:", response);
+
+      if (response?.success) {
+        console.log("OTP verified successfully");
+        setError("");
+        
+        // Call success callback
+        if (onSuccess) {
+          onSuccess();
+        }
+      } else {
+        // Handle verification failure
+        const errorMsg = 
+          response?.data?.message || 
+          response?.data?.error ||
+          "Invalid OTP. Please check the code and try again.";
+        
+        console.error("OTP verification failed:", errorMsg);
+        setError(errorMsg);
+        
+        // Clear OTP fields on error
         setOtp(["", "", "", "", "", ""]);
         inputRefs.current[0]?.focus();
-      } else {
-        setError(result.error || "Failed to resend code. Please try again.");
+        
+        if (onVerificationFailed) {
+          onVerificationFailed(errorMsg);
+        }
       }
     } catch (err) {
-      setError("Failed to resend verification code.");
+      console.error("OTP verification error:", err);
+      const errorMsg = err.message || "Verification failed. Please try again.";
+      setError(errorMsg);
+      
+      // Clear OTP fields on error
+      setOtp(["", "", "", "", "", ""]);
+      inputRefs.current[0]?.focus();
+      
+      if (onVerificationFailed) {
+        onVerificationFailed(errorMsg);
+      }
     } finally {
-      setIsResending(false);
+      setLoading(false);
+      setIsVerifying(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (timer > 0) return;
+
+    if (!userId) {
+      setError("Cannot resend OTP. User ID is missing.");
+      return;
+    }
+
+    setResendLoading(true);
+    setError("");
+
+    try {
+      console.log("Resending OTP for user:", userId);
+      const response = await authService.resendOTP(userId);
+      
+      if (response?.success) {
+        console.log("OTP resent successfully");
+        setTimer(180); // Reset timer to 3 minutes
+        setOtp(["", "", "", "", "", ""]);
+        inputRefs.current[0]?.focus();
+        
+        // Show success feedback
+        setError("");
+      } else {
+        const errorMsg = response?.data?.message || "Could not resend OTP. Please try again.";
+        console.error("OTP resend failed:", errorMsg);
+        setError(errorMsg);
+      }
+    } catch (err) {
+      console.error("OTP resend error:", err);
+      setError(err.message || "Failed to resend OTP. Please try again.");
+    } finally {
+      setResendLoading(false);
     }
   };
 
   const formatTime = (seconds) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds < 10 ? "0" : ""}${remainingSeconds}`;
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s < 10 ? "0" : ""}${s}`;
   };
 
-  const isComplete = otp.every(digit => digit !== "");
-  const loading = storeLoading || isVerifying;
-  const canResend = timer === 0;
-
   return (
-    <div className="flex flex-col items-center gap-5 py-8 px-4 relative w-full max-w-md mx-auto">
+    <div className="flex flex-col items-center gap-5 py-8 relative w-full">
       {/* Back button */}
       <button
         onClick={onBack}
-        className="absolute left-0 top-0 text-gray-600 hover:text-green-600 transition-colors disabled:opacity-50"
+        className="absolute left-4 top-4 text-gray-600 hover:text-green-600 transition-colors disabled:opacity-50"
         type="button"
         disabled={loading}
         aria-label="Go back"
       >
-        <ArrowLeft size={24} />
+        <ArrowLeft size={28} />
       </button>
 
       {/* Header */}
-      <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900">Verify Your Email</h2>
-        <p className="text-gray-500 text-sm mt-2">
-          Enter the 6-digit code sent to
-        </p>
-        <p className="text-green-600 font-medium mt-1">{effectiveEmail}</p>
-      </div>
+      <h2 className="text-xl font-bold text-gray-800 mt-8">Verify Your Email</h2>
+      <p className="text-gray-500 text-sm text-center max-w-xs">
+        Enter the 6-digit code sent to{" "}
+        <span className="text-green-600 font-medium">{email}</span>
+      </p>
 
       {/* Mail icon */}
-      <div className="bg-green-50 rounded-full w-16 h-16 flex items-center justify-center mt-2">
-        <Mail className="text-green-600" size={28} />
+      <div className="bg-[#1F82250D] rounded-full w-14 h-14 flex items-center justify-center">
+        <Mail className="text-[#1F8225]" size={24} />
       </div>
 
       {/* OTP input fields */}
-      <div className="w-full mt-6">
-        <label className="text-sm font-medium text-gray-700 mb-3 block text-center">
-          Verification Code
-        </label>
-        <div className="flex justify-center gap-3" onPaste={handlePaste}>
-          {otp.map((digit, index) => (
-            <input
-              key={index}
-              ref={(el) => (inputRefs.current[index] = el)}
-              type="text"
-              maxLength={1}
-              inputMode="numeric"
-              pattern="\d*"
-              value={digit}
-              onChange={(e) => handleChange(e.target.value, index)}
-              onKeyDown={(e) => handleKeyDown(index, e)}
-              disabled={loading}
-              className={`w-12 h-14 text-center text-2xl font-bold border-2 rounded-lg outline-none transition-all ${
-                error 
-                  ? "border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-200" 
-                  : digit 
-                  ? "border-green-500 focus:border-green-600 focus:ring-2 focus:ring-green-200"
-                  : "border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200"
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
-              autoComplete="one-time-code"
-              aria-label={`Digit ${index + 1} of verification code`}
-            />
-          ))}
-        </div>
+      <div className="flex gap-2 mt-2" onPaste={handlePaste}>
+        {otp.map((digit, i) => (
+          <input
+            key={i}
+            ref={(el) => (inputRefs.current[i] = el)}
+            id={`otp-input-${i}`}
+            type="text"
+            maxLength={1}
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={digit}
+            onChange={(e) => handleChange(e.target.value, i)}
+            onKeyDown={(e) => handleKeyDown(i, e)}
+            disabled={loading}
+            className={`w-10 h-10 sm:w-12 sm:h-12 text-center text-lg font-bold border-2 rounded-lg outline-none transition-all ${
+              error 
+                ? "border-red-400 focus:ring-2 focus:ring-red-300" 
+                : "border-gray-300 focus:ring-2 focus:ring-green-600 focus:border-green-600"
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+            autoComplete="off"
+            aria-label={`Digit ${i + 1}`}
+          />
+        ))}
       </div>
 
       {/* Timer / Resend */}
-      <div className="text-center mt-6">
+      <div className="text-center mt-4">
         {timer > 0 ? (
           <p className="text-sm text-gray-600">
-            You can request a new code in{" "}
+            Resend code in{" "}
             <span className="font-semibold text-green-600">{formatTime(timer)}</span>
           </p>
         ) : (
           <button
             type="button"
             onClick={handleResend}
-            disabled={loading || isResending}
-            className="flex items-center gap-2 text-green-600 hover:text-green-700 font-medium text-sm transition-colors disabled:opacity-50"
+            disabled={resendLoading}
+            className="text-green-600 hover:text-green-700 font-medium text-sm transition-colors disabled:opacity-50"
           >
-            <RefreshCw size={16} className={isResending ? "animate-spin" : ""} />
-            {isResending ? "Sending..." : "Resend Code"}
+            {resendLoading ? (
+              <span className="flex items-center gap-2">
+                <div className="w-3 h-3 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
+                Resending...
+              </span>
+            ) : (
+              "Resend Code"
+            )}
           </button>
         )}
       </div>
 
       {/* Error message */}
       {error && (
-        <div className="w-full mt-4 p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg text-center">
+        <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg text-center max-w-xs mt-2">
           {error}
         </div>
       )}
@@ -247,12 +297,12 @@ const EmailVerificationStep = ({
       {/* Verify button */}
       <button
         type="button"
-        disabled={loading || !isComplete}
-        onClick={() => handleVerify(otp.join(""))}
-        className={`w-full py-3 rounded-lg font-semibold mt-6 transition-all ${
-          loading || !isComplete
+        disabled={loading || otp.some((d) => d === "")}
+        onClick={() => handleVerify()}
+        className={`w-full py-3 rounded-lg font-semibold mt-4 transition-all ${
+          loading || otp.some((d) => d === "")
             ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-            : "bg-green-600 text-white hover:bg-green-700 active:scale-[0.98] shadow-sm"
+            : "bg-green-600 text-white hover:bg-green-700 active:scale-[0.98]"
         }`}
       >
         {loading ? (
@@ -264,21 +314,6 @@ const EmailVerificationStep = ({
           "Verify Email"
         )}
       </button>
-
-      {/* Additional help text */}
-      <p className="text-xs text-gray-400 text-center mt-4">
-        Didn't receive the code? Check your spam folder or{" "}
-        <button
-          type="button"
-          onClick={handleResend}
-          disabled={!canResend || isResending}
-          className="text-green-600 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          request a new one
-        </button>
-      </p>
     </div>
   );
-};
-
-export default EmailVerificationStep;
+}
