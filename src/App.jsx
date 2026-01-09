@@ -68,10 +68,7 @@ function App() {
         {/* Password Recovery */}
         <Route path="/forgot-password" element={<ForgetPassword />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
-        <Route
-          path="/password-reset-success"
-          element={<PasswordResetSuccess />}
-        />
+        <Route path="/password-reset-success" element={<PasswordResetSuccess />}/>
 
         {/* Protected */}
         <Route element={<ProtectedRoute />}>
@@ -90,10 +87,7 @@ function App() {
             <Route path="settings" element={<SettingsLayout />}>
               <Route index element={<MyProfile />} />
               <Route path="profile" element={<MyProfile />} />
-              <Route
-                path="notifications"
-                element={<NotificationSettings />}
-              />
+              <Route path="notifications" element={<NotificationSettings />}/>
               <Route path="verification" element={<Verification />} />
               <Route path="reset-password" element={<ResetPassword />} />
               <Route path="support" element={<Support />} />
