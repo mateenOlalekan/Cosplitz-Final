@@ -58,8 +58,6 @@ function RegistrationForm({  formData,  handleInputChange,  handleFormSubmit,  h
       case "lastName":
         if (value.length < 2) {
           error = `${field === "firstName" ? "First" : "Last"} name must be at least 2 characters`;
-        } else if (!/^[a-zA-Z\s]*$/.test(value)) {
-          error = `${field === "firstName" ? "First" : "Last"} name can only contain letters and spaces`;
         }
         break;
         
@@ -77,9 +75,7 @@ function RegistrationForm({  formData,  handleInputChange,  handleFormSubmit,  h
           error = "Password must contain at least one uppercase letter";
         } else if (!/\d/.test(value)) {
           error = "Password must contain at least one number";
-        } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(value)) {
-          error = "Password must contain at least one special character";
-        }
+        } 
         break;
         
       case "agreeToTerms":
