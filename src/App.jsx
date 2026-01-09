@@ -72,6 +72,8 @@ function App() {
 
         {/* Protected */}
         <Route element={<ProtectedRoute />}>
+
+        </Route>
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<MainOverview />} />
             <Route path="main" element={<MainOverview />} />
@@ -93,8 +95,6 @@ function App() {
               <Route path="support" element={<Support />} />
             </Route>
           </Route>
-        </Route>
-
         {/* Fallback */}
         <Route path="*" element={<NotFound />} />
       </Routes>
