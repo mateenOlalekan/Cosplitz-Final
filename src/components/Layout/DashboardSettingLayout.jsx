@@ -1,5 +1,6 @@
-import { useState,useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, Outlet, useNavigate } from "react-router-dom";
+import { useAuthStore } from "../../store/authStore";
 import Sidebar from "../../components/Layout/DashboardSidebar";
 import LogoutModal from "../Settings/LogoutModal"; 
 import DeleteAccountModal from "../Settings/DeleteAccount";
@@ -7,34 +8,39 @@ import DeleteAccountModal from "../Settings/DeleteAccount";
 export default function SettingsLayout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { logout } = useAuthStore();
+  
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const isRootSettings = location.pathname === "/dashboard/settings";
 
-useEffect(() => {
-  if (isLogoutModalOpen || isDeleteModalOpen) {
-    document.body.style.overflow = "hidden";
-  } else {
-    document.body.style.overflow = "";
-  }
-}, [isLogoutModalOpen, isDeleteModalOpen]);  
+  useEffect(() => {
+    if (isLogoutModalOpen || isDeleteModalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isLogoutModalOpen, isDeleteModalOpen]);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
+    logout(); // Use the logout function from authStore
     setIsLogoutModalOpen(false);
-    navigate("/login");
   };
 
   const handleDeleteAccount = () => {
-    localStorage.clear();
+    // In a real app, you would call an API to delete the account
+    // For now, we'll just logout
+    logout();
     setIsDeleteModalOpen(false);
-    navigate("/login");
   };
 
   return (
     <>
       <div className="flex h-full p-2 gap-3 overflow-hidden">
-        
         {/* Sidebar */}
         <Sidebar
           onLogout={() => setIsLogoutModalOpen(true)}
@@ -56,18 +62,17 @@ useEffect(() => {
         </main>
       </div>
 
-<LogoutModal
-  open={isLogoutModalOpen}
-  onClose={() => setIsLogoutModalOpen(false)}
-  onConfirm={handleLogout}
-/>
+      <LogoutModal
+        open={isLogoutModalOpen}
+        onClose={() => setIsLogoutModalOpen(false)}
+        onConfirm={handleLogout}
+      />
 
-<DeleteAccountModal
-  open={isDeleteModalOpen}
-  onClose={() => setIsDeleteModalOpen(false)}
-  onConfirm={handleDeleteAccount}
-/>
-
+      <DeleteAccountModal
+        open={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleDeleteAccount}
+      />
     </>
   );
 }

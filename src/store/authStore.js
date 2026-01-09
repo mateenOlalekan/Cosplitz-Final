@@ -1,6 +1,7 @@
 // src/store/authStore.js - DEBUGGED AND ENHANCED
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { authService } from "../services/authApi"; // Add this import
 
 export const useAuthStore = create(
   persist(
@@ -10,6 +11,108 @@ export const useAuthStore = create(
       error: null,
       isLoading: true,
       tempRegister: null,
+
+      // REGISTER ACTION
+      register: async (userData) => {
+        set({ isLoading: true, error: null });
+        const response = await authService.register(userData);
+        
+        if (response.success) {
+          // If registration requires email verification
+          if (response.data.requires_verification || response.data.user_id) {
+            set({
+              tempRegister: {
+                email: userData.email,
+                userId: response.data.user_id,
+                firstName: userData.first_name,
+                lastName: userData.last_name
+              },
+              isLoading: false,
+              error: null
+            });
+            return { success: true, requiresVerification: true };
+          } else {
+            // Auto-login if no verification needed
+            set({
+              user: response.data.user,
+              token: response.data.token,
+              isLoading: false,
+              error: null
+            });
+            localStorage.setItem("authToken", response.data.token);
+            localStorage.setItem("userInfo", JSON.stringify(response.data.user));
+            return { success: true, requiresVerification: false };
+          }
+        } else {
+          set({ 
+            error: response.data.message || "Registration failed", 
+            isLoading: false 
+          });
+          return { success: false, error: response.data.message };
+        }
+      },
+
+      // LOGIN ACTION
+      login: async (credentials) => {
+        set({ isLoading: true, error: null });
+        const response = await authService.login(credentials);
+        
+        if (response.success) {
+          set({
+            user: response.data.user,
+            token: response.data.token,
+            isLoading: false,
+            error: null
+          });
+          localStorage.setItem("authToken", response.data.token);
+          localStorage.setItem("userInfo", JSON.stringify(response.data.user));
+          return { success: true };
+        } else {
+          set({ 
+            error: response.data.message || "Login failed", 
+            isLoading: false 
+          });
+          return { success: false, error: response.data.message };
+        }
+      },
+
+      // VERIFY OTP ACTION
+      verifyOTP: async (identifier, otp) => {
+        set({ isLoading: true, error: null });
+        const response = await authService.verifyOTP(identifier, otp);
+        
+        if (response.success) {
+          set({
+            user: response.data.user,
+            token: response.data.token,
+            tempRegister: null,
+            isLoading: false,
+            error: null
+          });
+          localStorage.setItem("authToken", response.data.token);
+          localStorage.setItem("userInfo", JSON.stringify(response.data.user));
+          return { success: true };
+        } else {
+          set({ 
+            error: response.data.message || "OTP verification failed", 
+            isLoading: false 
+          });
+          return { success: false, error: response.data.message };
+        }
+      },
+
+      // RESEND OTP ACTION
+      resendOTP: async (userId) => {
+        set({ error: null });
+        const response = await authService.resendOTP(userId);
+        
+        if (response.success) {
+          return { success: true };
+        } else {
+          set({ error: response.data.message || "Failed to resend OTP" });
+          return { success: false, error: response.data.message };
+        }
+      },
 
       setToken: (token, persistToken = true) => {
         set({ token });
@@ -44,7 +147,6 @@ export const useAuthStore = create(
         set({ tempRegister: data });
       },
 
-      // Complete registration flow after email verification
       completeRegistration: (userData, token) => {
         console.log("Completing registration with:", { userData, token });
         

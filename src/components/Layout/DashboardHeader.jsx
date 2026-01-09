@@ -1,25 +1,37 @@
 import { Bell, Settings, MapPin, ChevronDown, Menu } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../../assets/logo.svg";
-import useAuthStore from "../../store/authStore";
+import { useAuthStore } from "../../store/authStore";
 
 function DashboardHeader({ setSidebarOpen, sidebarOpen, isMobile }) {
   const navigate = useNavigate();
-  const { user, logout } = useAuthStore();
+  const { user, logout, isAuthenticated } = useAuthStore();
 
-  const handleLogout = async () => {
-    await logout();
-    navigate("/login");
+  const handleLogout = () => {
+    logout(); // This already handles redirect in authStore
   };
+
+  // If not authenticated, don't render the header
+  if (!isAuthenticated()) {
+    return null;
+  }
 
   return (
     <div className="sticky top-0 bg-white border-b border-gray-200 z-30">
       {isMobile ? (
         <div className="px-4 py-4">
           <div className="flex items-center justify-between mb-2">
-            <img src={logo} alt="Logo" className="h-7 w-auto" onClick={() => navigate("/dashboard")} style={{ cursor: "pointer"}}/>
-
-            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors" aria-label="Toggle sidebar">
+            <img 
+              src={logo} 
+              alt="Logo" 
+              className="h-7 w-auto cursor-pointer" 
+              onClick={() => navigate("/dashboard")}
+            />
+            <button 
+              onClick={() => setSidebarOpen(!sidebarOpen)} 
+              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+              aria-label="Toggle sidebar"
+            >
               <Menu size={20} />
             </button>
           </div>
@@ -38,19 +50,34 @@ function DashboardHeader({ setSidebarOpen, sidebarOpen, isMobile }) {
         <div className="flex items-center gap-3">
           <div className="hidden md:flex items-center gap-2 text-sm text-gray-600">
             <span>Welcome,</span>
-            <span className="font-medium">{user?.first_name || user?.name || "User"}</span>
+            <span className="font-medium">
+              {user?.first_name || user?.name || user?.email?.split('@')[0] || "User"}
+            </span>
           </div>
 
-          <Link to="/dashboard/notifications" className="relative p-2 hover:bg-gray-100 rounded-lg transition"   aria-label="Notifications">
+          <Link 
+            to="/dashboard/notifications" 
+            className="relative p-2 hover:bg-gray-100 rounded-lg transition"
+            aria-label="Notifications"
+          >
             <Bell size={18} className="text-[#67707E]" />
             <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
           </Link>
 
-          <Link to="/dashboard/settings" className="p-2 hover:bg-gray-100 rounded-lg transition" aria-label="Settings">
+          <Link 
+            to="/dashboard/settings" 
+            className="p-2 hover:bg-gray-100 rounded-lg transition"
+            aria-label="Settings"
+          >
             <Settings size={18} className="text-[#67707E]" />
           </Link>
 
-          <button onClick={handleLogout}  className="px-3 py-1.5 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors">Logout</button>
+          <button 
+            onClick={handleLogout}
+            className="px-3 py-1.5 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+          >
+            Logout
+          </button>
         </div>
       </div>
     </div>

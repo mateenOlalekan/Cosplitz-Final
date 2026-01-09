@@ -13,11 +13,12 @@ export default function EmailVerificationStep({
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [error, setError] = useState("");
   const [timer, setTimer] = useState(180);
+  const [isVerifying, setIsVerifying] = useState(false); // Add local loading state
   const inputRefs = useRef([]);
 
   const { 
-    verifyOTP: verifyOTPAction, 
-    resendOTP: resendOTPAction,
+    verifyOTP,  // Changed from verifyOTPAction
+    resendOTP,  // Changed from resendOTPAction
     clearError,
     tempRegister,
     isLoading: storeLoading 
@@ -69,10 +70,10 @@ export default function EmailVerificationStep({
       return;
     }
 
-    const result = await verifyOTPAction(effectiveEmail, otpCode);
+    setIsVerifying(true);
+    const result = await verifyOTP(effectiveEmail, otpCode); // Changed function call
     
     if (result.success) {
-      // Clear OTP fields
       setOtp(["", "", "", "", "", ""]);
       onSuccess?.();
     } else {
@@ -81,6 +82,7 @@ export default function EmailVerificationStep({
       inputRefs.current[0]?.focus();
       onVerificationFailed?.(result.error);
     }
+    setIsVerifying(false);
   };
 
   const handleKeyDown = (index, e) => {
@@ -123,7 +125,8 @@ export default function EmailVerificationStep({
       return;
     }
 
-    const result = await verifyOTPAction(effectiveEmail, otpCode);
+    setIsVerifying(true);
+    const result = await verifyOTP(effectiveEmail, otpCode); // Changed function call
     
     if (result.success) {
       setOtp(["", "", "", "", "", ""]);
@@ -133,6 +136,7 @@ export default function EmailVerificationStep({
       setOtp(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
     }
+    setIsVerifying(false);
   };
 
   const handleResend = async () => {
@@ -146,7 +150,7 @@ export default function EmailVerificationStep({
     setError("");
     clearError();
 
-    const result = await resendOTPAction(effectiveUserId);
+    const result = await resendOTP(effectiveUserId); // Changed function call
     
     if (result.success) {
       setTimer(180);
@@ -164,7 +168,7 @@ export default function EmailVerificationStep({
   };
 
   const isComplete = otp.every((d) => d !== "");
-  const loading = storeLoading; // Use store's loading state
+  const loading = storeLoading || isVerifying; // Combine loading states
 
   return (
     <div className="flex flex-col items-center gap-5 py-8 relative w-full">

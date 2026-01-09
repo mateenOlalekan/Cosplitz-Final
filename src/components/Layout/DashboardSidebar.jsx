@@ -1,4 +1,3 @@
-// DashboardSidebar.jsx - DEBUGGED & REFACTORED
 import { useState, useMemo, useEffect } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { 
@@ -11,16 +10,15 @@ import {
   Users,
   Shield,
   FileCheck,
-  LogOut
+  LogOut,
+  Settings
 } from "lucide-react";
 import logo from "../../assets/logo.svg";
 import userImg from "../../assets/user.svg";
-import useAuthStore from "../../store/authStore";
+import { useAuthStore } from "../../store/authStore";
 
 const DashboardSidebar = ({ sidebarOpen, isMobile, setSidebarOpen }) => {
-  const user = useAuthStore((state) => state.user);
-  const fetchUserInfo = useAuthStore((state) => state.fetchUserInfo);
-  const logout = useAuthStore((state) => state.logout);
+  const { user, logout, isAuthenticated, initializeAuth, isLoading } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -30,21 +28,19 @@ const DashboardSidebar = ({ sidebarOpen, isMobile, setSidebarOpen }) => {
     wallet: 12,
   });
 
-  const role = user?.role || "user";
-
-  // Fetch user info on mount
+  // Initialize auth on mount
   useEffect(() => {
-    const initializeUser = async () => {
-      if (!user || !user.id) {
-        const result = await fetchUserInfo();
-        if (!result.success) {
-          console.error("Failed to fetch user info");
-        }
-      }
-    };
-    
-    initializeUser();
-  }, []); // Only run once on mount
+    initializeAuth();
+  }, [initializeAuth]);
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated()) {
+      navigate("/login");
+    }
+  }, [isAuthenticated, isLoading, navigate]);
+
+  const role = user?.role || user?.is_admin ? "admin" : "user";
 
   const navItems = useMemo(() => {
     const common = [
@@ -85,6 +81,12 @@ const DashboardSidebar = ({ sidebarOpen, isMobile, setSidebarOpen }) => {
         path: "/dashboard/analytics",
         count: null,
       },
+      {
+        icon: Settings,
+        label: "Settings",
+        path: "/dashboard/settings",
+        count: null,
+      },
     ];
 
     const adminOnly = [
@@ -123,7 +125,6 @@ const DashboardSidebar = ({ sidebarOpen, isMobile, setSidebarOpen }) => {
     return role === "admin" ? [...common, ...adminOnly] : common;
   }, [role, notifications]);
 
-  // Check if a route is active
   const isRouteActive = (path, exact = false) => {
     if (exact) {
       return location.pathname === path;
@@ -133,22 +134,35 @@ const DashboardSidebar = ({ sidebarOpen, isMobile, setSidebarOpen }) => {
 
   const userStats = useMemo(() => ({
     level: user?.level || 1,
-    name: user?.first_name || user?.name || "User",
+    name: user?.first_name || user?.name || user?.email?.split('@')[0] || "User",
     email: user?.email || "",
     avatar: user?.avatar || userImg,
     completedSplits: user?.completed_splits || 23,
     reliabilityScore: user?.reliability_score || 87,
   }), [user]);
 
-  const handleLogout = async () => {
-    await logout();
-    navigate("/login");
+  const handleLogout = () => {
+    logout(); // This already handles redirect in authStore
   };
 
   const handleProfileClick = () => {
     navigate("/dashboard/profile");
     if (isMobile) setSidebarOpen(false);
   };
+
+  // Show loading while checking auth
+  if (isLoading) {
+    return (
+      <aside className="fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 z-50 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin"></div>
+      </aside>
+    );
+  }
+
+  // Don't render sidebar if not authenticated
+  if (!isAuthenticated()) {
+    return null;
+  }
 
   return (
     <>

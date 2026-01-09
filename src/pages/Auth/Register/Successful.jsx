@@ -2,7 +2,7 @@
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../../store/authStore";
-import Checknow from "../../../assets/Check.svg";
+import Checknow from "../../../assets/Check.svg"; // Fixed import name
 
 function Successful() {
   const navigate = useNavigate();

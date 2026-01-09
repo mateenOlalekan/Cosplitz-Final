@@ -1,4 +1,4 @@
-// index.jsx (Register page) - REFACTORED
+// src/pages/Auth/Register/index.jsx - REFACTORED
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import loginlogo from "../../../assets/login.jpg";
