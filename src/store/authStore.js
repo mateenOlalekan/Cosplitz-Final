@@ -1,268 +1,315 @@
-// src/store/authStore.js - DEBUGGED VERSION
+// src/store/authStore.js
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { authService } from "../services/authApi";
+import {   authService,   setAuthToken,   clearAuthData } from "../services/authApi";
 
 export const useAuthStore = create(
   persist(
     (set, get) => ({
+      // State
       user: null,
       token: null,
       error: null,
-      isLoading: true,
+      isLoading: false,
+      isInitialized: false,
       tempRegister: null,
-      isInitialized: false, // Add initialization flag
+      rememberMe: false,
 
-      // REGISTER ACTION
+      // Actions   * Initialize authentication state       */
+      initialize: () => {
+        console.log("Initializing auth store...");
+        try {
+          const token = localStorage.getItem("authToken") || 
+                       sessionStorage.getItem("authToken");
+          
+          const userRaw = localStorage.getItem("userInfo");
+          const user = userRaw ? JSON.parse(userRaw) : null;
+          
+          const rememberMe = localStorage.getItem("rememberMe") === "true";
+
+          console.log("Auth initialized:", { hasToken: !!token, hasUser: !!user });
+
+          set({
+            token,
+            user,
+            rememberMe,
+            isLoading: false,
+            isInitialized: true,
+          });
+        } catch (error) {
+          console.error("Auth initialization error:", error);
+          set({ 
+            token: null, 
+            user: null, 
+            isLoading: false,
+            isInitialized: true,
+          });
+        }
+      },
+
+      /**       * Register new user       */
       register: async (userData) => {
         set({ isLoading: true, error: null });
+        
         const response = await authService.register(userData);
         
         if (response.success) {
-          // If registration requires email verification
+          // Check if verification is required
           if (response.data.requires_verification || response.data.user_id) {
             set({
               tempRegister: {
                 email: userData.email,
                 userId: response.data.user_id,
                 firstName: userData.first_name,
-                lastName: userData.last_name
+                lastName: userData.last_name,
               },
               isLoading: false,
-              error: null
+              error: null,
             });
-            return { success: true, requiresVerification: true };
+            
+            return { 
+              success: true, 
+              requiresVerification: true,
+              userId: response.data.user_id,
+            };
           } else {
             // Auto-login if no verification needed
-            set({
-              user: response.data.user,
-              token: response.data.token,
-              isLoading: false,
-              error: null
+            await get().login({
+              email: userData.email,
+              password: userData.password,
             });
-            localStorage.setItem("authToken", response.data.token);
-            localStorage.setItem("userInfo", JSON.stringify(response.data.user));
-            return { success: true, requiresVerification: false };
+            
+            return { 
+              success: true, 
+              requiresVerification: false,
+            };
           }
         } else {
           set({ 
             error: response.data.message || "Registration failed", 
-            isLoading: false 
+            isLoading: false,
           });
-          return { success: false, error: response.data.message };
+          
+          return { 
+            success: false, 
+            error: response.data.message,
+            errorType: response.errorType,
+          };
         }
       },
 
-      // LOGIN ACTION
-      login: async (credentials) => {
+      /* User login  */
+      login: async (credentials, rememberMe = false) => {
         set({ isLoading: true, error: null });
         const response = await authService.login(credentials);
-        
         if (response.success) {
+          const { token, user } = response.data;
+          setAuthToken(token, rememberMe);
           set({
-            user: response.data.user,
-            token: response.data.token,
+            user,
+            token,
+            rememberMe,
             isLoading: false,
-            error: null
+            error: null,
+            tempRegister: null,
           });
-          localStorage.setItem("authToken", response.data.token);
-          localStorage.setItem("userInfo", JSON.stringify(response.data.user));
-          return { success: true };
+          // Store user info
+          try {
+            localStorage.setItem("userInfo", JSON.stringify(user));
+            localStorage.setItem("rememberMe", rememberMe.toString());
+          } catch (error) {
+            console.warn("Failed to store user info:", error);
+          }
+          return { success: true, user };
         } else {
           set({ 
             error: response.data.message || "Login failed", 
-            isLoading: false 
+            isLoading: false,
           });
-          return { success: false, error: response.data.message };
+          return { 
+            success: false, 
+            error: response.data.message,
+            errorType: response.errorType,
+          };
         }
       },
-
-      // VERIFY OTP ACTION
+      /* Verify OTP*/
       verifyOTP: async (identifier, otp) => {
         set({ isLoading: true, error: null });
         const response = await authService.verifyOTP(identifier, otp);
-        
         if (response.success) {
+          const { token, user } = response.data;
+          // Store token
+          setAuthToken(token, get().rememberMe);
+          // Update state
           set({
-            user: response.data.user,
-            token: response.data.token,
-            tempRegister: null,
+            user,
+            token,
             isLoading: false,
-            error: null
+            error: null,
+            tempRegister: null,
           });
-          localStorage.setItem("authToken", response.data.token);
-          localStorage.setItem("userInfo", JSON.stringify(response.data.user));
-          return { success: true };
+          // Store user info
+          try {
+            localStorage.setItem("userInfo", JSON.stringify(user));
+          } catch (error) {
+            console.warn("Failed to store user info:", error);
+          }
+          return { success: true, user };
         } else {
           set({ 
             error: response.data.message || "OTP verification failed", 
-            isLoading: false 
+            isLoading: false,
           });
-          return { success: false, error: response.data.message };
+          return { 
+            success: false, 
+            error: response.data.message,
+            errorType: response.errorType,
+          };
         }
       },
-
-      // RESEND OTP ACTION
+      /* Resend OTP*/
       resendOTP: async (userId) => {
         set({ error: null });
         const response = await authService.resendOTP(userId);
-        
         if (response.success) {
           return { success: true };
         } else {
           set({ error: response.data.message || "Failed to resend OTP" });
-          return { success: false, error: response.data.message };
+          return { 
+            success: false, 
+            error: response.data.message,
+          };
         }
       },
-
-      setToken: (token, persistToken = true) => {
-        set({ token });
+      /**       * User logout       */
+      logout: async () => {
+        console.log("Logging out user...");    
         try {
-          if (persistToken) {
-            localStorage.setItem("authToken", token);
-            sessionStorage.removeItem("authToken");
-          } else {
-            sessionStorage.setItem("authToken", token);
-            localStorage.removeItem("authToken");
-          }
-        } catch (e) {
-          console.warn("Storage error:", e);
+          // Call logout API
+          await authService.logout();
+        } catch (error) {
+          console.warn("Logout API call failed:", error);
         }
-      },
-
-      setUser: (userObj) => {
-        set({ user: userObj });
-        try {
-          if (userObj) {
-            localStorage.setItem("userInfo", JSON.stringify(userObj));
-          } else {
-            localStorage.removeItem("userInfo");
-          }
-        } catch (e) {
-          console.warn("Storage error:", e);
-        }
-      },
-
-      setPendingVerification: (data) => {
-        console.log("Setting pending verification:", data);
-        set({ tempRegister: data });
-      },
-
-      completeRegistration: (userData, token) => {
-        console.log("Completing registration with:", { userData, token });
-        
+        // Clear local state regardless
+        clearAuthData();
         set({
-          user: userData,
-          token: token,
-          tempRegister: null,
+          user: null,
+          token: null,
           error: null,
-          isLoading: false
-        });
-        
-        try {
-          localStorage.setItem("authToken", token);
-          localStorage.setItem("userInfo", JSON.stringify(userData));
-          sessionStorage.removeItem("authToken");
-          sessionStorage.removeItem("userInfo");
-        } catch (e) {
-          console.warn("Storage error:", e);
-        }
-      },
-
-      logout: () => {
-        console.log("Logging out user");
-        
-        set({ 
-          user: null, 
-          token: null, 
-          error: null, 
-          tempRegister: null,
           isLoading: false,
-          isInitialized: true // Set initialized to true even after logout
+          tempRegister: null,
+          rememberMe: false,
         });
+        const currentPath = window.location.pathname;
+        const isAuthPage = currentPath.includes("/login") || 
+                          currentPath.includes("/register") || 
+                          currentPath.includes("/verify");
         
-        try {
-          localStorage.removeItem("authToken");
-          localStorage.removeItem("userInfo");
-          sessionStorage.removeItem("authToken");
-          sessionStorage.removeItem("userInfo");
-        } catch (e) {
-          console.warn("Storage error:", e);
-        }
-        
-        // Only redirect to login if not already on auth pages
-        if (!window.location.pathname.includes("/login") && 
-            !window.location.pathname.includes("/register")) {
+        if (!isAuthPage) {
           window.location.href = "/login";
         }
       },
-
-      setError: (msg) => {
-        console.log("Setting error:", msg);
-        set({ error: msg });
+      /* Update user info */
+      updateUser: async (userData) => {
+        try {
+          const response = await authService.updateUser(userData);
+          if (response.success) {
+            set({ user: response.data.user });
+            // Update stored user info
+            try {
+              localStorage.setItem("userInfo", JSON.stringify(response.data.user));
+            } catch (error) {
+              console.warn("Failed to update stored user info:", error);
+            }
+            return { success: true, user: response.data.user };
+          } else {
+            return { 
+              success: false, 
+              error: response.data.message,
+            };
+          }
+        } catch (error) {
+          console.error("Update user error:", error);
+          return { 
+            success: false, 
+            error: "Failed to update user information",
+          };
+        }
+      },      /* Set temporary registration data */
+      setTempRegister: (data) => {
+        console.log("Setting temporary registration data:", data);
+        set({ tempRegister: data });
       },
-      
+      /* Set authentication error */
+      setError: (message) => {
+        console.log("Setting auth error:", message);
+        set({ error: message });
+      },
+      /* Clear authentication error  */
       clearError: () => {
         set({ error: null });
       },
-
+      /* Check if user is authenticated */
       isAuthenticated: () => {
         const state = get();
-        return !!state.token;
+        return !!state.token && !!state.user;
       },
-
+      /* Check if user is admin */
       isAdmin: () => {
-        const u = get().user;
-        return u?.role === "admin" || u?.is_admin === true;
+        const user = get().user;
+        return user?.role === "admin" || user?.is_admin === true;
       },
-
-      initializeAuth: () => {
-        console.log("Initializing auth...");
-        
+      /* Refresh user info from API  */
+      refreshUserInfo: async () => {
         try {
-          const token =
-            localStorage.getItem("authToken") ||
-            sessionStorage.getItem("authToken");
-
-          const userRaw =
-            localStorage.getItem("userInfo") ||
-            sessionStorage.getItem("userInfo");
-
-          const user = userRaw ? JSON.parse(userRaw) : null;
-
-          console.log("Auth initialized:", { hasToken: !!token, hasUser: !!user });
-
-          set({
-            token: token || null,
-            user: user,
-            isLoading: false,
-            isInitialized: true, // Mark as initialized
-          });
-        } catch (err) {
-          console.error("Auth initialization error:", err);
-          set({ 
-            token: null, 
-            user: null, 
-            isLoading: false,
-            isInitialized: true 
-          });
+          const response = await authService.getUserInfo();
+          
+          if (response.success) {
+            set({ user: response.data });
+            // Update stored user info
+            try {
+              localStorage.setItem("userInfo", JSON.stringify(response.data));
+            } catch (error) {
+              console.warn("Failed to update stored user info:", error);
+            }
+            return { success: true, user: response.data };
+          }
+          return { success: false };
+        } catch (error) {
+          console.error("Refresh user info error:", error);
+          return { success: false };
         }
       },
-
-      // Add a method to check if auth is initialized
-      isAuthInitialized: () => {
-        return get().isInitialized;
-      }
     }),
     {
       name: "auth-storage",
       partialize: (state) => ({
-        token: state.token,
         user: state.user,
-        isInitialized: state.isInitialized, // Persist initialization state
+        token: state.token,
+        rememberMe: state.rememberMe,
+        isInitialized: state.isInitialized,
       }),
+      version: 1,
+      migrate: (persistedState, version) => {
+        if (version === 0) {
+          // Migration logic from version 0 to 1
+          return {
+            ...persistedState,
+            isInitialized: false,
+          };
+        }
+        return persistedState;
+      },
     }
   )
 );
+// Initialize auth store on import
+if (typeof window !== "undefined") {
+  const store = useAuthStore.getState();
+  if (!store.isInitialized) {
+    store.initialize();
+  }
+}
 
 export default useAuthStore;

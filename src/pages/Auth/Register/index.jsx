@@ -1,25 +1,27 @@
-// src/pages/Auth/Register/index.jsx - UPDATED FOR ZOD INTEGRATION
+// src/pages/Auth/Register/index.jsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "../../../store/authStore";
 import loginlogo from "../../../assets/login.jpg";
 import logo from "../../../assets/logo.svg";
-import { useAuthStore } from "../../../store/authStore";
 import EmailVerificationStep from "./EmailVerificationStep";
 import RegistrationForm from "./RegistrationForm";
 import Successful from "./Successful";
+import LoadingSpinner from "../../Public/LoadingScreen";
 
-export default function Register() {
+const Register = () => {
   const navigate = useNavigate();
-  
-  const { 
-    isLoading, 
-    error, 
-    clearError, 
+  const {
+    user,
+    token,
+    error,
+    isLoading,
+    isInitialized,
     tempRegister,
     isAuthenticated,
     initializeAuth,
     register,
-    isAuthInitialized
+    clearError,
   } = useAuthStore();
 
   const [currentStep, setCurrentStep] = useState(1);
@@ -30,32 +32,32 @@ export default function Register() {
     { id: 3, label: "Success", description: "Account created successfully" },
   ];
 
+  // Initialize auth on mount
   useEffect(() => {
     initializeAuth();
   }, [initializeAuth]);
 
+  // Redirect if already authenticated
   useEffect(() => {
-    if (isAuthInitialized() && isAuthenticated()) {
-      navigate("/dashboard");
+    if (isInitialized && isAuthenticated()) {
+      navigate("/dashboard", { replace: true });
     }
-  }, [isAuthenticated, navigate, isAuthInitialized]);
+  }, [isInitialized, isAuthenticated, navigate]);
 
-  useEffect(() => {
-    clearError();
-  }, [currentStep, clearError]);
-
-  // Set step to 2 when tempRegister is available
+  // Auto-advance to OTP step when tempRegister is set
   useEffect(() => {
     if (tempRegister && currentStep === 1) {
       setCurrentStep(2);
     }
   }, [tempRegister, currentStep]);
 
-  const handleFormSubmit = async (e, formData) => {
-    // Prevent default if it's an event object
-    if (e && e.preventDefault) {
-      e.preventDefault();
-    }
+  // Clear errors on step change
+  useEffect(() => {
+    clearError();
+  }, [currentStep, clearError]);
+
+  const handleRegistrationSubmit = async (formData) => {
+    clearError();
     
     const result = await register({
       first_name: formData.firstName,
@@ -63,15 +65,13 @@ export default function Register() {
       email: formData.email,
       nationality: formData.nationality || undefined,
       password: formData.password,
-      agree_to_terms: formData.agreeToTerms,
     });
 
     if (result.success) {
       if (result.requiresVerification) {
-        // Store will set tempRegister, which triggers step change via useEffect
-        console.log("Verification required, moving to OTP step");
+        console.log("Registration successful, OTP verification required");
       } else {
-        // Auto-login case
+        // Auto-login case (no verification needed)
         setCurrentStep(3);
       }
     }
@@ -87,25 +87,22 @@ export default function Register() {
   };
 
   const handleSocialRegister = (provider) => {
-    useAuthStore.getState().setError(`${provider} registration coming soon!`);
+    useAuthStore.getState().setError(`${provider} registration is coming soon!`);
   };
 
-  // Don't show anything while loading
-  if (isLoading) {
+  // Show loading while initializing
+  if (!isInitialized) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#F7F5F9]">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
+        <LoadingSpinner size="large" />
       </div>
     );
   }
 
   return (
-    <div className="flex bg-[#F7F5F9] w-full h-screen justify-center overflow-hidden md:px-6 md:py-4 rounded-2xl">
+    <div className="flex bg-[#F7F5F9] w-full min-h-screen justify-center overflow-hidden md:px-6 md:py-4 rounded-2xl">
       <div className="flex max-w-screen-2xl w-full h-full rounded-xl overflow-hidden">
-        {/* Left Side (Image) */}
+        {/* Left Side (Image/Illustration) */}
         <div className="hidden lg:flex w-1/2 bg-[#F8EACD] rounded-xl p-6 items-center justify-center">
           <div className="w-full flex flex-col items-center">
             <img 
@@ -134,19 +131,19 @@ export default function Register() {
             {/* Steps Indicator */}
             <div className="w-full flex flex-col items-center py-4 mb-4">
               <div className="flex items-center gap-2 justify-center mb-2">
-                {steps.map((s, i) => (
-                  <div key={s.id} className="flex items-center">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 ${
-                      currentStep >= s.id 
+                {steps.map((step, index) => (
+                  <div key={step.id} className="flex items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
+                      currentStep >= step.id 
                         ? "bg-green-600 border-green-600 text-white" 
                         : "bg-white border-gray-300 text-gray-400"
                     }`}>
-                      {s.id}
+                      {step.id}
                     </div>
-                    {i < steps.length - 1 && (
+                    {index < steps.length - 1 && (
                       <div
                         className={`w-16 md:w-24 lg:w-32 border-t-2 mx-2 ${
-                          currentStep > s.id ? "border-green-600" : "border-gray-300"
+                          currentStep > step.id ? "border-green-600" : "border-gray-300"
                         }`}
                       ></div>
                     )}
@@ -154,15 +151,15 @@ export default function Register() {
                 ))}
               </div>
               <p className="text-sm text-gray-600 text-center">
-                {steps.find(s => s.id === currentStep)?.description}
+                {steps.find(step => step.id === currentStep)?.description}
               </p>
             </div>
 
             {/* Step Content */}
             {currentStep === 1 && (
               <RegistrationForm
-                handleFormSubmit={handleFormSubmit}
-                handleSocialRegister={handleSocialRegister}
+                onSubmit={handleRegistrationSubmit}
+                onSocialRegister={handleSocialRegister}
                 loading={isLoading}
                 error={error}
               />
@@ -183,4 +180,6 @@ export default function Register() {
       </div>
     </div>
   );
-}
+};
+
+export default Register;

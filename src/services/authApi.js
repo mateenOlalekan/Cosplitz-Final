@@ -1,347 +1,370 @@
-// src/services/authApi.js - PRODUCTION READY WITH BETTER ERROR HANDLING
+// src/services/authApi.js
 const API_BASE_URL = "https://cosplitz-backend.onrender.com/api";
 
-function getAuthToken() {
+/** * Get authentication token from storage */
+const getAuthToken = () => {
   try {
-    return sessionStorage.getItem("authToken") || localStorage.getItem("authToken") || null;
-  } catch {
+    return (
+      sessionStorage.getItem("authToken") ||
+      localStorage.getItem("authToken") ||
+      null
+    );
+  } catch (error) {
+    console.warn("Failed to access storage:", error);
     return null;
   }
-}
+};
 
-async function request(path, options = {}) {
-  const url = `${API_BASE_URL}${path}`;
+/** * Set authentication token to storage */
+const setAuthToken = (token, rememberMe = false) => {
+  try {
+    if (rememberMe) {
+      localStorage.setItem("authToken", token);
+      sessionStorage.removeItem("authToken");
+    } else {
+      sessionStorage.setItem("authToken", token);
+      localStorage.removeItem("authToken");
+    }
+  } catch (error) {
+    console.warn("Failed to set auth token:", error);
+  }
+};
 
-  const defaultHeaders = {
-    "Content-Type": "application/json",
-    Accept: "application/json",
-  };
+/** * Clear all authentication data */
+const clearAuthData = () => {
+  try {
+    sessionStorage.clear();
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("userInfo");
+    localStorage.removeItem("rememberMe");
+  } catch (error) {
+    console.warn("Failed to clear auth data:", error);
+  }
+};
 
+/* Generic API request handler */
+const request = async (endpoint, options = {}) => {
+  const url = `${API_BASE_URL}${endpoint}`;
   const token = getAuthToken();
   const isFormData = options.body instanceof FormData;
 
+  // Prepare headers
   const headers = {
-    ...(isFormData ? {} : defaultHeaders),
-    ...(options.headers || {}),
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(!isFormData && { "Content-Type": "application/json" }),
+    Accept: "application/json",
+    ...(token && { Authorization: `Bearer ${token}` }),
+    ...options.headers,
   };
 
-  const finalOptions = {
-    method: options.method || "GET",
-    headers,
-    ...options,
-  };
-
-  if (finalOptions.body && !isFormData && typeof finalOptions.body === "object") {
-    finalOptions.body = JSON.stringify(finalOptions.body);
+  // Prepare body
+  let body = options.body;
+  if (body && !isFormData && typeof body === "object") {
+    body = JSON.stringify(body);
   }
 
-  let response;
   try {
-    response = await fetch(url, finalOptions);
-  } catch (err) {
-    console.error("Network error:", err);
-    return {
-      status: 0,
-      data: { message: "Network error. Please check your connection and try again." },
-      error: true,
-    };
-  }
+    const response = await fetch(url, {
+      method: options.method || "GET",
+      headers,
+      body,
+      credentials: "include",
+      ...options,
+    });
 
-  let json = null;
+    return await handleResponse(response, endpoint);
+  } catch (error) {
+    return handleNetworkError(error);
+  }
+};
+
+/* Handle API response */
+const handleResponse = async (response, endpoint) => {
+  let data;
   try {
     const text = await response.text();
-    json = text ? JSON.parse(text) : null;
+    data = text ? JSON.parse(text) : null;
   } catch {
-    json = { message: "Invalid response from server." };
+    data = { message: "Invalid server response" };
   }
 
-  // Identify auth flow pages
-  const isAuthFlow = 
-    window.location.pathname.includes("/register") ||
-    window.location.pathname.includes("/verify") ||
-    window.location.pathname.includes("/login") ||
-    path.includes("/verify_otp") ||
-    path.includes("/otp/") ||
-    path.includes("/register");
+  const baseResult = {
+    status: response.status,
+    data,
+    success: response.ok,
+    error: !response.ok,
+  };
 
-  // Handle 401 - Unauthorized
-  if (response.status === 401) {
-    if (!isAuthFlow) {
-      try {
-        sessionStorage.clear();
-        localStorage.removeItem("authToken");
-        localStorage.removeItem("userInfo");
-      } catch (e) {
-        console.warn("Failed to clear storage:", e);
-      }
-
-      if (!window.location.pathname.includes("/login")) {
+  // Handle specific HTTP status codes
+  switch (response.status) {
+    case 400:
+      return { ...baseResult, errorType: "VALIDATION_ERROR" };
+    
+    case 401:
+      if (!isAuthEndpoint(endpoint)) {
+        clearAuthData();
         setTimeout(() => {
-          window.location.href = "/login";
+          if (!window.location.pathname.includes("/login")) {
+            window.location.href = "/login";
+          }
         }, 100);
       }
-    }
-
-    return {
-      status: 401,
-      data: json || { message: "Unauthorized. Please log in." },
-      error: true,
-      unauthorized: !isAuthFlow,
-    };
+      return { ...baseResult, errorType: "UNAUTHORIZED" };
+    
+    case 403:
+      return { ...baseResult, errorType: "FORBIDDEN" };
+    
+    case 404:
+      return { ...baseResult, errorType: "NOT_FOUND" };
+    
+    case 409:
+      return { ...baseResult, errorType: "CONFLICT" };
+    
+    case 422:
+      return { ...baseResult, errorType: "VALIDATION_ERROR" };
+    
+    case 429:
+      return { ...baseResult, errorType: "RATE_LIMITED" };
+    
+    case 500:
+    case 502:
+    case 503:
+    case 504:
+      return { ...baseResult, errorType: "SERVER_ERROR" };
+    
+    default:
+      return baseResult;
   }
+};
 
-  // Handle 400 - Bad Request
-  if (response.status === 400) {
-    return {
-      status: 400,
-      data: json || { message: "Invalid request data." },
-      error: true,
-    };
-  }
-
-  // Handle 409 - Conflict (duplicate email)
-  if (response.status === 409) {
-    return {
-      status: 409,
-      data: json || { message: "This email is already registered." },
-      error: true,
-    };
-  }
-
-  // Handle 404 - Not Found
-  if (response.status === 404) {
-    return {
-      status: 404,
-      data: json || { message: "Resource not found." },
-      error: true,
-    };
-  }
-
-  // Handle 500 - Server Error
-  if (response.status >= 500) {
-    return {
-      status: response.status,
-      data: json || { message: "Server error. Please try again later." },
-      error: true,
-    };
-  }
-
-  // Handle non-OK responses
-  if (!response.ok) {
-    return {
-      status: response.status,
-      data: json || { message: `Request failed with status ${response.status}` },
-      error: true,
-    };
-  }
-
+/*Handle network errors */
+const handleNetworkError = (error) => {
+  console.error("Network error:", error);
   return {
-    status: response.status,
-    data: json,
-    success: true,
+    status: 0,
+    data: { 
+      message: "Network error. Please check your internet connection and try again." 
+    },
+    error: true,
+    errorType: "NETWORK_ERROR",
+    success: false,
   };
-}
+};
 
+/* Check if endpoint is related to authentication */
+const isAuthEndpoint = (endpoint) => {
+  const authEndpoints = [
+    "/register",
+    "/login",
+    "/verify_otp",
+    "/otp/",
+    "/forgot-password",
+    "/reset-password",
+    "/logout",
+  ];
+  
+  return authEndpoints.some(authEndpoint => 
+    endpoint.includes(authEndpoint)
+  );
+};
+
+/*Authentication Service */
 export const authService = {
-  /** REGISTER – POST /api/register/ */
+  /*Register a new user POST /api/register/ */
   register: async (userData) => {
-    try {
-      return await request("/register/", {
-        method: "POST",
-        body: userData,
-      });
-    } catch (err) {
-      console.error("Registration service error:", err);
-      return {
-        status: 0,
-        data: { message: "Registration failed. Please try again." },
-        error: true,
-      };
-    }
+    const payload = {
+      email: userData.email.toLowerCase().trim(),
+      password: userData.password,
+      first_name: userData.first_name,
+      last_name: userData.last_name,
+      ...(userData.username && { username: userData.username }),
+      ...(userData.nationality && { nationality: userData.nationality }),
+    };
+    return await request("/register/", {
+      method: "POST",
+      body: payload,
+    });
   },
 
-  /** LOGIN – POST /api/login/ */
+  /* User login * POST /api/login/ */
   login: async (credentials) => {
-    try {
-      const response = await request("/login/", {
-        method: "POST",
-        body: {
-          email: credentials.email.toLowerCase().trim(),
-          password: credentials.password,
-        },
-      });
-      
-      return response;
-    } catch (err) {
-      console.error("Login service error:", err);
-      return {
-        status: 0,
-        data: { message: "Login failed. Please try again." },
-        error: true,
-      };
-    }
+    const payload = {
+      email: credentials.email.toLowerCase().trim(),
+      password: credentials.password,
+    };
+    return await request("/login/", {
+      method: "POST",
+      body: payload,
+    });
   },
 
-  /** USER INFO – GET /api/user/info */
+  /** Get current user info   * GET /api/user/info*/
   getUserInfo: async () => {
-    try {
-      return await request("/user/info", { method: "GET" });
-    } catch (err) {
-      console.error("Get user info error:", err);
-      return {
-        status: 0,
-        data: { message: "Failed to fetch user information." },
-        error: true,
-      };
-    }
+    return await request("/user/info", { method: "GET" });
   },
 
-  /** GET OTP – GET /api/otp/{id}/ */
+  /* Get OTP for user * GET /api/otp/{userId}/ */
   getOTP: async (userId) => {
-    try {
-      if (!userId) {
-        return {
-          status: 400,
-          data: { message: "User ID is required to send OTP." },
-          error: true,
-        };
-      }
-      return await request(`/otp/${userId}/`, { method: "GET" });
-    } catch (err) {
-      console.error("Get OTP error:", err);
+    if (!userId) {
       return {
-        status: 0,
-        data: { message: "Failed to send OTP. Please try again." },
+        status: 400,
+        data: { message: "User ID is required" },
         error: true,
+        errorType: "VALIDATION_ERROR",
       };
     }
+
+    return await request(`/otp/${userId}/`, { method: "GET" });
   },
 
-  /** VERIFY OTP – POST /api/verify_otp */
+  /**   * Verify OTP * POST /api/verify_otp
+   */
   verifyOTP: async (identifier, otp) => {
-    try {
-      if (!identifier || !otp) {
-        return {
-          status: 400,
-          data: { message: "Email/User ID and OTP are required." },
-          error: true,
-        };
-      }
-      
-      // Accept either email or userId - determine which one it is
-      let body;
-      if (typeof identifier === 'string' && identifier.includes('@')) {
-        body = { email: identifier.toLowerCase().trim(), otp: otp.toString().trim() };
-      } else {
-        body = { user_id: identifier, otp: otp.toString().trim() };
-      }
-      
-      return await request("/verify_otp", {
-        method: "POST",
-        body: body,
-      });
-    } catch (err) {
-      console.error("Verify OTP error:", err);
+    if (!identifier || !otp) {
       return {
-        status: 0,
-        data: { message: "OTP verification failed. Please try again." },
+        status: 400,
+        data: { message: "Identifier and OTP are required" },
         error: true,
+        errorType: "VALIDATION_ERROR",
       };
     }
-  },
 
-  /** RESEND OTP – Same as getOTP */
+    const payload = {
+      otp: otp.toString().trim(),
+      ...(identifier.includes("@") 
+        ? { email: identifier.toLowerCase().trim() }
+        : { user_id: identifier }
+      ),
+    };
+
+    return await request("/verify_otp", {
+      method: "POST",
+      body: payload,
+    });
+  },
+  /**   * Resend OTP   */
   resendOTP: async (userId) => {
     return await authService.getOTP(userId);
   },
-
-  /** LOGOUT */
+  /**   * User logout   * POST /api/logout/   */
   logout: async () => {
-    try {
-      const response = await request("/logout/", { method: "POST" });
-      
-      // Clear storage regardless of response
-      try {
-        sessionStorage.clear();
-        localStorage.removeItem("authToken");
-        localStorage.removeItem("userInfo");
-      } catch (e) {
-        console.warn("Failed to clear storage:", e);
-      }
-      
-      return response;
-    } catch (err) {
-      console.error("Logout error:", err);
-      // Still clear storage on error
-      try {
-        sessionStorage.clear();
-        localStorage.removeItem("authToken");
-        localStorage.removeItem("userInfo");
-      } catch (e) {
-        console.warn("Failed to clear storage:", e);
-      }
-      return {
-        status: 0,
-        data: { message: "Logout completed locally." },
-        success: true,
-      };
-    }
+    const response = await request("/logout/", { method: "POST" });
+    clearAuthData();
+    return response;
   },
 
-  /** FORGOT PASSWORD */
+  /**   * Forgot password   * POST /api/forgot-password/   */
   forgotPassword: async (email) => {
-    try {
-      return await request("/forgot-password/", {
-        method: "POST",
-        body: { email: email.toLowerCase().trim() },
-      });
-    } catch (err) {
-      console.error("Forgot password error:", err);
-      return {
-        status: 0,
-        data: { message: "Failed to send password reset email." },
-        error: true,
-      };
-    }
+    return await request("/forgot-password/", {
+      method: "POST",
+      body: { email: email.toLowerCase().trim() },
+    });
   },
 
-  /** RESET PASSWORD */
+  /**
+   * Reset password   * POST /api/reset-password/   */
   resetPassword: async (data) => {
-    try {
-      return await request("/reset-password/", {
-        method: "POST",
-        body: data,
-      });
-    } catch (err) {
-      console.error("Reset password error:", err);
-      return {
-        status: 0,
-        data: { message: "Password reset failed. Please try again." },
-        error: true,
-      };
-    }
+    return await request("/reset-password/", {
+      method: "POST",
+      body: data,
+    });
+  },
+
+  /**
+   * Submit KYC   * POST /api/kyc/submit/   */
+  submitKYC: async (formData) => {
+    return await request("/kyc/submit/", {
+      method: "POST",
+      body: formData,
+      headers: {}, // Let browser set multipart headers
+    });
+  },
+
+  /** Admin login   * POST /admin-api/login/   */
+  adminLogin: async (credentials) => {
+    return await request("/admin-api/login/", {
+      method: "POST",
+      body: credentials,
+    });
   },
 };
 
-// Export other services as needed
-export const dashboardService = {
-  getOverview: async () => {
-    try {
-      return await request("/dashboard/overview", { method: "GET" });
-    } catch (err) {
-      console.error("Dashboard overview error:", err);
-      return {
-        status: 0,
-        data: { message: "Failed to load dashboard." },
-        error: true,
-      };
-    }
+/* Splits Service */
+export const splitsService = {
+  /**   * Get all available splits   * GET /api/splits/   */
+  getAllSplits: async () => {
+    return await request("/splits/", { method: "GET" });
+  },
+  /**   * Create a new split   * POST /api/splits/   */
+  createSplit: async (splitData) => {
+    return await request("/splits/", {
+      method: "POST",
+      body: splitData,
+    });
+  },
+
+  /**   * Update a split   * PATCH /api/splits/{id}/   */
+  updateSplit: async (splitId, splitData) => {
+    return await request(`/splits/${splitId}/`, {
+      method: "PATCH",
+      body: splitData,
+    });
+  },
+
+  /**   * Delete a split   * DELETE /api/splits/{id}/   */
+  deleteSplit: async (splitId) => {
+    return await request(`/splits/${splitId}/`, {
+      method: "DELETE",
+    });
+  },
+
+  /**   * Join a split   * POST /api/splits/{id}/join_splits/   */
+  joinSplit: async (splitId) => {
+    return await request(`/splits/${splitId}/join_splits/`, {
+      method: "POST",
+    });
+  },
+
+  /**   * Get user's splits   * GET /api/splits/my_splits/   */
+  getMySplits: async () => {
+    return await request("/splits/my_splits/", { method: "GET" });
   },
 };
+
+/** * Notifications Service */
+export const notificationsService = {
+  /**   * Get user notifications   * GET /api/notifications/   */
+  getNotifications: async () => {
+    return await request("/notifications/", { method: "GET" });
+  },
+
+  /**   * Get single notification   * GET /api/notifications/{id}/   */
+  getNotification: async (notificationId) => {
+    return await request(`/notifications/${notificationId}/`, { method: "GET" });
+  },
+
+  /**   * Mark all notifications as read   * POST /api/notifications/mark_all_read/   */
+  markAllAsRead: async () => {
+    return await request("/notifications/mark_all_read/", {
+      method: "POST",
+    });
+  },
+};
+
+/** * Dashboard Service */
+export const dashboardService = {
+  /**  * Get dashboard overview   * GET /api/dashboard/overview   */
+  getOverview: async () => {
+    return await request("/dashboard/overview", { method: "GET" });
+  },
+};
+
+// Export utilities
+export { getAuthToken, setAuthToken, clearAuthData };
 
 export default {
-  request,
   authService,
+  splitsService,
+  notificationsService,
   dashboardService,
+  request,
 };
