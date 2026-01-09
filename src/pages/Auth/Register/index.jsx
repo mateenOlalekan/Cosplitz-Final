@@ -1,16 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import loginlogo from "../../../assets/login.jpg";
 import logo from "../../../assets/logo.svg";
-import { useAuthStore } from "../../../store/authStore"; // Import Store
+import { useAuthStore } from "../../../store/authStore";
 import EmailVerificationStep from "./EmailVerificationStep";
 import RegistrationForm from "./RegistrationForm";
 import Successful from "./Successful";
 
 export default function Register() {
-  const { register,isLoading, error,setError,clearError,tempRegister} = useAuthStore();
+  const { register, isLoading, error, setError, clearError, tempRegister } = useAuthStore();
+  const navigate = useNavigate();
 
-  // Local state only for UI flow (steps) and Form Inputs
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     firstName: "",
@@ -32,41 +32,15 @@ export default function Register() {
     clearError();
   }, [currentStep, clearError]);
 
-  // ==========================================
-  // HANDLERS
-  // ==========================================
-
-  const handleInputChange = (field, value) => {
+  const handleInputChange = useCallback((field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (error) clearError();
-  };
+  }, [error, clearError]);
 
-  const handleFormSubmit = async (e) => {
+  const handleFormSubmit = useCallback(async (e) => {
     e.preventDefault();
     clearError();
 
-    // 1. Validation
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
-      setError("Please fill out all required fields.");
-      return;
-    }
-
-    if (!formData.agreeToTerms) {
-      setError("Please agree to the terms & conditions.");
-      return;
-    }
-
-    const passwordValid =
-      formData.password.length >= 8 &&
-      /[A-Z]/.test(formData.password) &&
-      /\d/.test(formData.password);
-
-    if (!passwordValid) {
-      setError("Password must contain at least 8 characters, one uppercase letter, and a number.");
-      return;
-    }
-
-    // 2. Prepare Data
     const registrationData = {
       first_name: formData.firstName.trim(),
       last_name: formData.lastName.trim(),
@@ -79,28 +53,28 @@ export default function Register() {
 
     if (result.success) {
       setCurrentStep(2);
-    } 
-  };
+    }
+  }, [formData, register, clearError]);
 
-  const handleEmailVerificationSuccess = () => {
+  const handleEmailVerificationSuccess = useCallback(() => {
     setCurrentStep(3);
-  };
+  }, []);
 
-  const handleBackToStep1 = () => {
+  const handleBackToStep1 = useCallback(() => {
     clearError();
     setCurrentStep(1);
-  };
+  }, [clearError]);
 
-  const handleSocialRegister = (provider) => {
+  const handleSocialRegister = useCallback((provider) => {
     setError(`${provider} registration coming soon!`);
-  };
+  }, [setError]);
 
   const emailToVerify = tempRegister?.email || formData.email;
+  const userIdToVerify = tempRegister?.userId;
 
   return (
     <div className="flex bg-[#F7F5F9] w-full h-screen justify-center overflow-hidden md:px-6 md:py-4 rounded-2xl">
       <div className="flex max-w-screen-2xl w-full h-full rounded-xl overflow-hidden">
-        {/* LEFT SIDE (Image) */}
         <div className="hidden lg:flex w-1/2 bg-[#F8EACD] rounded-xl p-6 items-center justify-center">
           <div className="w-full flex flex-col items-center">
             <img 
@@ -119,14 +93,12 @@ export default function Register() {
           </div>
         </div>
 
-        {/* RIGHT SIDE (Form) */}
         <div className="flex flex-1 flex-col items-center p-3 sm:p-5 overflow-y-auto">
           <div className="w-full mb-4 flex justify-center md:justify-start items-center md:items-start">
             <img src={logo} alt="Logo" className="h-10 md:h-12" />
           </div>
 
           <div className="w-full max-w-2xl p-5 rounded-xl shadow-none md:shadow-md border-none md:border border-gray-100 bg-white">
-            {/* STEPS INDICATOR */}
             <div className="w-full flex flex-col items-center py-4 mb-4">
               <div className="flex items-center gap-2 justify-center mb-2">
                 {steps.map((s, i) => (
@@ -153,21 +125,21 @@ export default function Register() {
               </p>
             </div>
 
-            {/* STEP CONTENT */}
             {currentStep === 1 && (
               <RegistrationForm
                 formData={formData}
                 handleInputChange={handleInputChange}
                 handleFormSubmit={handleFormSubmit}
                 handleSocialRegister={handleSocialRegister}
-                loading={isLoading} 
-                error={error}       
+                loading={isLoading}
+                error={error}
               />
             )}
 
             {currentStep === 2 && (
               <EmailVerificationStep
                 email={emailToVerify}
+                userId={userIdToVerify}
                 onBack={handleBackToStep1}
                 onSuccess={handleEmailVerificationSuccess}
               />

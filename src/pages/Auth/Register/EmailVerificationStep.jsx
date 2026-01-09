@@ -1,7 +1,9 @@
-
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { authService } from "../../../services/authApi";
 import { ArrowLeft, Mail } from "lucide-react";
+import { z } from "zod";
+
+const otpSchema = z.string().length(6, "Please enter the complete 6-digit code").regex(/^\d+$/, "OTP must contain only digits");
 
 export default function EmailVerificationStep({
   email,
@@ -14,7 +16,7 @@ export default function EmailVerificationStep({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
-  const [timer, setTimer] = useState(180); // 3 minutes
+  const [timer, setTimer] = useState(180);
   const [isVerifying, setIsVerifying] = useState(false);
   const inputRefs = useRef([]);
 
@@ -36,8 +38,7 @@ export default function EmailVerificationStep({
     }
   }, []);
 
-  const handleChange = (value, index) => {
-    // Only allow digits
+  const handleChange = useCallback((value, index) => {
     if (!/^[0-9]?$/.test(value)) return;
 
     const newOtp = [...otp];
@@ -54,26 +55,21 @@ export default function EmailVerificationStep({
     if (newOtp.every((d) => d !== "") && !isVerifying) {
       handleVerify(newOtp.join(""));
     }
-  };
+  }, [otp, isVerifying]);
 
-  const handleKeyDown = (index, e) => {
-    // Move to previous input on backspace if current is empty
+  const handleKeyDown = useCallback((index, e) => {
     if (e.key === "Backspace") {
       if (!otp[index] && index > 0) {
         inputRefs.current[index - 1]?.focus();
       }
-    }
-    // Move to next input on arrow right
-    else if (e.key === "ArrowRight" && index < 5) {
+    } else if (e.key === "ArrowRight" && index < 5) {
       inputRefs.current[index + 1]?.focus();
-    }
-    // Move to previous input on arrow left
-    else if (e.key === "ArrowLeft" && index > 0) {
+    } else if (e.key === "ArrowLeft" && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
-  };
+  }, [otp]);
 
-  const handlePaste = (e) => {
+  const handlePaste = useCallback((e) => {
     e.preventDefault();
     const pasted = e.clipboardData.getData("text/plain").trim();
 
@@ -83,23 +79,24 @@ export default function EmailVerificationStep({
       setOtp(digits);
       setError("");
       
-      // Focus last input
       inputRefs.current[5]?.focus();
       
-      // Auto-verify
       if (!isVerifying) {
         handleVerify(pasted);
       }
     } else {
       setError("Please paste a valid 6-digit code.");
     }
-  };
+  }, [isVerifying]);
 
-  const handleVerify = async (code = null) => {
+  const handleVerify = useCallback(async (code = null) => {
     const otpCode = code || otp.join("");
 
-    if (otpCode.length !== 6) {
-      setError("Please enter the complete 6-digit code.");
+    // Validate with Zod
+    try {
+      otpSchema.parse(otpCode);
+    } catch (validationError) {
+      setError(validationError.errors[0]?.message || "Invalid OTP format");
       return;
     }
 
@@ -108,9 +105,7 @@ export default function EmailVerificationStep({
       return;
     }
 
-    // Prevent multiple simultaneous verifications
     if (isVerifying) {
-      console.log("Verification already in progress");
       return;
     }
 
@@ -119,30 +114,20 @@ export default function EmailVerificationStep({
     setError("");
 
     try {
-      console.log("Verifying OTP:", { email, code: otpCode });
       const response = await authService.verifyOTP(email, otpCode);
       
-      console.log("OTP Verification Response:", response);
-
       if (response?.success) {
-        console.log("OTP verified successfully");
         setError("");
-        
-        // Call success callback
         if (onSuccess) {
           onSuccess();
         }
       } else {
-        // Handle verification failure
         const errorMsg = 
           response?.data?.message || 
           response?.data?.error ||
           "Invalid OTP. Please check the code and try again.";
         
-        console.error("OTP verification failed:", errorMsg);
         setError(errorMsg);
-        
-        // Clear OTP fields on error
         setOtp(["", "", "", "", "", ""]);
         inputRefs.current[0]?.focus();
         
@@ -151,11 +136,8 @@ export default function EmailVerificationStep({
         }
       }
     } catch (err) {
-      console.error("OTP verification error:", err);
       const errorMsg = err.message || "Verification failed. Please try again.";
       setError(errorMsg);
-      
-      // Clear OTP fields on error
       setOtp(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
       
@@ -166,9 +148,9 @@ export default function EmailVerificationStep({
       setLoading(false);
       setIsVerifying(false);
     }
-  };
+  }, [otp, email, userId, isVerifying, onSuccess, onVerificationFailed]);
 
-  const handleResend = async () => {
+  const handleResend = useCallback(async () => {
     if (timer > 0) return;
 
     if (!userId) {
@@ -180,39 +162,32 @@ export default function EmailVerificationStep({
     setError("");
 
     try {
-      console.log("Resending OTP for user:", userId);
       const response = await authService.resendOTP(userId);
       
       if (response?.success) {
-        console.log("OTP resent successfully");
-        setTimer(180); // Reset timer to 3 minutes
+        setTimer(180);
         setOtp(["", "", "", "", "", ""]);
         inputRefs.current[0]?.focus();
-        
-        // Show success feedback
         setError("");
       } else {
         const errorMsg = response?.data?.message || "Could not resend OTP. Please try again.";
-        console.error("OTP resend failed:", errorMsg);
         setError(errorMsg);
       }
-    } catch (err) {
-      console.error("OTP resend error:", err);
-      setError(err.message || "Failed to resend OTP. Please try again.");
+    } catch {
+      setError("Failed to resend OTP. Please try again.");
     } finally {
       setResendLoading(false);
     }
-  };
+  }, [timer, userId]);
 
-  const formatTime = (seconds) => {
+  const formatTime = useCallback((seconds) => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
     return `${m}:${s < 10 ? "0" : ""}${s}`;
-  };
+  }, []);
 
   return (
     <div className="flex flex-col items-center gap-5 py-8 relative w-full">
-      {/* Back button */}
       <button
         onClick={onBack}
         className="absolute left-4 top-4 text-gray-600 hover:text-green-600 transition-colors disabled:opacity-50"
@@ -223,19 +198,16 @@ export default function EmailVerificationStep({
         <ArrowLeft size={28} />
       </button>
 
-      {/* Header */}
       <h2 className="text-xl font-bold text-gray-800 mt-8">Verify Your Email</h2>
       <p className="text-gray-500 text-sm text-center max-w-xs">
         Enter the 6-digit code sent to{" "}
         <span className="text-green-600 font-medium">{email}</span>
       </p>
 
-      {/* Mail icon */}
       <div className="bg-[#1F82250D] rounded-full w-14 h-14 flex items-center justify-center">
         <Mail className="text-[#1F8225]" size={24} />
       </div>
 
-      {/* OTP input fields */}
       <div className="flex gap-2 mt-2" onPaste={handlePaste}>
         {otp.map((digit, i) => (
           <input
@@ -261,7 +233,6 @@ export default function EmailVerificationStep({
         ))}
       </div>
 
-      {/* Timer / Resend */}
       <div className="text-center mt-4">
         {timer > 0 ? (
           <p className="text-sm text-gray-600">
@@ -287,14 +258,12 @@ export default function EmailVerificationStep({
         )}
       </div>
 
-      {/* Error message */}
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg text-center max-w-xs mt-2">
           {error}
         </div>
       )}
 
-      {/* Verify button */}
       <button
         type="button"
         disabled={loading || otp.some((d) => d === "")}

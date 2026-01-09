@@ -1,57 +1,52 @@
-import { useState, useEffect } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
-import { useAuthStore } from "../../store/authStore";
-import Sidebar from "./DashboardSidebar";
-import Header from "./DashboardHeader";
+import { useState, useEffect, useCallback } from "react";
+import { Outlet } from "react-router-dom";
+import Sidebar from "../Layout/DashboardSidebar";
+import Header from "../Layout/DashboardHeader";
 
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  
-  const navigate = useNavigate();
-  const { isAuthenticated, isLoading, initializeAuth, isAuthInitialized } = useAuthStore();
+  const [isAnimating, setIsAnimating] = useState(false);
 
+  // Detect screen size with debouncing
   useEffect(() => {
-    initializeAuth();
-  }, [initializeAuth]);
-
-  useEffect(() => {
-    const checkScreenSize = () => {
+    const handleResize = () => {
       setIsMobile(window.innerWidth < 1024);
+      
+      // Auto-close sidebar on mobile resize
+      if (window.innerWidth < 1024 && sidebarOpen) {
+        setSidebarOpen(false);
+      }
     };
     
-    checkScreenSize();
-    window.addEventListener("resize", checkScreenSize);
+    handleResize();
     
-    return () => window.removeEventListener("resize", checkScreenSize);
-  }, []);
+    let resizeTimer;
+    const debouncedResize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(handleResize, 150);
+    };
+    
+    window.addEventListener("resize", debouncedResize);
+    return () => {
+      window.removeEventListener("resize", debouncedResize);
+      clearTimeout(resizeTimer);
+    };
+  }, [sidebarOpen]);
 
-  // Only check authentication after auth is initialized
-  useEffect(() => {
-    if (isAuthInitialized() && !isAuthenticated()) {
-      navigate("/login", { 
-        state: { from: window.location.pathname },
-        replace: true 
-      });
-    }
-  }, [isAuthenticated, navigate, isAuthInitialized]);
-
-  // Show loading while auth is initializing
-  if (isLoading || !isAuthInitialized()) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F7F5F9]">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Don't render anything if not authenticated (will redirect via useEffect)
-  if (!isAuthenticated()) {
-    return null;
-  }
+  const handleSidebarToggle = useCallback(() => {
+    if (isAnimating) return;
+    
+    setIsAnimating(true);
+    setSidebarOpen(prev => !prev);
+    
+    // Reset animation state after animation completes
+    const animationTimer = setTimeout(() => {
+      setIsAnimating(false);
+    }, 300); // Reduced to match sidebar animation
+    
+    return () => clearTimeout(animationTimer);
+  }, [isAnimating]);
 
   return (
     <div className="flex min-h-screen h-screen w-full overflow-hidden">
@@ -64,7 +59,7 @@ export default function DashboardLayout() {
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         <Header
           sidebarOpen={sidebarOpen}
-          setSidebarOpen={() => setSidebarOpen(!sidebarOpen)}
+          setSidebarOpen={handleSidebarToggle}
           isMobile={isMobile}
         />
 

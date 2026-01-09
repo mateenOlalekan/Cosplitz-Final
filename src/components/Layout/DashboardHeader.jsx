@@ -2,14 +2,19 @@ import { Bell, Settings, MapPin, ChevronDown, Menu } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../../assets/logo.svg";
 import { useAuthStore } from "../../store/authStore";
+import { useCallback } from "react";
 
 function DashboardHeader({ setSidebarOpen, sidebarOpen, isMobile }) {
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, logout } = useAuthStore();
 
-  const handleLogout = () => {
-    useAuthStore.getState().logout();
-  };
+  const handleLogout = useCallback(() => {
+    logout();
+  }, [logout]);
+
+  const handleLogoClick = useCallback(() => {
+    navigate("/dashboard");
+  }, [navigate]);
 
   // Don't render header if not authenticated
   if (!isAuthenticated()) {
@@ -25,7 +30,7 @@ function DashboardHeader({ setSidebarOpen, sidebarOpen, isMobile }) {
               src={logo} 
               alt="Logo" 
               className="h-7 w-auto cursor-pointer" 
-              onClick={() => navigate("/dashboard")}
+              onClick={handleLogoClick}
             />
             <button 
               onClick={() => setSidebarOpen(!sidebarOpen)} 

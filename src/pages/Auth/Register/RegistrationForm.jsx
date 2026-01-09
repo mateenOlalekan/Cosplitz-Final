@@ -5,6 +5,21 @@ import { FcGoogle } from "react-icons/fc";
 import { PiAppleLogoBold } from "react-icons/pi";
 import { Eye, EyeOff } from "lucide-react";
 import PasswordValidation from "./PasswordValidation";
+import { z } from "zod";
+
+const registrationSchema = z.object({
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  email: z.string().email("Invalid email address"),
+  nationality: z.string().optional(),
+  password: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/\d/, "Password must contain at least one number"),
+  agreeToTerms: z.boolean().refine(val => val === true, {
+    message: "You must agree to the terms & conditions",
+  }),
+});
 
 function RegistrationForm({
   formData,
@@ -15,6 +30,34 @@ function RegistrationForm({
   error,
 }) {
   const [showPassword, setShowPassword] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setValidationErrors({});
+    
+    // Validate with Zod
+    try {
+      registrationSchema.parse(formData);
+      handleFormSubmit(e);
+    } catch (validationError) {
+      const errors = {};
+      validationError.errors.forEach((err) => {
+        const path = err.path[0];
+        errors[path] = err.message;
+      });
+      setValidationErrors(errors);
+      
+      // Set first error to main error display
+      if (validationError.errors[0]) {
+        handleInputChange("error", validationError.errors[0].message);
+      }
+    }
+  };
+
+  const getFieldError = (fieldName) => {
+    return validationErrors[fieldName];
+  };
 
   return (
     <div>
@@ -61,7 +104,7 @@ function RegistrationForm({
         <div className="flex-grow border-t border-gray-300"></div>
       </div>
 
-      <form onSubmit={handleFormSubmit} className="space-y-3">
+      <form onSubmit={handleSubmit} className="space-y-3">
         {[
           { key: "firstName", label: "First Name", type: "text" },
           { key: "lastName", label: "Last Name", type: "text" },
@@ -76,10 +119,20 @@ function RegistrationForm({
               type={field.type}
               value={formData[field.key]}
               placeholder={`Enter your ${field.label.toLowerCase()}`}
-              onChange={(e) => handleInputChange(field.key, e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors"
+              onChange={(e) => {
+                handleInputChange(field.key, e.target.value);
+                if (validationErrors[field.key]) {
+                  setValidationErrors(prev => ({ ...prev, [field.key]: undefined }));
+                }
+              }}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors ${
+                getFieldError(field.key) ? "border-red-300" : "border-gray-300"
+              }`}
               required
             />
+            {getFieldError(field.key) && (
+              <p className="text-red-500 text-xs mt-1">{getFieldError(field.key)}</p>
+            )}
           </div>
         ))}
 
@@ -92,8 +145,15 @@ function RegistrationForm({
               type={showPassword ? "text" : "password"}
               value={formData.password}
               placeholder="Create your password"
-              onChange={(e) => handleInputChange("password", e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-colors pr-10"
+              onChange={(e) => {
+                handleInputChange("password", e.target.value);
+                if (validationErrors.password) {
+                  setValidationErrors(prev => ({ ...prev, password: undefined }));
+                }
+              }}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-colors pr-10 ${
+                getFieldError("password") ? "border-red-300" : "border-gray-300"
+              }`}
               required
             />
             <button
@@ -104,6 +164,9 @@ function RegistrationForm({
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
+          {getFieldError("password") && (
+            <p className="text-red-500 text-xs mt-1">{getFieldError("password")}</p>
+          )}
           <PasswordValidation password={formData.password} />
         </div>
 
@@ -111,7 +174,12 @@ function RegistrationForm({
           <input
             type="checkbox"
             checked={formData.agreeToTerms}
-            onChange={(e) => handleInputChange("agreeToTerms", e.target.checked)}
+            onChange={(e) => {
+              handleInputChange("agreeToTerms", e.target.checked);
+              if (validationErrors.agreeToTerms) {
+                setValidationErrors(prev => ({ ...prev, agreeToTerms: undefined }));
+              }
+            }}
             className="rounded focus:ring-green-500"
           />
           <span>
@@ -130,6 +198,9 @@ function RegistrationForm({
             .
           </span>
         </label>
+        {getFieldError("agreeToTerms") && (
+          <p className="text-red-500 text-xs">{getFieldError("agreeToTerms")}</p>
+        )}
 
         <motion.button
           whileHover={{ scale: 1.02 }}

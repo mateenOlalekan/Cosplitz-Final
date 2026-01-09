@@ -2,32 +2,50 @@ import { useState, useEffect } from "react";
 import { useLocation, Outlet, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
 import Sidebar from "../../components/Layout/DashboardSidebar";
-import LogoutModal from "../Settings/LogoutModal"; 
+import LogoutModal from "../Settings/LogoutModal";
 import DeleteAccountModal from "../Settings/DeleteAccount";
 
 export default function SettingsLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { isAuthenticated, isLoading, initializeAuth, isAuthInitialized } = useAuthStore();
+  const {
+    isAuthenticated,
+    isLoading,
+    initializeAuth,
+    user,
+    logout,
+  } = useAuthStore();
   
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+  
   const isRootSettings = location.pathname === "/dashboard/settings";
 
+  // Initialize auth on mount
   useEffect(() => {
-    initializeAuth();
+    const initAuth = async () => {
+      try {
+        initializeAuth();
+      } finally {
+        setAuthChecked(true);
+      }
+    };
+    
+    initAuth();
   }, [initializeAuth]);
 
-  // Only check authentication after auth is initialized
+  // Redirect if not authenticated (after auth check)
   useEffect(() => {
-    if (isAuthInitialized() && !isAuthenticated()) {
-      navigate("/login", { 
-        state: { from: window.location.pathname },
-        replace: true 
+    if (authChecked && !isLoading && !isAuthenticated()) {
+      navigate("/login", {
+        state: { from: location.pathname },
+        replace: true,
       });
     }
-  }, [isAuthenticated, navigate, isAuthInitialized]);
+  }, [authChecked, isLoading, isAuthenticated, navigate, location.pathname]);
 
+  // Handle body overflow for modals
   useEffect(() => {
     if (isLogoutModalOpen || isDeleteModalOpen) {
       document.body.style.overflow = "hidden";
@@ -41,19 +59,18 @@ export default function SettingsLayout() {
   }, [isLogoutModalOpen, isDeleteModalOpen]);
 
   const handleLogout = () => {
-    useAuthStore.getState().logout();
+    logout();
     setIsLogoutModalOpen(false);
   };
 
   const handleDeleteAccount = () => {
-    // In a real app, you would call an API to delete the account
-    // For now, we'll just logout
-    useAuthStore.getState().logout();
+    // API call would go here
+    logout();
     setIsDeleteModalOpen(false);
   };
 
-  // Show loading while auth is initializing
-  if (isLoading || !isAuthInitialized()) {
+  // Show loading while checking auth
+  if (isLoading || !authChecked) {
     return (
       <div className="flex h-full items-center justify-center bg-[#F7F5F9]">
         <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin"></div>
@@ -61,7 +78,7 @@ export default function SettingsLayout() {
     );
   }
 
-  // Don't render anything if not authenticated
+  // Don't render if not authenticated
   if (!isAuthenticated()) {
     return null;
   }

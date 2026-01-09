@@ -1,14 +1,36 @@
-import { useState, useMemo, useEffect } from "react";
-import { NavLink, useNavigate, useLocation } from "react-router-dom";
-import { Home, Share2, MessageSquare, Wallet, MapPin, BarChart3, Users, Shield, FileCheck, LogOut, Settings } from "lucide-react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { NavLink, useLocation } from "react-router-dom";
+import {
+  Home,
+  Share2,
+  MessageSquare,
+  Wallet,
+  MapPin,
+  BarChart3,
+  PieChart,
+  Users,
+  ShieldCheck,
+  Mail,
+  FileCheck,
+} from "lucide-react";
 import logo from "../../assets/logo.svg";
 import userImg from "../../assets/user.svg";
-import { useAuthStore } from "../../store/authStore";
+import useAuthStore from "../../store/authStore";
 
-const DashboardSidebar = ({ sidebarOpen, isMobile, setSidebarOpen, onLogout, onDelete }) => {
-  const { user, isAuthenticated, isLoading, initializeAuth, isAuthInitialized } = useAuthStore();
-  const navigate = useNavigate();
+// Admin icons configuration
+const ADMIN_ICONS = {
+  Overview: BarChart3,
+  AllSplitz: PieChart,
+  SplitzAnalytics: BarChart3,
+  Message: Mail,
+  "KYC Verification": ShieldCheck,
+};
+
+const Sidebar = ({ sidebarOpen, isMobile, setSidebarOpen }) => {
   const location = useLocation();
+  const user = useAuthStore((state) => state.user);
+  const fetchUserInfo = useAuthStore((state) => state.fetchUserInfo);
+  const [loading, setLoading] = useState(false);
 
   const [notifications] = useState({
     splits: 3,
@@ -16,144 +38,128 @@ const DashboardSidebar = ({ sidebarOpen, isMobile, setSidebarOpen, onLogout, onD
     wallet: 12,
   });
 
-  useEffect(() => {
-    initializeAuth();
-  }, [initializeAuth]);
+  const role = user?.role || "user";
 
-  // Only check authentication after auth is initialized
+  // Fetch user info only when needed
   useEffect(() => {
-    if (isAuthInitialized() && !isAuthenticated()) {
-      navigate("/login");
+    if (!user && !loading) {
+      setLoading(true);
+      const fetchUser = async () => {
+        try {
+          await fetchUserInfo();
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchUser();
     }
-  }, [isAuthenticated, navigate, isAuthInitialized]);
-
-  const role = user?.role || (user?.is_admin ? "admin" : "user");
+  }, [user, fetchUserInfo, loading]);
 
   const navItems = useMemo(() => {
     const common = [
       { 
         icon: Home, 
         label: "Home", 
-        path: "/dashboard", 
-        exact: true,
+        url: "/dashboard", 
         count: null 
       },
       {
         icon: Share2,
         label: "My Splits",
-        path: "/dashboard/splits",
+        url: "/dashboard/mysplitz",
         count: notifications.splits,
       },
       {
         icon: MessageSquare,
         label: "Messages",
-        path: "/dashboard/messages",
+        url: "/dashboard/messages",
         count: notifications.messages,
       },
       {
         icon: Wallet,
         label: "Wallet",
-        path: "/dashboard/wallet",
+        url: "/dashboard/wallet",
         count: notifications.wallet,
       },
       { 
         icon: MapPin, 
         label: "Nearby", 
-        path: "/dashboard/nearby", 
+        url: "/dashboard/filter", 
         count: null 
       },
       {
         icon: BarChart3,
         label: "Analytics",
-        path: "/dashboard/analytics",
-        count: null,
-      },
-      {
-        icon: Settings,
-        label: "Settings",
-        path: "/dashboard/settings",
+        url: "/dashboard/analytics",
         count: null,
       },
     ];
-    
+
     const adminOnly = [
       {
-        icon: Users,
-        label: "Users",
-        path: "/dashboard/admin/users",
+        icon: ADMIN_ICONS.Overview,
+        label: "Overview",
+        url: "/dashboard/overview",
         count: null,
       },
       {
-        icon: Share2,
-        label: "All Splits",
-        path: "/dashboard/admin/splits",
+        icon: ADMIN_ICONS.AllSplitz,
+        label: "AllSplitz",
+        url: "/dashboard/allsplitz",
         count: null,
       },
       {
-        icon: BarChart3,
-        label: "Split Analytics",
-        path: "/dashboard/admin/analytics",
+        icon: ADMIN_ICONS.SplitzAnalytics,
+        label: "SplitzAnalytics",
+        url: "/dashboard/splitanalytics",
         count: null,
       },
       {
-        icon: Shield,
-        label: "Admin Panel",
-        path: "/dashboard/admin",
+        icon: ADMIN_ICONS.Message,
+        label: "Message",
+        url: "/dashboard/splitzmessage",
         count: null,
       },
       {
-        icon: FileCheck,
+        icon: ADMIN_ICONS["KYC Verification"],
         label: "KYC Verification",
-        path: "/dashboard/admin/kyc",
+        url: "/dashboard/kyc-verification",
         count: null,
       },
     ];
 
     return role === "admin" ? [...common, ...adminOnly] : common;
-  }, [role, notifications]);
-
-  const isRouteActive = (path, exact = false) => {
-    if (exact) {
-      return location.pathname === path;
-    }
-    return location.pathname.startsWith(path);
-  };
+  }, [role, notifications.splits, notifications.messages, notifications.wallet]);
 
   const userStats = useMemo(() => ({
     level: user?.level || 1,
-    name: user?.first_name || user?.name || user?.email?.split('@')[0] || "User",
+    name: user?.full_name || 
+          `${user?.first_name || ""} ${user?.last_name || ""}`.trim() || 
+          "User",
     email: user?.email || "",
-    avatar: user?.avatar || userImg,
-    completedSplits: user?.completed_splits || 23,
-    reliabilityScore: user?.reliability_score || 87,
+    avatar: user?.avatar || null,
   }), [user]);
 
-  const handleLogout = () => {
-    if (onLogout) {
-      onLogout();
-    } else {
-      useAuthStore.getState().logout();
+  const handleNavClick = useCallback(() => {
+    if (isMobile) {
+      setSidebarOpen(false);
     }
-  };
+  }, [isMobile, setSidebarOpen]);
 
-  const handleProfileClick = () => {
-    navigate("/dashboard/profile");
-    if (isMobile) setSidebarOpen(false);
-  };
+  // Close sidebar when clicking outside on mobile
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isMobile && sidebarOpen) {
+        const sidebar = document.querySelector('aside');
+        if (sidebar && !sidebar.contains(event.target)) {
+          setSidebarOpen(false);
+        }
+      }
+    };
 
-  // Show loading while auth is initializing
-  if (isLoading || !isAuthInitialized()) {
-    return (
-      <aside className="fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 z-50 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin"></div>
-      </aside>
-    );
-  }
-
-  // Don't render sidebar if not authenticated
-  if (!isAuthenticated()) {
-    return null;
-  }
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [isMobile, sidebarOpen, setSidebarOpen]);
 
   return (
     <>
@@ -166,109 +172,97 @@ const DashboardSidebar = ({ sidebarOpen, isMobile, setSidebarOpen, onLogout, onD
 
       <aside
         className={`
-          fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 z-50
+          fixed top-0 left-0 h-full w-68 bg-white border-r border-gray-200 z-50
           flex flex-col
+          transform transition-transform duration-300 ease-in-out
           ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
-          lg:translate-x-0 lg:static
-          transition-transform duration-300 ease-in-out
-          shadow-lg lg:shadow-none
+          lg:translate-x-0 lg:static lg:w-68
         `}
       >
-        <div className="px-6 py-5 border-b border-gray-100">
-          <img  
-            src={logo} 
-            alt="Cosplitz Logo"  
-            className="h-8 cursor-pointer" 
-            onClick={() => navigate("/dashboard")} 
-          />
+        <div className="px-6 py-5">
+          <img src={logo} alt="App logo" className="h-8" />
         </div>
 
-        <nav className="flex-1 px-4 py-4 overflow-y-auto">
+        <nav className="flex-1 px-4 overflow-y-auto">
           <div className="space-y-1">
-            {navItems.map((item) => {
-              const isActive = isRouteActive(item.path, item.exact);
-              return (
-                <NavLink 
-                  key={item.path} 
-                  to={item.path} 
-                  end={item.exact}
-                  onClick={() => isMobile && setSidebarOpen(false)}
-                  className={`flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-200 ${
-                    isActive 
-                      ? "bg-green-50 text-green-700 border-l-4 border-green-600" 
-                      : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <item.icon 
-                      size={20} 
-                      className={isActive ? "text-green-600" : "text-gray-500"}
-                    />
-                    <span className="text-sm font-medium">
-                      {item.label}
-                    </span>
-                  </div>
+            {navItems.map((item) => (
+              <NavLink
+                key={item.url}
+                to={item.url}
+                end={item.url === "/dashboard"}
+                onClick={handleNavClick}
+                className={({ isActive }) => `
+                  flex items-center justify-between
+                  px-4 py-2.5 rounded-xl
+                  transition-all duration-200
+                  ${isActive
+                    ? "bg-[#1F8225] text-white"
+                    : "text-gray-700 hover:bg-gray-50"
+                  }
+                `}
+              >
+                <div className="flex items-center gap-3">
+                  <item.icon size={20} />
+                  <span className="text-sm font-medium">
+                    {item.label}
+                  </span>
+                </div>
 
-                  {item.count !== null && (
-                    <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                      isActive 
-                        ? "bg-green-100 text-green-800" 
-                        : "bg-gray-100 text-gray-700"
-                    }`}>
-                      {item.count}
-                    </span>
-                  )}
-                </NavLink>
-              );
-            })}
+                {item.count !== null && item.count > 0 && (
+                  <span className="text-xs font-semibold px-2 py-1 rounded-full bg-gray-100 text-gray-700 min-w-[24px] text-center">
+                    {item.count}
+                  </span>
+                )}
+              </NavLink>
+            ))}
           </div>
 
-          <div className="mt-6 p-4 bg-gradient-to-br from-green-600 to-green-800 rounded-xl space-y-3">
+          <div className="mt-6 p-4 bg-[#1F8225] rounded-xl space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-white leading-tight">
-                Community Standing
+              <h3 className="text-xs font-semibold text-white leading-tight">
+                Community <br /> Standing
               </h3>
+
               <div className="flex gap-1">
-                {[1, 2, 3, 4].map((level) => (
+                {[...Array(4)].map((_, i) => (
                   <span 
-                    key={level} 
+                    key={i}
                     className={`w-2.5 h-2.5 rounded-full ${
-                      level <= userStats.level ? "bg-white" : "bg-white/30"
+                      i < 3 ? "bg-white" : "bg-white/30"
                     }`}
                   />
                 ))}
               </div>
             </div>
 
-            <p className="text-lg font-bold text-white">
+            <p className="text-sm font-bold text-white">
               Level {userStats.level}
             </p>
 
-            <div className="text-sm text-white/90 space-y-1">
-              <p>{userStats.completedSplits} Completed Splits</p>
-              <p>Reliability Score: {userStats.reliabilityScore}%</p>
+            <div className="text-sm text-white space-y-1">
+              <p>23 Completed Splits</p>
+              <p>Reliability Score: 87%</p>
             </div>
 
             <div className="h-2 bg-white/20 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-white rounded-full transition-all duration-300" 
-                style={{ width: `${userStats.reliabilityScore}%` }}
-              />
+              <div className="h-full bg-white w-3/4 rounded-full" />
             </div>
           </div>
         </nav>
 
         <div className="px-4 py-4 border-t border-gray-100">
-          <div 
-            className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition cursor-pointer" 
-            onClick={handleProfileClick}
-          >
-            <img 
-              src={userStats.avatar}  
-              alt="User avatar"  
-              className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm"
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition">
+            <img
+              src={userStats.avatar || userImg}
+              alt="User avatar"
+              className="w-10 h-10 rounded-full object-cover"
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = userImg;
+              }}
             />
-            <div className="flex-1 min-w-0">
+
+            <div className="min-w-0 flex-1">
               <h4 className="text-sm font-semibold text-gray-900 truncate">
                 {userStats.name}
               </h4>
@@ -277,18 +271,10 @@ const DashboardSidebar = ({ sidebarOpen, isMobile, setSidebarOpen, onLogout, onD
               </p>
             </div>
           </div>
-
-          <button 
-            onClick={handleLogout}
-            className="w-full mt-3 flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-          >
-            <LogOut size={18} />
-            <span className="text-sm font-medium">Logout</span>
-          </button>
         </div>
       </aside>
     </>
   );
 };
 
-export default DashboardSidebar;
+export default Sidebar;
