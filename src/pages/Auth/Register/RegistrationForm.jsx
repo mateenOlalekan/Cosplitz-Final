@@ -1,5 +1,4 @@
-// RegistrationForm.jsx - FIXED WITH PROPER INTEGRATION
-import React, { useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FcGoogle } from "react-icons/fc";
@@ -7,14 +6,7 @@ import { PiAppleLogoBold } from "react-icons/pi";
 import { Eye, EyeOff } from "lucide-react";
 import PasswordValidation from "./PasswordValidation";
 
-function RegistrationForm({
-  formData,
-  handleInputChange,
-  handleFormSubmit,
-  handleSocialRegister,
-  loading,
-  error,
-}) {
+function RegistrationForm({  formData,  handleInputChange,  handleFormSubmit,  handleSocialRegister,  loading,  error,}) {
   const [showPassword, setShowPassword] = useState(false);
   const [touchedFields, setTouchedFields] = useState({});
   const [formErrors, setFormErrors] = useState({});
@@ -44,9 +36,9 @@ function RegistrationForm({
     },
     { 
       key: "nationality", 
-      label: "Nationality (Optional)", 
+      label: "Nationality", 
       type: "text", 
-      placeholder: "e.g., Indian, American",
+      placeholder: "Enter your Nationality",
       required: false 
     },
   ];
@@ -154,7 +146,6 @@ function RegistrationForm({
       // Show first error
       const firstErrorField = Object.keys(formErrors).find(field => formErrors[field]);
       if (firstErrorField) {
-        // Focus on the first error field
         const input = document.querySelector(`[name="${firstErrorField}"]`);
         if (input) input.focus();
       }
@@ -173,14 +164,14 @@ function RegistrationForm({
       </div>
 
       {/* Social Login Buttons */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           type="button"
           onClick={() => handleSocialRegister("google")}
           disabled={loading}
-          className="flex items-center justify-center gap-3 px-3 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center justify-center gap-3 px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <FcGoogle size={20} />
           <span className="text-gray-700 text-sm">Sign Up with Google</span>
@@ -192,7 +183,7 @@ function RegistrationForm({
           type="button"
           onClick={() => handleSocialRegister("apple")}
           disabled={loading}
-          className="flex items-center justify-center gap-3 px-3 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center justify-center gap-3 px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <PiAppleLogoBold size={20} />
           <span className="text-gray-700 text-sm">Sign Up with Apple</span>
@@ -200,7 +191,7 @@ function RegistrationForm({
       </div>
 
       {/* Divider */}
-      <div className="flex items-center my-6">
+      <div className="flex items-center my-4">
         <div className="flex-grow border-t border-gray-300"></div>
         <span className="mx-4 text-gray-500 text-sm">Or sign up with email</span>
         <div className="flex-grow border-t border-gray-300"></div>
@@ -214,7 +205,7 @@ function RegistrationForm({
       )}
 
       {/* Registration Form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-2">
         {/* Form Fields */}
         {formFields.map((field) => {
           const hasError = !!formErrors[field.key];
@@ -232,7 +223,7 @@ function RegistrationForm({
                   placeholder={field.placeholder}
                   onChange={(e) => handleInputChangeWithValidation(field.key, e.target.value)}
                   onBlur={() => handleBlur(field.key)}
-                  className={`w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors ${
+                  className={`w-full px-3 py-1.5 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors ${
                     hasError && isTouched
                       ? "border-red-400 focus:border-red-400" 
                       : "border-gray-300 focus:border-green-600"
@@ -264,7 +255,7 @@ function RegistrationForm({
               placeholder="Create a strong password"
               onChange={(e) => handleInputChangeWithValidation("password", e.target.value)}
               onBlur={() => handleBlur("password")}
-              className={`w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors pr-10 ${
+              className={`w-full px-3 py-1.5 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors pr-10 ${
                 formErrors.password && touchedFields.password
                   ? "border-red-400 focus:border-red-400" : "border-gray-300 focus:border-green-600"
               } disabled:opacity-50`}
@@ -329,7 +320,7 @@ function RegistrationForm({
               >
                 Fees
               </a>
-              . I understand that I must be at least 18 years old to use this service.
+              . 
             </span>
           </label>
           {formErrors.agreeToTerms && touchedFields.agreeToTerms && (
@@ -362,7 +353,7 @@ function RegistrationForm({
         </motion.button>
 
         {/* Login Link */}
-        <p className="text-center text-sm text-gray-600 mt-6 pt-4 border-t border-gray-100">
+        <p className="text-center text-sm text-gray-600  pt-4 ">
           Already have an account?{" "}
           <Link 
             to="/login" 

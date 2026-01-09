@@ -8,6 +8,8 @@ import { PiAppleLogoBold } from "react-icons/pi";
 import { Eye, EyeOff } from "lucide-react";
 import logo from "../../../assets/logo.svg";
 import loginImage from "../../../assets/login.jpg";
+import Loading from "../../Public/LoadingScreen";
+// import LeftPanel from "../../Public/"
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -84,12 +86,6 @@ export default function Login() {
     useAuthStore.getState().setError(`${provider} login coming soon!`);
   };
 
-  const handleDemoLogin = () => {
-    setEmail("demo@cosplitz.com");
-    setPassword("Demo@1234");
-    useAuthStore.getState().setError("Demo login is disabled in production. Use your own credentials.");
-  };
-
   const handleForgotPassword = () => {
     navigate("/forgot-password");
   };
@@ -103,17 +99,14 @@ export default function Login() {
   // Don't show anything while loading
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F7F5F9]">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
-      </div>
+      <>
+       <Loading/>
+      </>
     );
   }
 
   return (
-    <div className="flex bg-[#F7F5F9] w-full min-h-screen justify-center items-center md:px-6 md:py-4 rounded-2xl">
+    <div className="flex bg-[#F7F5F9] w-full h-screen justify-center items-center md:px-6 md:py-4 rounded-2xl">
       <div className="flex max-w-screen-2xl w-full h-full rounded-xl overflow-hidden">
         <div className="hidden lg:flex w-1/2 bg-[#F8EACD] rounded-xl p-6 items-center justify-center">
           <div className="w-full flex flex-col items-center">
@@ -133,8 +126,8 @@ export default function Login() {
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col items-center justify-center p-3 sm:p-5 overflow-y-auto">
-          <div className="w-full max-w-md">
+        <div className="flex flex-1 flex-col items-center justify-center p-3  overflow-y-auto">
+          <div className="w-full max-w-xl">
             <div className="w-full mb-6 flex justify-center">
               <img src={logo} alt="Cosplitz Logo" className="h-12" />
             </div>
@@ -159,7 +152,7 @@ export default function Login() {
                 </motion.div>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+              <div className="grid grid-cols-1  gap-1 mb-4">
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -191,7 +184,7 @@ export default function Login() {
                 <div className="flex-grow border-t border-gray-300"></div>
               </div>
 
-              <form onSubmit={handleLogin} className="space-y-4">
+              <form onSubmit={handleLogin} className="space-y-3">
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-1 block">
                     Email Address *
@@ -283,19 +276,10 @@ export default function Login() {
                   )}
                 </motion.button>
 
-                <div className="text-center">
-                  <button
-                    type="button"
-                    onClick={handleDemoLogin}
-                    disabled={isSubmitting || isLoading}
-                    className="text-sm text-gray-600 hover:text-gray-800 underline py-2 disabled:opacity-50"
-                  >
-                    Try demo account
-                  </button>
-                </div>
+
               </form>
 
-              <p className="text-center text-sm text-gray-600 mt-6 pt-4 border-t border-gray-100">
+              <p className="text-center text-sm text-gray-600  pt-4 border-t border-gray-100">
                 Don't have an account?{" "}
                 <Link 
                   to="/register" 
@@ -306,14 +290,7 @@ export default function Login() {
               </p>
             </div>
 
-            <div className="text-center mt-6">
-              <p className="text-xs text-gray-500">
-                By signing in, you agree to our{" "}
-                <a href="/terms" className="text-green-600 hover:underline">Terms</a>,{" "}
-                <a href="/privacy" className="text-green-600 hover:underline">Privacy Policy</a>, and{" "}
-                <a href="/fees" className="text-green-600 hover:underline">Fees</a>.
-              </p>
-            </div>
+
           </div>
         </div>
       </div>
