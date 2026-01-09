@@ -5,13 +5,12 @@ import { useAuthStore } from "../../store/authStore";
 
 function DashboardHeader({ setSidebarOpen, sidebarOpen, isMobile }) {
   const navigate = useNavigate();
-  const { user, logout, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
 
   const handleLogout = () => {
-    logout(); // This already handles redirect in authStore
+    useAuthStore.getState().logout();
   };
 
-  // If not authenticated, don't render the header
   if (!isAuthenticated()) {
     return null;
   }

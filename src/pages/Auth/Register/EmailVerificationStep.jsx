@@ -1,4 +1,4 @@
-// EmailVerificationStep.jsx - REFACTORED
+// EmailVerificationStep.jsx - FIXED
 import React, { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "../../../store/authStore";
 import { ArrowLeft, Mail } from "lucide-react";
@@ -13,12 +13,12 @@ export default function EmailVerificationStep({
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [error, setError] = useState("");
   const [timer, setTimer] = useState(180);
-  const [isVerifying, setIsVerifying] = useState(false); // Add local loading state
+  const [isVerifying, setIsVerifying] = useState(false);
   const inputRefs = useRef([]);
 
   const { 
-    verifyOTP,  // Changed from verifyOTPAction
-    resendOTP,  // Changed from resendOTPAction
+    verifyOTP,
+    resendOTP,
     clearError,
     tempRegister,
     isLoading: storeLoading 
@@ -71,7 +71,7 @@ export default function EmailVerificationStep({
     }
 
     setIsVerifying(true);
-    const result = await verifyOTP(effectiveEmail, otpCode); // Changed function call
+    const result = await verifyOTP(effectiveUserId, otpCode); // Use user_id as identifier
     
     if (result.success) {
       setOtp(["", "", "", "", "", ""]);
@@ -126,7 +126,7 @@ export default function EmailVerificationStep({
     }
 
     setIsVerifying(true);
-    const result = await verifyOTP(effectiveEmail, otpCode); // Changed function call
+    const result = await verifyOTP(effectiveUserId, otpCode); // Use user_id as identifier
     
     if (result.success) {
       setOtp(["", "", "", "", "", ""]);
@@ -150,7 +150,7 @@ export default function EmailVerificationStep({
     setError("");
     clearError();
 
-    const result = await resendOTP(effectiveUserId); // Changed function call
+    const result = await resendOTP(effectiveUserId);
     
     if (result.success) {
       setTimer(180);
@@ -168,7 +168,7 @@ export default function EmailVerificationStep({
   };
 
   const isComplete = otp.every((d) => d !== "");
-  const loading = storeLoading || isVerifying; // Combine loading states
+  const loading = storeLoading || isVerifying;
 
   return (
     <div className="flex flex-col items-center gap-5 py-8 relative w-full">

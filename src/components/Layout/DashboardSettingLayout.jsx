@@ -8,11 +8,24 @@ import DeleteAccountModal from "../Settings/DeleteAccount";
 export default function SettingsLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { logout } = useAuthStore();
+  const { isAuthenticated, isLoading, initializeAuth } = useAuthStore();
   
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const isRootSettings = location.pathname === "/dashboard/settings";
+
+  useEffect(() => {
+    initializeAuth();
+  }, [initializeAuth]);
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated()) {
+      navigate("/login", { 
+        state: { from: window.location.pathname },
+        replace: true 
+      });
+    }
+  }, [isAuthenticated, isLoading, navigate]);
 
   useEffect(() => {
     if (isLogoutModalOpen || isDeleteModalOpen) {
@@ -27,27 +40,37 @@ export default function SettingsLayout() {
   }, [isLogoutModalOpen, isDeleteModalOpen]);
 
   const handleLogout = () => {
-    logout(); // Use the logout function from authStore
+    useAuthStore.getState().logout();
     setIsLogoutModalOpen(false);
   };
 
   const handleDeleteAccount = () => {
     // In a real app, you would call an API to delete the account
     // For now, we'll just logout
-    logout();
+    useAuthStore.getState().logout();
     setIsDeleteModalOpen(false);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full items-center justify-center bg-[#F7F5F9]">
+        <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated()) {
+    return null;
+  }
 
   return (
     <>
       <div className="flex h-full p-2 gap-3 overflow-hidden">
-        {/* Sidebar */}
         <Sidebar
           onLogout={() => setIsLogoutModalOpen(true)}
           onDelete={() => setIsDeleteModalOpen(true)}
         />
 
-        {/* Content */}
         <main
           className={`flex-1 bg-white rounded-lg overflow-hidden
             ${isRootSettings ? "hidden md:flex" : "flex"}

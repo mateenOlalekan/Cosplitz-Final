@@ -1,54 +1,28 @@
-// src/routes/ProtectedRoute.jsx
-import Loading from "../components/Home/Loading";
 // src/components/ProtectedRoute.jsx
-import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
 
 export default function ProtectedRoute({ children, requireAdmin = false }) {
+  const { isAuthenticated, isAdmin, isLoading } = useAuthStore();
   const location = useLocation();
-  const { isAuthenticated, isAdmin, initializeAuth, isLoading } = useAuthStore();
-  
-  // State to track if we've checked auth
-  const [authChecked, setAuthChecked] = useState(false);
-  
-  useEffect(() => {
-    // Initialize auth from storage on mount
-    const checkAuth = async () => {
-      try {
-        await initializeAuth();
-      } catch (error) {
-        console.error("Auth initialization failed:", error);
-      } finally {
-        setAuthChecked(true);
-      }
-    };
-    
-    checkAuth();
-  }, [initializeAuth]);
-  
-  // Show loading while checking auth
-  if (isLoading || !authChecked) {
+
+  if (isLoading) {
     return (
-      <>
-        <Loading/>
-      </>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
     );
   }
-  
-  // If not authenticated, redirect to login
+
   if (!isAuthenticated()) {
-    // Save the current location to redirect back after login
-    const redirectUrl = location.pathname !== "/login" ? location.pathname + location.search : "/dashboard";
-    
-    return <Navigate to="/login" state={{ from: { pathname: redirectUrl } }} replace />;
+    // Redirect to login page, saving the current location
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
-  
-  // If admin required but user is not admin, redirect to dashboard or home
+
   if (requireAdmin && !isAdmin()) {
-    return <Navigate to="/dashboard" replace />;
+    // Redirect to home page if not admin
+    return <Navigate to="/" replace />;
   }
-  
-  // If authenticated (and admin if required), render children
+
   return children;
 }

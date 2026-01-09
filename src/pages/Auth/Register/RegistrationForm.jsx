@@ -1,4 +1,4 @@
-// RegistrationForm.jsx - FULLY INTEGRATED
+// RegistrationForm.jsx - FIXED WITH PROPER INTEGRATION
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -17,69 +17,149 @@ function RegistrationForm({
 }) {
   const [showPassword, setShowPassword] = useState(false);
   const [touchedFields, setTouchedFields] = useState({});
+  const [formErrors, setFormErrors] = useState({});
 
+  // Form fields configuration
+  const formFields = [
+    { 
+      key: "firstName", 
+      label: "First Name", 
+      type: "text", 
+      placeholder: "Enter your first name",
+      required: true 
+    },
+    { 
+      key: "lastName", 
+      label: "Last Name", 
+      type: "text", 
+      placeholder: "Enter your last name",
+      required: true 
+    },
+    { 
+      key: "email", 
+      label: "Email Address", 
+      type: "email", 
+      placeholder: "you@example.com",
+      required: true 
+    },
+    { 
+      key: "nationality", 
+      label: "Nationality (Optional)", 
+      type: "text", 
+      placeholder: "e.g., Indian, American",
+      required: false 
+    },
+  ];
+
+  // Handle field blur
   const handleBlur = (field) => {
     setTouchedFields((prev) => ({ ...prev, [field]: true }));
+    validateField(field, formData[field]);
   };
 
-  // Field validation functions
+  // Simple validation function
   const validateField = (field, value) => {
-    if (!touchedFields[field]) return true; // Only validate after touch
+    let error = "";
     
     switch (field) {
       case "firstName":
       case "lastName":
-        return value.trim().length >= 2;
+        if (value.length < 2) {
+          error = `${field === "firstName" ? "First" : "Last"} name must be at least 2 characters`;
+        } else if (!/^[a-zA-Z\s]*$/.test(value)) {
+          error = `${field === "firstName" ? "First" : "Last"} name can only contain letters and spaces`;
+        }
+        break;
+        
       case "email":
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return emailRegex.test(value.trim());
+        if (!emailRegex.test(value)) {
+          error = "Please enter a valid email address";
+        }
+        break;
+        
       case "password":
-        return value.length >= 8 && /[A-Z]/.test(value) && /\d/.test(value);
-      default:
-        return true;
+        if (value.length < 8) {
+          error = "Password must be at least 8 characters";
+        } else if (!/[A-Z]/.test(value)) {
+          error = "Password must contain at least one uppercase letter";
+        } else if (!/\d/.test(value)) {
+          error = "Password must contain at least one number";
+        } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(value)) {
+          error = "Password must contain at least one special character";
+        }
+        break;
+        
+      case "agreeToTerms":
+        if (!value) {
+          error = "You must agree to the terms & conditions";
+        }
+        break;
     }
-  };
-
-  const getFieldError = (field, value) => {
-    if (!touchedFields[field] || !value) return null;
     
-    switch (field) {
-      case "firstName":
-      case "lastName":
-        return value.trim().length < 2 ? "Must be at least 2 characters" : null;
-      case "email":
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return !emailRegex.test(value.trim()) ? "Please enter a valid email" : null;
-      case "password":
-        if (value.length < 8) return "Must be at least 8 characters";
-        if (!/[A-Z]/.test(value)) return "Must contain an uppercase letter";
-        if (!/\d/.test(value)) return "Must contain a number";
-        return null;
-      default:
-        return null;
+    if (error) {
+      setFormErrors((prev) => ({ ...prev, [field]: error }));
+      return false;
+    } else {
+      setFormErrors((prev) => ({ ...prev, [field]: undefined }));
+      return true;
     }
   };
 
+  // Validate entire form
   const isFormValid = () => {
-    const { firstName, lastName, email, password, agreeToTerms } = formData;
+    // Required fields
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
+      return false;
+    }
     
-    return (
-      firstName.trim().length >= 2 &&
-      lastName.trim().length >= 2 &&
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) &&
-      password.length >= 8 &&
-      /[A-Z]/.test(password) &&
-      /\d/.test(password) &&
-      agreeToTerms
-    );
+    // Validate each field
+    const validations = [
+      validateField("firstName", formData.firstName),
+      validateField("lastName", formData.lastName),
+      validateField("email", formData.email),
+      validateField("password", formData.password),
+      validateField("agreeToTerms", formData.agreeToTerms),
+    ];
+    
+    return validations.every(v => v === true);
   };
 
-  const formFields = [
-    { key: "firstName", label: "First Name", type: "text", placeholder: "Enter your first name" },
-    { key: "lastName", label: "Last Name", type: "text", placeholder: "Enter your last name" },
-    { key: "email", label: "Email Address", type: "email", placeholder: "you@example.com" },
-    { key: "nationality", label: "Nationality (Optional)", type: "text", placeholder: "e.g., Indian, American" },
-  ];
+  // Handle input change with validation
+  const handleInputChangeWithValidation = (field, value) => {
+    handleInputChange(field, value);
+    if (touchedFields[field]) {
+      validateField(field, value);
+    }
+  };
+
+  // Handle form submission
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    
+    // Mark all required fields as touched
+    const requiredFields = ["firstName", "lastName", "email", "password", "agreeToTerms"];
+    const newTouched = {};
+    requiredFields.forEach(field => {
+      newTouched[field] = true;
+    });
+    setTouchedFields(newTouched);
+    
+    // Validate all fields
+    const isValid = isFormValid();
+    
+    if (isValid) {
+      handleFormSubmit(e);
+    } else {
+      // Show first error
+      const firstErrorField = Object.keys(formErrors).find(field => formErrors[field]);
+      if (firstErrorField) {
+        // Focus on the first error field
+        const input = document.querySelector(`[name="${firstErrorField}"]`);
+        if (input) input.focus();
+      }
+    }
+  };
 
   return (
     <div className="w-full">
@@ -126,7 +206,7 @@ function RegistrationForm({
         <div className="flex-grow border-t border-gray-300"></div>
       </div>
 
-      {/* Error Message */}
+      {/* Error Message from Store */}
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-4 text-center">
           {error}
@@ -134,45 +214,38 @@ function RegistrationForm({
       )}
 
       {/* Registration Form */}
-      <form onSubmit={handleFormSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
         {/* Form Fields */}
         {formFields.map((field) => {
-          const fieldError = getFieldError(field.key, formData[field.key]);
-          const isValid = validateField(field.key, formData[field.key]);
+          const hasError = !!formErrors[field.key];
+          const isTouched = touchedFields[field.key];
           
           return (
             <div key={field.key} className="space-y-1">
               <label className="text-sm font-medium text-gray-700 block">
-                {field.label} {field.key !== "nationality" && "*"}
+                {field.label} {field.required && "*"}
               </label>
               <div className="relative">
                 <input
                   type={field.type}
                   value={formData[field.key]}
                   placeholder={field.placeholder}
-                  onChange={(e) => handleInputChange(field.key, e.target.value)}
+                  onChange={(e) => handleInputChangeWithValidation(field.key, e.target.value)}
                   onBlur={() => handleBlur(field.key)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && field.key === 'nationality' && isFormValid()) {
-                      handleFormSubmit(e);
-                    }
-                  }}
                   className={`w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors ${
-                    fieldError 
+                    hasError && isTouched
                       ? "border-red-400 focus:border-red-400" 
-                      : isValid && touchedFields[field.key]
-                      ? "border-green-400 focus:border-green-600"
                       : "border-gray-300 focus:border-green-600"
                   } disabled:opacity-50`}
-                  required={field.key !== "nationality"}
+                  required={field.required}
                   disabled={loading}
-                  aria-invalid={!!fieldError}
-                  aria-describedby={fieldError ? `${field.key}-error` : undefined}
+                  aria-invalid={hasError && isTouched}
+                  aria-describedby={hasError ? `${field.key}-error` : undefined}
                 />
               </div>
-              {fieldError && (
+              {hasError && isTouched && (
                 <p id={`${field.key}-error`} className="text-red-500 text-xs mt-1">
-                  {fieldError}
+                  {formErrors[field.key]}
                 </p>
               )}
             </div>
@@ -189,19 +262,16 @@ function RegistrationForm({
               type={showPassword ? "text" : "password"}
               value={formData.password}
               placeholder="Create a strong password"
-              onChange={(e) => handleInputChange("password", e.target.value)}
+              onChange={(e) => handleInputChangeWithValidation("password", e.target.value)}
               onBlur={() => handleBlur("password")}
               className={`w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors pr-10 ${
-                getFieldError("password", formData.password) 
-                  ? "border-red-400 focus:border-red-400" 
-                  : validateField("password", formData.password) && touchedFields.password
-                  ? "border-green-400 focus:border-green-600"
-                  : "border-gray-300 focus:border-green-600"
+                formErrors.password && touchedFields.password
+                  ? "border-red-400 focus:border-red-400" : "border-gray-300 focus:border-green-600"
               } disabled:opacity-50`}
               required
               disabled={loading}
-              aria-invalid={!!getFieldError("password", formData.password)}
-              aria-describedby={getFieldError("password", formData.password) ? "password-error" : undefined}
+              aria-invalid={!!formErrors.password && touchedFields.password}
+              aria-describedby={formErrors.password ? "password-error" : undefined}
             />
             <button
               type="button"
@@ -213,9 +283,9 @@ function RegistrationForm({
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
-          {getFieldError("password", formData.password) && (
+          {formErrors.password && touchedFields.password && (
             <p id="password-error" className="text-red-500 text-xs mt-1">
-              {getFieldError("password", formData.password)}
+              {formErrors.password}
             </p>
           )}
           <PasswordValidation password={formData.password} />
@@ -227,7 +297,7 @@ function RegistrationForm({
             <input
               type="checkbox"
               checked={formData.agreeToTerms}
-              onChange={(e) => handleInputChange("agreeToTerms", e.target.checked)}
+              onChange={(e) => handleInputChangeWithValidation("agreeToTerms", e.target.checked)}
               className="mt-0.5 rounded focus:ring-green-500 text-green-600 disabled:opacity-50"
               disabled={loading}
             />
@@ -262,6 +332,11 @@ function RegistrationForm({
               . I understand that I must be at least 18 years old to use this service.
             </span>
           </label>
+          {formErrors.agreeToTerms && touchedFields.agreeToTerms && (
+            <p className="text-red-500 text-xs mt-1 ml-7">
+              {formErrors.agreeToTerms}
+            </p>
+          )}
         </div>
 
         {/* Submit Button */}
@@ -297,9 +372,6 @@ function RegistrationForm({
           </Link>
         </p>
       </form>
-
-      {/* Demo Account Info (Optional) */}
-
     </div>
   );
 }

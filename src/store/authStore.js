@@ -1,7 +1,7 @@
-// src/store/authStore.js - DEBUGGED AND ENHANCED
+// src/store/authStore.js - FINAL VERSION
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { authService } from "../services/authApi"; // Add this import
+import { authService } from "../services/authApi";
 
 export const useAuthStore = create(
   persist(
@@ -166,8 +166,6 @@ export const useAuthStore = create(
         } catch (e) {
           console.warn("Storage error:", e);
         }
-        
-        console.log("Registration completed successfully");
       },
 
       logout: () => {

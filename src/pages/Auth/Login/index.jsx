@@ -1,4 +1,4 @@
-// src/pages/Auth/Login/index.jsx - COMPLETE & REFACTORED
+// src/pages/Auth/Login/index.jsx - FIXED
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuthStore } from "../../../store/authStore";
@@ -18,22 +18,17 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Get auth store actions and state
   const { login, error, isLoading, clearError, isAuthenticated, initializeAuth } = useAuthStore();
 
-  // Check if user is already authenticated
   useEffect(() => {
-    // Initialize auth from storage
     initializeAuth();
     
-    // If already logged in, redirect to dashboard or intended page
     if (isAuthenticated()) {
       const from = location.state?.from?.pathname || "/dashboard";
       navigate(from, { replace: true });
     }
   }, [isAuthenticated, navigate, location, initializeAuth]);
 
-  // Clear errors when inputs change
   useEffect(() => {
     if (error) {
       const timer = setTimeout(() => {
@@ -48,7 +43,6 @@ export default function Login() {
     e.preventDefault();
     clearError();
     
-    // Form validation
     if (!email.trim()) {
       useAuthStore.getState().setError("Email is required");
       return;
@@ -59,7 +53,6 @@ export default function Login() {
       return;
     }
     
-    // Email format validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
       useAuthStore.getState().setError("Please enter a valid email address");
@@ -72,11 +65,9 @@ export default function Login() {
       const result = await login({ email, password });
       
       if (result.success) {
-        // Successfully logged in - redirect to intended page or dashboard
         const from = location.state?.from?.pathname || "/dashboard";
         navigate(from, { replace: true });
       }
-      // Error is already set in the store by the login action
     } catch (err) {
       console.error("Login process error:", err);
       useAuthStore.getState().setError("An unexpected error occurred. Please try again.");
@@ -90,7 +81,11 @@ export default function Login() {
     useAuthStore.getState().setError(`${provider} login coming soon!`);
   };
 
-
+  const handleDemoLogin = () => {
+    setEmail("demo@cosplitz.com");
+    setPassword("Demo@1234");
+    useAuthStore.getState().setError("Demo login is disabled in production. Use your own credentials.");
+  };
 
   const handleForgotPassword = () => {
     navigate("/forgot-password");
@@ -102,10 +97,11 @@ export default function Login() {
     }
   };
 
+  const loading = isLoading || isSubmitting;
+
   return (
     <div className="flex bg-[#F7F5F9] w-full min-h-screen justify-center items-center md:px-6 md:py-4 rounded-2xl">
       <div className="flex max-w-screen-2xl w-full h-full rounded-xl overflow-hidden">
-        {/* LEFT SIDE (Image) - Hidden on mobile */}
         <div className="hidden lg:flex w-1/2 bg-[#F8EACD] rounded-xl p-6 items-center justify-center">
           <div className="w-full flex flex-col items-center">
             <img 
@@ -124,17 +120,13 @@ export default function Login() {
           </div>
         </div>
 
-        {/* RIGHT SIDE (Form) */}
         <div className="flex flex-1 flex-col items-center justify-center p-3 sm:p-5 overflow-y-auto">
           <div className="w-full max-w-md">
-            {/* Logo */}
             <div className="w-full mb-6 flex justify-center">
               <img src={logo} alt="Cosplitz Logo" className="h-12" />
             </div>
 
-            {/* Login Card */}
             <div className="w-full p-5 md:p-8 rounded-xl shadow-md border border-gray-100 bg-white">
-              {/* Header */}
               <div className="text-center mb-6">
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
                   Welcome Back
@@ -144,7 +136,6 @@ export default function Login() {
                 </p>
               </div>
 
-              {/* Error Message */}
               {error && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
@@ -155,14 +146,13 @@ export default function Login() {
                 </motion.div>
               )}
 
-              {/* Social Login Buttons */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   type="button"
                   onClick={() => handleSocialLogin("google")}
-                  disabled={isSubmitting || isLoading}
+                  disabled={loading}
                   className="flex items-center justify-center gap-3 px-3 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <FcGoogle size={20} />
@@ -174,7 +164,7 @@ export default function Login() {
                   whileTap={{ scale: 0.98 }}
                   type="button"
                   onClick={() => handleSocialLogin("apple")}
-                  disabled={isSubmitting || isLoading}
+                  disabled={loading}
                   className="flex items-center justify-center gap-3 px-3 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <PiAppleLogoBold size={20} />
@@ -182,14 +172,12 @@ export default function Login() {
                 </motion.button>
               </div>
 
-              {/* Divider */}
               <div className="flex items-center my-4">
                 <div className="flex-grow border-t border-gray-300"></div>
                 <span className="mx-4 text-gray-500 text-sm">Or continue with email</span>
                 <div className="flex-grow border-t border-gray-300"></div>
               </div>
 
-              {/* Login Form */}
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-1 block">
@@ -206,7 +194,7 @@ export default function Login() {
                     placeholder="you@example.com"
                     className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-colors disabled:opacity-50"
                     required
-                    disabled={isSubmitting || isLoading}
+                    disabled={loading}
                     autoComplete="email"
                   />
                 </div>
@@ -227,14 +215,14 @@ export default function Login() {
                       placeholder="Enter your password"
                       className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-colors pr-10 disabled:opacity-50"
                       required
-                      disabled={isSubmitting || isLoading}
+                      disabled={loading}
                       autoComplete="current-password"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
-                      disabled={isSubmitting || isLoading}
+                      disabled={loading}
                       aria-label={showPassword ? "Hide password" : "Show password"}
                     >
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -247,7 +235,7 @@ export default function Login() {
                     <input
                       type="checkbox"
                       className="rounded focus:ring-green-500 text-green-600 disabled:opacity-50"
-                      disabled={isSubmitting || isLoading}
+                      disabled={loading}
                     />
                     <span>Remember me</span>
                   </label>
@@ -255,25 +243,24 @@ export default function Login() {
                     type="button"
                     onClick={handleForgotPassword}
                     className="text-sm text-green-600 hover:underline font-medium hover:text-green-700 transition-colors disabled:opacity-50"
-                    disabled={isSubmitting || isLoading}
+                    disabled={loading}
                   >
                     Forgot Password?
                   </button>
                 </div>
 
-                {/* Submit Button */}
                 <motion.button
-                  whileHover={{ scale: isSubmitting || isLoading ? 1 : 1.02 }}
-                  whileTap={{ scale: isSubmitting || isLoading ? 1 : 0.98 }}
+                  whileHover={{ scale: loading ? 1 : 1.02 }}
+                  whileTap={{ scale: loading ? 1 : 0.98 }}
                   type="submit"
-                  disabled={isSubmitting || isLoading}
+                  disabled={loading}
                   className={`w-full bg-green-600 text-white py-3 rounded-lg font-semibold transition-all duration-200 ${
-                    isSubmitting || isLoading 
+                    loading 
                       ? "opacity-70 cursor-not-allowed" 
                       : "hover:bg-green-700"
                   }`}
                 >
-                  {isSubmitting || isLoading ? (
+                  {loading ? (
                     <span className="flex items-center justify-center gap-2">
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                       Signing In...
@@ -283,10 +270,18 @@ export default function Login() {
                   )}
                 </motion.button>
 
-
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={handleDemoLogin}
+                    disabled={loading}
+                    className="text-sm text-gray-600 hover:text-gray-800 underline py-2 disabled:opacity-50"
+                  >
+                    Try demo account
+                  </button>
+                </div>
               </form>
 
-              {/* Sign Up Link */}
               <p className="text-center text-sm text-gray-600 mt-6 pt-4 border-t border-gray-100">
                 Don't have an account?{" "}
                 <Link 
@@ -298,7 +293,14 @@ export default function Login() {
               </p>
             </div>
 
-
+            <div className="text-center mt-6">
+              <p className="text-xs text-gray-500">
+                By signing in, you agree to our{" "}
+                <a href="/terms" className="text-green-600 hover:underline">Terms</a>,{" "}
+                <a href="/privacy" className="text-green-600 hover:underline">Privacy Policy</a>, and{" "}
+                <a href="/fees" className="text-green-600 hover:underline">Fees</a>.
+              </p>
+            </div>
           </div>
         </div>
       </div>

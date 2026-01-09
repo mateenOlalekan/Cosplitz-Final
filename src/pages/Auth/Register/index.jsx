@@ -1,4 +1,4 @@
-// src/pages/Auth/Register/index.jsx - REFACTORED
+// src/pages/Auth/Register/index.jsx - FIXED
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import loginlogo from "../../../assets/login.jpg";
@@ -12,12 +12,14 @@ export default function Register() {
   const navigate = useNavigate();
   
   const { 
-    register, 
     isLoading, 
     error, 
     clearError, 
     tempRegister,
-    isAuthenticated 
+    isAuthenticated,
+    initializeAuth,
+    register,
+    setPendingVerification
   } = useAuthStore();
 
   const [currentStep, setCurrentStep] = useState(1);
@@ -36,60 +38,52 @@ export default function Register() {
     { id: 3, label: "Success", description: "Account created successfully" },
   ];
 
-  // Check if already authenticated
   useEffect(() => {
+    initializeAuth();
+    
     if (isAuthenticated()) {
       navigate("/dashboard");
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, initializeAuth]);
 
-  // Clear errors when switching steps
   useEffect(() => {
     clearError();
   }, [currentStep, clearError]);
 
+  // Set step to 2 when tempRegister is available
+  useEffect(() => {
+    if (tempRegister && currentStep === 1) {
+      setCurrentStep(2);
+    }
+  }, [tempRegister, currentStep]);
+
   const handleInputChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (error) clearError();
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-    clearError();
-
-    // Validation
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
-      useAuthStore.getState().setError("Please fill out all required fields.");
-      return;
-    }
-
-    if (!formData.agreeToTerms) {
-      useAuthStore.getState().setError("Please agree to the terms & conditions.");
-      return;
-    }
-
-    const passwordValid =
-      formData.password.length >= 8 &&
-      /[A-Z]/.test(formData.password) &&
-      /\d/.test(formData.password);
-
-    if (!passwordValid) {
-      useAuthStore.getState().setError("Password must contain at least 8 characters, one uppercase letter, and a number.");
-      return;
-    }
-
-    const registrationData = {
-      first_name: formData.firstName.trim(),
-      last_name: formData.lastName.trim(),
-      email: formData.email.toLowerCase().trim(),
-      password: formData.password,
-      nationality: formData.nationality || "",
-    };
-
-    const result = await register(registrationData);
     
-    if (result.success && result.requiresVerification) {
-      setCurrentStep(2);
+    const result = await register({
+      first_name: formData.firstName,
+      last_name: formData.lastName,
+      email: formData.email,
+      nationality: formData.nationality || undefined,
+      password: formData.password,
+      agree_to_terms: formData.agreeToTerms,
+    });
+
+    if (result.success) {
+      if (result.requiresVerification) {
+        // Store will set tempRegister, which triggers step change via useEffect
+        console.log("Verification required, moving to OTP step");
+      } else {
+        // Auto-login case
+        setCurrentStep(3);
+      }
     }
   };
 
@@ -109,7 +103,7 @@ export default function Register() {
   return (
     <div className="flex bg-[#F7F5F9] w-full h-screen justify-center overflow-hidden md:px-6 md:py-4 rounded-2xl">
       <div className="flex max-w-screen-2xl w-full h-full rounded-xl overflow-hidden">
-        {/* LEFT SIDE (Image) */}
+        {/* Left Side (Image) */}
         <div className="hidden lg:flex w-1/2 bg-[#F8EACD] rounded-xl p-6 items-center justify-center">
           <div className="w-full flex flex-col items-center">
             <img 
@@ -128,14 +122,14 @@ export default function Register() {
           </div>
         </div>
 
-        {/* RIGHT SIDE (Form) */}
+        {/* Right Side (Form) */}
         <div className="flex flex-1 flex-col items-center p-3 sm:p-5 overflow-y-auto">
           <div className="w-full mb-4 flex justify-center md:justify-start items-center md:items-start">
             <img src={logo} alt="Logo" className="h-10 md:h-12" />
           </div>
 
           <div className="w-full max-w-2xl p-5 rounded-xl shadow-none md:shadow-md border-none md:border border-gray-100 bg-white">
-            {/* STEPS INDICATOR */}
+            {/* Steps Indicator */}
             <div className="w-full flex flex-col items-center py-4 mb-4">
               <div className="flex items-center gap-2 justify-center mb-2">
                 {steps.map((s, i) => (
@@ -162,7 +156,7 @@ export default function Register() {
               </p>
             </div>
 
-            {/* STEP CONTENT */}
+            {/* Step Content */}
             {currentStep === 1 && (
               <RegistrationForm
                 formData={formData}
@@ -176,7 +170,7 @@ export default function Register() {
 
             {currentStep === 2 && (
               <EmailVerificationStep
-                email={tempRegister?.email || formData.email}
+                email={tempRegister?.email}
                 userId={tempRegister?.userId}
                 onBack={handleBackToStep1}
                 onSuccess={handleEmailVerificationSuccess}
