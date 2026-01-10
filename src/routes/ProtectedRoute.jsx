@@ -1,23 +1,33 @@
 import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
-import Loading from "../components/Home/Loading";
+import Loading from "../components/Home/Loading"
 
 export default function ProtectedRoute({ children }) {
   const location = useLocation();
   const { isAuthenticated, initializeAuth, isLoading } = useAuthStore();
-  const [checked, setChecked] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    initializeAuth(); // hydrate token + user
-    setChecked(true);
+    const checkAuth = async () => {
+      await initializeAuth();
+      setAuthChecked(true);
+    };
+
+    checkAuth();
   }, [initializeAuth]);
 
-  if (!checked || isLoading) return <Loading />; // splash while hydrating
+  if (!authChecked || isLoading) {
+    return (
+      <>
+        <Loading/>
+      </>
+    );
+  }
 
-  return isAuthenticated() ? (
-    children
-  ) : (
-    <Navigate to="/login" state={{ from: location }} replace />
-  );
+  if (!isAuthenticated()) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return children;
 }
