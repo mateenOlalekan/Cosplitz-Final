@@ -4,19 +4,11 @@ import Checknow from "../../../assets/Check.svg";
 
 function Successful() {
   const navigate = useNavigate();
-
   return (
     <div className="flex flex-col items-center text-center py-6">
       <img src={Checknow} alt="Success" className="w-24 h-24 mb-4" />
-
-      <h2 className="text-2xl font-bold text-gray-800">
-        Email Verified Successfully!
-      </h2>
-
-      <p className="text-gray-600 mt-2 max-w-sm">
-        Your email has been verified. Let's set up your profile!
-      </p>
-
+      <h2 className="text-2xl font-bold text-gray-800">Email Verified Successfully!</h2>
+      <p className="text-gray-600 mt-2 max-w-sm">Your email has been verified. Let's set up your profile!</p>
       <motion.button
         whileHover={{ scale: 1.03 }}
         whileTap={{ scale: 0.97 }}
@@ -28,5 +20,4 @@ function Successful() {
     </div>
   );
 }
-
 export default Successful;

@@ -1,20 +1,23 @@
-import { Navigate, Outlet } from "react-router-dom";
-import useAuthStore from "../store/authStore";
+import { useEffect, useState } from "react";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { useAuthStore } from "../store/authStore";
+import Loading from "../components/Home/Loading";
 
-const AdminRoute = () => {
-  const { user, isAuthenticated, loading } = useAuthStore();
+export default function AdminRoute() {
+  const location = useLocation();
+  const { isAuthenticated, isAdmin, initializeAuth, isLoading } = useAuthStore();
+  const [checked, setChecked] = useState(false);
 
-  if (loading) return null;
+  useEffect(() => {
+    initializeAuth();
+    setChecked(true);
+  }, [initializeAuth]);
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
+  if (!checked || isLoading) return <Loading />;
 
-  if (user?.role !== "admin") {
-    return <Navigate to="/dashboard" replace />;
-  }
+  if (!isAuthenticated()) return <Navigate to="/login" state={{ from: location }} replace />;
+
+  if (!isAdmin()) return <Navigate to="/dashboard" replace />;
 
   return <Outlet />;
-};
-
-export default AdminRoute;
+}

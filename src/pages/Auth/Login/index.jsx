@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { useAuthStore } from "../../../store/authStore";
 import { motion } from "framer-motion";
 import { FcGoogle } from "react-icons/fc";
 import { PiAppleLogoBold } from "react-icons/pi";
 import { Eye, EyeOff } from "lucide-react";
 import logo from "../../../assets/logo.svg";
 import LeftPanel from "../../../components/Home/LeftPanel";
+import { useAuthStore } from "../../../store/authStore";
 import { z } from "zod";
 
 const loginSchema = z.object({
@@ -15,60 +15,43 @@ const loginSchema = z.object({
 });
 
 export default function Login() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [validationErrors, setValidationErrors] = useState({});
-  
   const navigate = useNavigate();
   const location = useLocation();
   const { login, isLoading, error, setError, clearError, isAuthenticated } = useAuthStore();
 
-  const from = location.state?.from || "/dashboard";
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [show, setShow] = useState(false);
+  const [clientReady, setClientReady] = useState(false); // hydration guard
 
-  // Redirect if already authenticated
+  const from = location.state?.from?.pathname || "/dashboard";
+
+  /* ---------- hydration-safe redirect ---------- */
   useEffect(() => {
-    if (isAuthenticated()) {
-      navigate(from, { replace: true });
-    }
-  }, [isAuthenticated, navigate, from]);
+    setClientReady(true);
+  }, []);
 
-  const handleLogin = useCallback(async (e) => {
+  useEffect(() => {
+    if (clientReady && isAuthenticated()) navigate(from, { replace: true });
+  }, [clientReady, isAuthenticated, navigate, from]);
+
+  /* ---------- submit ---------- */
+  const handleLogin = async (e) => {
     e.preventDefault();
     clearError();
-    setValidationErrors({});
-
-    // Validate with Zod
     try {
       loginSchema.parse({ email, password });
-    } catch (validationError) {
-      const errors = {};
-      validationError.errors.forEach((err) => {
-        const path = err.path[0];
-        errors[path] = err.message;
-      });
-      setValidationErrors(errors);
-      
-      if (validationError.errors[0]) {
-        setError(validationError.errors[0].message);
-      }
+    } catch (err) {
+      setError(err.errors[0]?.message || "Validation error");
       return;
     }
-
-    const result = await login({ email, password });
-    
-    if (result.success) {
-      navigate(from, { replace: true });
-    }
-  }, [email, password, login, navigate, from, setError, clearError]);
-
-  const handleSocialLogin = useCallback((provider) => {
-    setError(`${provider} login coming soon!`);
-  }, [setError]);
-
-  const getFieldError = (fieldName) => {
-    return validationErrors[fieldName];
+    const res = await login({ email, password });
+    if (res.success) navigate(from, { replace: true });
   };
+
+  const social = (provider) => setError(`${provider} login coming soon!`);
+
+  if (!clientReady) return null; // avoid SSR flash
 
   return (
     <div className="flex bg-[#F7F5F9] w-full h-screen justify-center overflow-hidden md:px-6 md:py-4 rounded-2xl">
@@ -81,38 +64,20 @@ export default function Login() {
           </div>
 
           <div className="w-full max-w-2xl p-5 rounded-xl shadow-none md:shadow-md border-none md:border border-gray-100 bg-white space-y-6">
-            <h1 className="text-2xl sm:text-3xl text-center font-bold text-gray-900">
-              Welcome Back
-            </h1>
-            <p className="text-gray-500 text-center text-sm mt-1 mb-4">
-              Sign in to continue sharing expenses.
-            </p>
+            <h1 className="text-2xl sm:text-3xl text-center font-bold text-gray-900">Welcome Back</h1>
+            <p className="text-gray-500 text-center text-sm mt-1 mb-4">Sign in to continue sharing expenses.</p>
 
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-3 text-center">
-                {error}
-              </div>
+              <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-3 text-center">{error}</div>
             )}
 
             <div className="grid grid-cols-1 gap-2 mb-3">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                type="button"
-                onClick={() => handleSocialLogin("google")}
-                className="flex items-center justify-center gap-3 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
+              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="button" onClick={() => social("google")} className="flex items-center justify-center gap-3 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
                 <FcGoogle size={20} />
                 <span className="text-gray-700 text-sm">Sign in with Google</span>
               </motion.button>
 
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                type="button"
-                onClick={() => handleSocialLogin("apple")}
-                className="flex items-center justify-center gap-3 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
+              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="button" onClick={() => social("apple")} className="flex items-center justify-center gap-3 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
                 <PiAppleLogoBold size={20} />
                 <span className="text-gray-700 text-sm">Sign in with Apple</span>
               </motion.button>
@@ -126,78 +91,46 @@ export default function Login() {
 
             <form onSubmit={handleLogin} className="space-y-3">
               <div className="mb-4">
-                <label className="text-sm font-medium text-gray-700 mb-1 block">
-                  Email Address *
-                </label>
-                <div className="relative">
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      if (error) clearError();
-                      if (validationErrors.email) {
-                        setValidationErrors(prev => ({ ...prev, email: undefined }));
-                      }
-                    }}
-                    placeholder="Enter your email"
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-colors ${
-                      getFieldError("email") ? "border-red-300" : "border-gray-300"
-                    }`}
-                    required
-                  />
-                </div>
-                {getFieldError("email") && (
-                  <p className="text-red-500 text-xs mt-1">{getFieldError("email")}</p>
-                )}
+                <label className="text-sm font-medium text-gray-700 mb-1 block">Email Address *</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    clearError();
+                  }}
+                  placeholder="Enter your email"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-colors"
+                  required
+                />
               </div>
 
               <div className="mb-4">
-                <label className="text-sm font-medium text-gray-700 mb-1 block">
-                  Password *
-                </label>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">Password *</label>
                 <div className="relative">
                   <input
-                    type={showPassword ? "text" : "password"}
+                    type={show ? "text" : "password"}
                     value={password}
                     onChange={(e) => {
                       setPassword(e.target.value);
-                      if (error) clearError();
-                      if (validationErrors.password) {
-                        setValidationErrors(prev => ({ ...prev, password: undefined }));
-                      }
+                      clearError();
                     }}
                     placeholder="Enter your password"
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-colors pr-10 ${
-                      getFieldError("password") ? "border-red-300" : "border-gray-300"
-                    }`}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-colors pr-10"
                     required
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  <button type="button" onClick={() => setShow((s) => !s)} className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                    {show ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
-                {getFieldError("password") && (
-                  <p className="text-red-500 text-xs mt-1">{getFieldError("password")}</p>
-                )}
               </div>
 
               <div className="flex justify-between items-center">
                 <label className="flex gap-2 text-sm text-gray-600 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="rounded focus:ring-green-500"
-                  />
+                  <input type="checkbox" className="rounded focus:ring-green-500" />
                   <span>Remember me</span>
                 </label>
-                <Link
-                  to="/forgot-password"
-                  className="text-sm text-green-600 hover:underline font-medium"
-                >
+                <Link to="/forgot-password" className="text-sm text-green-600 hover:underline font-medium">
                   Forgot Password?
                 </Link>
               </div>
@@ -213,7 +146,7 @@ export default function Login() {
               >
                 {isLoading ? (
                   <span className="flex items-center justify-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     Signing In...
                   </span>
                 ) : (
