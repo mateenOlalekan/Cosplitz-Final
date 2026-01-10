@@ -2,7 +2,7 @@ import SlashLogo from "../../assets/splashlogo.svg";
 
 function Loading(){
     return(
-    <div className="fixed inset-0 bg-green-600 flex flex-col items-center justify-center z-99999 
+    <div className="fixed inset-0 bg-green-600 flex flex-col items-center justify-center z-[99999] 
                     transition-opacity duration-3000 opacity-100 pointer-events-auto">
       <div className="flex justify-center items-center animate-bounce">
         <img

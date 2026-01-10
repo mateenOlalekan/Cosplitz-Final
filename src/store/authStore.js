@@ -182,15 +182,20 @@ export const useAuthStore = create(
       },
 
       /* ---------- hydration-safe initializer ---------- */
-      initializeAuth: () => {
+      initializeAuth: async () => {
         try {
           const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
           const userRaw = localStorage.getItem("userInfo") || sessionStorage.getItem("userInfo");
           const user = userRaw ? JSON.parse(userRaw) : null;
           set({ token: token || null, user, isLoading: false });
-          if (token && !user) get().fetchUserInfo();
+          if (token && !user) {
+            await get().fetchUserInfo();
+          }
         } catch (err) {
-          console.error("Auth init error:", err);
+          // Only log in development
+          if (process.env.NODE_ENV === "development") {
+            console.error("Auth init error:", err);
+          }
           set({ token: null, user: null, isLoading: false });
         }
       },

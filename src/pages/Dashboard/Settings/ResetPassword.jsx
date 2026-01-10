@@ -22,8 +22,7 @@ export default function Notifications() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Add your password reset logic here
-    console.log('Form submitted:', formData);
+    // TODO: Implement password reset API call
     
     if (formData.newPassword !== formData.confirmPassword) {
       alert("New password and confirm password don't match!");

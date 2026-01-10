@@ -37,7 +37,7 @@ export default function CreateNewPassword() {
   });
 
   const onSubmit = (data) => {
-    console.log("✅ New Password Created:", data.password);
+    // TODO: Implement password reset API call
     alert("Password reset successfully!");
     reset();
   };

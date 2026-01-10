@@ -52,7 +52,7 @@ export default function VerifyEmail() {
   };
 
   const onSubmit = (data) => {
-    console.log("✅ Verification Code Submitted:", data.code);
+    // TODO: Implement email verification API call
     alert("Verification Successful!");
   };
 

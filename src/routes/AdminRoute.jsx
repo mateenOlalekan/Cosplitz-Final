@@ -9,9 +9,13 @@ export default function AdminRoute() {
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    initializeAuth();
-    setChecked(true);
-  }, [initializeAuth]);
+    const checkAuth = async () => {
+      await initializeAuth();
+      setChecked(true);
+    };
+    checkAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // initializeAuth is stable from Zustand store
 
   if (!checked || isLoading) return <Loading />;
 

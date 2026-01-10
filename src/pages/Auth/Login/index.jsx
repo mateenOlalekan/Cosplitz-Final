@@ -42,7 +42,7 @@ export default function Login() {
     try {
       loginSchema.parse({ email, password });
     } catch (err) {
-      setError(err.errors[0]?.message || "Validation error");
+      setError(err.errors?.[0]?.message || "Validation error");
       return;
     }
     const res = await login({ email, password });

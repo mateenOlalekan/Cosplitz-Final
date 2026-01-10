@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "../Layout/DashboardSidebar";
 import Header from "../Layout/DashboardHeader";
@@ -7,6 +7,7 @@ export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
+  const animationTimerRef = useRef(null);
 
   // Detect screen size with debouncing
   useEffect(() => {
@@ -34,18 +35,28 @@ export default function DashboardLayout() {
     };
   }, [sidebarOpen]);
 
+  // Cleanup animation timer on unmount
+  useEffect(() => {
+    return () => {
+      if (animationTimerRef.current) {
+        clearTimeout(animationTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleSidebarToggle = useCallback(() => {
     if (isAnimating) return;
     
     setIsAnimating(true);
     setSidebarOpen(prev => !prev);
     
-    // Reset animation state after animation completes
-    const animationTimer = setTimeout(() => {
-      setIsAnimating(false);
-    }, 300); // Reduced to match sidebar animation
+    if (animationTimerRef.current) {
+      clearTimeout(animationTimerRef.current);
+    }
     
-    return () => clearTimeout(animationTimer);
+    animationTimerRef.current = setTimeout(() => {
+      setIsAnimating(false);
+    }, 300);
   }, [isAnimating]);
 
   return (

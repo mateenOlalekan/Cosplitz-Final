@@ -25,6 +25,24 @@ export default function EmailVerificationStep({ email, userId, onBack, onSuccess
     inputRefs.current[0]?.focus();
   }, []);
 
+  /* ---------- submit ---------- */
+  const handleSubmit = useCallback(
+    async (code) => {
+      try {
+        otpSchema.parse(code);
+      } catch (e) {
+        return setError(e.errors?.[0]?.message || "Invalid OTP");
+      }
+      clearError();
+      const res = await verifyOTP(email, code);
+      if (res.success) return onSuccess();
+      setError(res.error || "Verification failed");
+      setOtp(["", "", "", "", "", ""]);
+      inputRefs.current[0]?.focus();
+    },
+    [email, verifyOTP, onSuccess, setError, clearError]
+  );
+
   /* ---------- OTP helpers ---------- */
   const handleChange = useCallback(
     (val, idx) => {
@@ -36,7 +54,7 @@ export default function EmailVerificationStep({ email, userId, onBack, onSuccess
       if (val && idx < 5) inputRefs.current[idx + 1]?.focus();
       if (newOtp.every(Boolean)) handleSubmit(newOtp.join(""));
     },
-    [otp, error, clearError]
+    [otp, error, clearError, handleSubmit]
   );
 
   const handleKeyDown = useCallback(
@@ -58,25 +76,7 @@ export default function EmailVerificationStep({ email, userId, onBack, onSuccess
         setError("Paste a valid 6-digit code");
       }
     },
-    [error, clearError, setError]
-  );
-
-  /* ---------- submit ---------- */
-  const handleSubmit = useCallback(
-    async (code) => {
-      try {
-        otpSchema.parse(code);
-      } catch (e) {
-        return setError(e.errors[0]?.message || "Invalid OTP");
-      }
-      clearError();
-      const res = await verifyOTP(email, code);
-      if (res.success) return onSuccess();
-      setError(res.error || "Verification failed");
-      setOtp(["", "", "", "", "", ""]);
-      inputRefs.current[0]?.focus();
-    },
-    [email, verifyOTP, onSuccess, setError, clearError]
+    [error, clearError, setError, handleSubmit]
   );
 
   /* ---------- resend ---------- */

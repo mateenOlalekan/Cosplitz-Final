@@ -26,12 +26,23 @@ const PaymentPage = () => {
 
   const navigate = useNavigate();
 
-  const gotoWallet=()=>{
-    navigate("/dashboard/wallet")
-  }
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handlePayment = async (e) => {
+    e.preventDefault();
+    // TODO: Implement payment processing
+    // Validate form data based on payment method
+    if (paymentMethod === 'cards') {
+      if (!formData.cardNumber || !formData.expiryDate || !formData.cvv) {
+        alert('Please fill all card details');
+        return;
+      }
+    }
+    // Process payment...
+    navigate("/dashboard/wallet");
   };
 
   return (
@@ -68,7 +79,10 @@ const PaymentPage = () => {
         {paymentMethod === 'wallet' && <WalletPayment />}
 
         {/* Make Payment Button */}
-        <button onClick={gotoWallet} className="w-full py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition mt-6">
+        <button 
+          onClick={handlePayment} 
+          className="w-full py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition mt-6"
+        >
           Make Payment
         </button>
 

@@ -24,7 +24,7 @@ export default function MyProfile() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log('Form data:', formData);
+    // TODO: Implement API call to update profile
   };
 
   return (

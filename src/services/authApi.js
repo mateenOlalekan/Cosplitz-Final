@@ -40,7 +40,9 @@ async function request(path, options = {}) {
     try {
       response = await fetch(url, config);
     } catch (netErr) {
-      console.error("Network error:", netErr);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Network error:", netErr);
+      }
       return { status: 0, data: { message: "Network error. Check connection." }, error: true };
     }
 

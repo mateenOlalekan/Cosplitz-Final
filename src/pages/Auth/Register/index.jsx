@@ -107,7 +107,10 @@ export default function Register() {
                 formData={formData}
                 handleInputChange={updateForm}
                 handleFormSubmit={submitForm}
-                handleSocialRegister={(p) => clearError() & alert(`${p} registration coming soon!`)}
+                handleSocialRegister={(p) => {
+                  clearError();
+                  alert(`${p} registration coming soon!`);
+                }}
                 loading={false}
                 error={error}
               />
