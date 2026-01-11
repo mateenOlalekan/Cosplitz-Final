@@ -13,19 +13,19 @@ export default function EmailVerificationStep({ email, userId, onBack, onSuccess
   const [resending, setResending] = useState(false);
   const inputRefs = useRef([]);
 
-  /* ---------- countdown ---------- */
+  /* countdown */
   useEffect(() => {
     if (timer <= 0) return;
     const id = setInterval(() => setTimer((t) => t - 1), 1000);
     return () => clearInterval(id);
   }, [timer]);
 
-  /* ---------- focus first input ---------- */
+  /* focus first input */
   useEffect(() => {
     inputRefs.current[0]?.focus();
   }, []);
 
-  /* ---------- submit ---------- */
+  /* submit + auto-advance */
   const handleSubmit = useCallback(
     async (code) => {
       try {
@@ -43,7 +43,7 @@ export default function EmailVerificationStep({ email, userId, onBack, onSuccess
     [email, verifyOTP, onSuccess, setError, clearError]
   );
 
-  /* ---------- OTP helpers ---------- */
+  /* single-digit input helpers */
   const handleChange = useCallback(
     (val, idx) => {
       if (!/^[0-9]?$/.test(val)) return;
@@ -79,7 +79,7 @@ export default function EmailVerificationStep({ email, userId, onBack, onSuccess
     [error, clearError, setError, handleSubmit]
   );
 
-  /* ---------- resend ---------- */
+  /* resend handler */
   const handleResend = useCallback(async () => {
     if (timer > 0) return;
     setResending(true);
