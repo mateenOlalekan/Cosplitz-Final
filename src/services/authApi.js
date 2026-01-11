@@ -1,5 +1,5 @@
-/* src/services/authApi.js – PRODUCTION READY – drop-in replacement */
-const API_BASE_URL = "https://cosplitz-backend.onrender.com/api";
+/* src/services/authApi.js – UNIFIED & PRODUCTION READY */
+const API_BASE_URL = "https://cosplitz-backend.onrender.com/api"; // ← NO trailing slash
 
 /* ---------- helpers ---------- */
 const getAuthToken = () => {
@@ -13,9 +13,11 @@ const getAuthToken = () => {
 const isAuthPath = (path = "") =>
   ["/register", "/verify", "/login", "/verify_otp"].some((p) => path.includes(p));
 
-/* ---------- core fetch wrapper ---------- */
+/* ---------- core fetch wrapper (unchanged behaviour) ---------- */
 async function request(path, options = {}) {
-  const url = `${API_BASE_URL}${path}`;
+  /*  strip leading slash so we never build “//”  */
+  const cleanPath = path.replace(/^\/+/, "");
+  const url = `${API_BASE_URL}/${cleanPath}`;
 
   const token = getAuthToken();
   const isFormData = options.body instanceof FormData;
@@ -26,45 +28,36 @@ async function request(path, options = {}) {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
-  const config = {
-    method: options.method || "GET",
-    headers,
-    ...options,
-  };
-
+  const config = { method: options.method || "GET", headers, ...options };
   if (config.body && !isFormData && typeof config.body === "object") {
     config.body = JSON.stringify(config.body);
   }
 
   let response;
-    try {
-      response = await fetch(url, config);
-    } catch (netErr) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Network error:", netErr);
-      }
-      return { status: 0, data: { message: "Network error. Check connection." }, error: true };
-    }
+  try {
+    response = await fetch(url, config);
+  } catch (netErr) {
+    console.error("Network error:", netErr);
+    return { status: 0, data: { message: "Network error. Check connection." }, error: true };
+  }
 
   let json = null;
-    try {
-      const text = await response.text();
-      json = text ? JSON.parse(text) : null;
-    } catch {
-      json = { message: "Invalid server response." };
-    }
+  try {
+    const text = await response.text();
+    json = text ? JSON.parse(text) : null;
+  } catch {
+    json = { message: "Invalid server response." };
+  }
 
-  /* ---------- unified status handling ---------- */
   if (!response.ok) {
     const { status } = response;
 
-    // auto logout on 401 outside auth flows
     if (status === 401 && !isAuthPath(window.location.pathname) && !isAuthPath(path)) {
       try {
-        localStorage.removeItem("authToken");
-        sessionStorage.removeItem("authToken");
-        localStorage.removeItem("userInfo");
-        sessionStorage.removeItem("userInfo");
+        ["authToken", "userInfo"].forEach((k) => {
+          localStorage.removeItem(k);
+          sessionStorage.removeItem(k);
+        });
       } catch {}
       if (!window.location.pathname.includes("/login")) {
         setTimeout(() => (window.location.href = "/login"), 100);
@@ -86,61 +79,86 @@ async function request(path, options = {}) {
 
     return { status, data: { ...json, message }, error: true };
   }
-
   return { status: response.status, data: json, success: true };
 }
 
-/* ---------- service objects ---------- */
+/* ============================================================
+ * AUTHENTICATION
+ * ============================================================ */
 export const authService = {
-  register: (userData) => 
-    request("/register/", 
-      { method: "POST", body: userData }),
-
+  register: (userData) => request("register/", { method: "POST", body: userData }),
   login: ({ email, password }) =>
-    request("/login/", {
+    request("login/", {
       method: "POST",
       body: { email: email.toLowerCase().trim(), password },
     }),
-
-  logout: () => request("/logout/",
-     { method: "POST" }),
-  getUserInfo: () => 
-    request("/user/info", 
-      { method: "GET" }),
-  getOTP: (userId) => 
-    request(`/otp/${userId}/`, 
-      { method: "GET" }),
+  logout: () => request("logout/", { method: "POST" }),
+  getUserInfo: () => request("user/info", { method: "GET" }),
+  getOTP: (userId) => request(`otp/${userId}/`, { method: "GET" }),
   verifyOTP: (identifier, otp) => {
     const body = /@/.test(identifier)
       ? { email: identifier.toLowerCase().trim(), otp: otp.toString().trim() }
       : { user_id: identifier, otp: otp.toString().trim() };
-    return request("/verify_otp", { method: "POST", body });
+    return request("verify_otp/", { method: "POST", body });
   },
   resendOTP: (userId) => authService.getOTP(userId),
   forgotPassword: (email) =>
-    request("/forgot-password/", { method: "POST", body: { email: email.toLowerCase().trim() } }),
-  resetPassword: (data) => 
-    request("/reset-password/", { method: "POST", body: data }),
+    request("forgot-password/", { method: "POST", body: { email: email.toLowerCase().trim() } }),
+  resetPassword: (data) => request("reset-password/", { method: "POST", body: data }),
 };
 
+/* ============================================================
+ * KYC
+ * ============================================================ */
+export const kycService = {
+  submit: (formData) => request("kyc/submit/", { method: "POST", body: formData }),
+};
+
+/* ============================================================
+ * SPLITS
+ * ============================================================ */
+export const splitsService = {
+  list: () => request("api/splits/"), // public available splits
+  create: (splitData) => request("api/splits/", { method: "POST", body: splitData }),
+  update: (id, splitData) => request(`splits/${id}/`, { method: "PATCH", body: splitData }),
+  remove: (id) => request(`splits/${id}/`, { method: "DELETE" }),
+  join: (id) => request(`splits/${id}/join_splits/`, { method: "POST" }),
+  mine: () => request("splits/my_splits/"), // authenticated user splits
+};
+
+/* ============================================================
+ * NOTIFICATIONS
+ * ============================================================ */
+export const notificationService = {
+  list: () => request("notifications/"),
+  single: (id) => request(`notifications/${id}/`),
+  markAllRead: () => request("notifications/mark_all_read/", { method: "POST" }),
+};
+
+/* ============================================================
+ * DASHBOARD (wallet, analytics …)
+ * ============================================================ */
 export const dashboardService = {
-  getOverview: () => 
-    request("/dashboard/overview"),
-  getAnalytics: (period = "monthly") =>
-     request(`/dashboard/analytics?period=${period}`),
-  createSplit: (splitData) => 
-    request("/splits/create",
-       { method: "POST", body: splitData }),
-  getWalletBalance: () => 
-    request("/wallet/balance"),
-  getNotifications: () => 
-    request("/notifications"),
+  getOverview: () => request("dashboard/overview"),
+  getAnalytics: (period = "monthly") => request(`dashboard/analytics?period=${period}`),
+  getWalletBalance: () => request("wallet/balance"),
+  createSplit: (splitData) => request("splits/create", { method: "POST", body: splitData }),
+  getNotifications: () => request("notifications"),
 };
 
+/* ============================================================
+ * ADMIN
+ * ============================================================ */
 export const adminService = {
-  getDashboardStats: () => request("/admin/dashboard"),
-  getUsers: (page = 1, limit = 20) => request(`/admin/users?page=${page}&limit=${limit}`),
-  getSplits: (page = 1, limit = 20) => request(`/admin/splits?page=${page}&limit=${limit}`),
+  login: (cred) => request("admin-api/login/", { method: "POST", body: cred }),
+  forgotPassword: (email) => request("admin-api/forget_password/", { method: "POST", body: { email } }),
+  resetPassword: (data) => request("admin-api/reset_password/", { method: "POST", body: data }),
+  getDashboardStats: () => request("admin/dashboard"),
+  getUsers: (page = 1, limit = 20) => request(`admin/users?page=${page}&limit=${limit}`),
+  getSplits: (page = 1, limit = 20) => request(`admin/splits?page=${page}&limit=${limit}`),
 };
 
-export default { request, authService, dashboardService, adminService };
+/* ============================================================
+ * DEFAULT EXPORT (back-compat)
+ * ============================================================ */
+export default { request, authService, kycService, splitsService, notificationService, dashboardService, adminService };

@@ -6,11 +6,10 @@ import { BrowserRouter } from 'react-router-dom';
 import ErrorBoundary from './ErrorBoundary.jsx';
 
 createRoot(document.getElementById('root')).render(
-  <ErrorBoundary>
+
     <BrowserRouter>
       <StrictMode>
         <App />
       </StrictMode>
     </BrowserRouter>
-  </ErrorBoundary>
 )

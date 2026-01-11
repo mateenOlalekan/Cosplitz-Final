@@ -1,133 +1,234 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FcGoogle } from "react-icons/fc";
 import { PiAppleLogoBold } from "react-icons/pi";
 import { Eye, EyeOff } from "lucide-react";
-import PasswordValidation from "./PasswordValidation";
 import { z } from "zod";
+import PasswordValidation from "./PasswordValidation";
 
+/* ---------- Zod schema ---------- */
 const schema = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  email: z.string().email("Invalid email address"),
+  firstName: z.string().min(2, "First name must be at least 2 characters"),
+  lastName: z.string().min(2, "Last name must be at least 2 characters"),
+  email: z.string().email("Please enter a valid email address"),
   nationality: z.string().optional(),
-  password: z.string().min(8).regex(/[A-Z]/, "Uppercase required").regex(/\d/, "Number required"),
-  agreeToTerms: z.boolean().refine((v) => v, "You must agree to the terms"),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/\d/, "Password must contain at least one number"),
+  agreeToTerms: z.literal(true, {
+    errorMap: () => ({ message: "You must agree to the terms & conditions" }),
+  }),
 });
 
 function RegistrationForm({ formData, handleInputChange, handleFormSubmit, handleSocialRegister, loading, error }) {
-  const [show, setShow] = useState(false);
-  const [errors, setErrors] = useState({});
+  const [showPassword, setShowPassword] = useState(false);
+  const [touched, setTouched] = useState({});
 
-  const submit = (e) => {
-    e.preventDefault();
-    setErrors({});
-    try {
-      schema.parse(formData);
-      handleFormSubmit(e);
-    } catch (err) {
-      const obj = {};
-      err.errors.forEach((v) => (obj[v.path[0]] = v.message));
-      setErrors(obj);
-    }
+  /* ---------- derived validation ---------- */
+  const fieldErrors = useMemo(() => {
+    const res = schema.safeParse(formData);
+    return res.success ? {} : res.error.flatten().fieldErrors;
+  }, [formData]);
+
+  /* ---------- helpers ---------- */
+  const getError = (name) => (touched[name] && fieldErrors[name]?.[0] ? fieldErrors[name][0] : "");
+
+  const handleBlur = (name) => setTouched((t) => ({ ...t, [name]: true }));
+
+  const handleChange = (name, value) => {
+    handleInputChange(name, value);
+    if (!touched[name]) setTouched((t) => ({ ...t, [name]: true }));
   };
 
-  const fieldErr = (k) => errors[k];
+  /* ---------- submit ---------- */
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setTouched(Object.fromEntries(schema.keyof().options.map((k) => [k, true])));
+    const res = schema.safeParse(formData);
+    if (!res.success) return;
+    handleFormSubmit(e);
+  };
+
+  const isValid = useMemo(() => schema.safeParse(formData).success, [formData]);
 
   return (
-    <div>
-      <h1 className="text-2xl sm:text-3xl text-center font-bold text-gray-900">Create Your Account</h1>
-      <p className="text-gray-500 text-center text-sm mt-1 mb-4">Let's get started with real-time cost sharing.</p>
+    <div className="w-full">
+      <div className="text-center mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Create Your Account</h1>
+        <p className="text-gray-500 text-sm mt-1">Let's get started with real-time cost sharing.</p>
+      </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-3 text-center">{error}</div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
-        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="button" onClick={() => handleSocialRegister("google")} className="flex items-center justify-center gap-3 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+      {/* Social Login Buttons */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
+        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="button" onClick={() => handleSocialRegister("google")} disabled={loading} className="flex items-center justify-center gap-3 px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
           <FcGoogle size={20} />
           <span className="text-gray-700 text-sm">Sign Up with Google</span>
         </motion.button>
 
-        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="button" onClick={() => handleSocialRegister("apple")} className="flex items-center justify-center gap-3 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="button" onClick={() => handleSocialRegister("apple")} disabled={loading} className="flex items-center justify-center gap-3 px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
           <PiAppleLogoBold size={20} />
           <span className="text-gray-700 text-sm">Sign Up with Apple</span>
         </motion.button>
       </div>
 
+      {/* Divider */}
       <div className="flex items-center my-4">
         <div className="flex-grow border-t border-gray-300"></div>
-        <span className="mx-2 text-gray-500 text-sm">Or</span>
+        <span className="mx-4 text-gray-500 text-sm">Or sign up with email</span>
         <div className="flex-grow border-t border-gray-300"></div>
       </div>
 
-      <form onSubmit={submit} className="space-y-3">
-        {[
-          { k: "firstName", l: "First Name", t: "text" },
-          { k: "lastName", l: "Last Name", t: "text" },
-          { k: "email", l: "Email Address", t: "email" },
-          { k: "nationality", l: "Nationality", t: "text" },
-        ].map((f) => (
-          <div key={f.k}>
-            <label className="text-sm font-medium text-gray-700 mb-1 block">{f.l} *</label>
-            <input
-              type={f.t}
-              value={formData[f.k]}
-              placeholder={`Enter your ${f.l.toLowerCase()}`}
-              onChange={(e) => handleInputChange(f.k, e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors ${fieldErr(f.k) ? "border-red-300" : "border-gray-300"}`}
-              required
-            />
-            {fieldErr(f.k) && <p className="text-red-500 text-xs mt-1">{fieldErr(f.k)}</p>}
-          </div>
-        ))}
+      {/* Error Message from Store */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-4 text-center">{error}</div>
+      )}
 
-        <div className="mb-4">
-          <label className="text-sm font-medium text-gray-700 mb-1 block">Password *</label>
+      {/* Registration Form */}
+      <form onSubmit={handleSubmit} className="space-y-2">
+        {/* firstName */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-gray-700 block">First Name *</label>
+          <input
+            type="text"
+            name="firstName"
+            value={formData.firstName}
+            onChange={(e) => handleChange("firstName", e.target.value)}
+            onBlur={() => handleBlur("firstName")}
+            placeholder="Enter your first name"
+            className={`w-full px-3 py-1.5 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors ${
+              getError("firstName") ? "border-red-400" : "border-gray-300 focus:border-green-600"
+            } disabled:opacity-50`}
+            disabled={loading}
+          />
+          {getError("firstName") && <p className="text-red-500 text-xs mt-1">{getError("firstName")}</p>}
+        </div>
+
+        {/* lastName */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-gray-700 block">Last Name *</label>
+          <input
+            type="text"
+            name="lastName"
+            value={formData.lastName}
+            onChange={(e) => handleChange("lastName", e.target.value)}
+            onBlur={() => handleBlur("lastName")}
+            placeholder="Enter your last name"
+            className={`w-full px-3 py-1.5 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors ${
+              getError("lastName") ? "border-red-400" : "border-gray-300 focus:border-green-600"
+            } disabled:opacity-50`}
+            disabled={loading}
+          />
+          {getError("lastName") && <p className="text-red-500 text-xs mt-1">{getError("lastName")}</p>}
+        </div>
+
+        {/* email */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-gray-700 block">Email Address *</label>
+          <input
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={(e) => handleChange("email", e.target.value)}
+            onBlur={() => handleBlur("email")}
+            placeholder="you@example.com"
+            className={`w-full px-3 py-1.5 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors ${
+              getError("email") ? "border-red-400" : "border-gray-300 focus:border-green-600"
+            } disabled:opacity-50`}
+            disabled={loading}
+          />
+          {getError("email") && <p className="text-red-500 text-xs mt-1">{getError("email")}</p>}
+        </div>
+
+        {/* nationality */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-gray-700 block">Nationality</label>
+          <input
+            type="text"
+            name="nationality"
+            value={formData.nationality}
+            onChange={(e) => handleChange("nationality", e.target.value)}
+            placeholder="Enter your Nationality"
+            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors disabled:opacity-50"
+            disabled={loading}
+          />
+        </div>
+
+        {/* password */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-gray-700 block">Password *</label>
           <div className="relative">
             <input
-              type={show ? "text" : "password"}
+              type={showPassword ? "text" : "password"}
+              name="password"
               value={formData.password}
-              placeholder="Create your password"
-              onChange={(e) => handleInputChange("password", e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors pr-10 ${fieldErr("password") ? "border-red-300" : "border-gray-300"}`}
-              required
+              onChange={(e) => handleChange("password", e.target.value)}
+              onBlur={() => handleBlur("password")}
+              placeholder="Create a strong password"
+              className={`w-full px-3 py-1.5 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors pr-10 ${
+                getError("password") ? "border-red-400" : "border-gray-300 focus:border-green-600"
+              } disabled:opacity-50`}
+              disabled={loading}
             />
-            <button type="button" onClick={() => setShow((s) => !s)} className="absolute inset-y-0 right-2 pr-1 flex items-center text-gray-400 hover:text-gray-600">
-              {show ? <EyeOff size={18} /> : <Eye size={18} />}
+            <button
+              type="button"
+              onClick={() => setShowPassword((s) => !s)}
+              disabled={loading}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
-          {fieldErr("password") && <p className="text-red-500 text-xs mt-1">{fieldErr("password")}</p>}
+          {getError("password") && <p className="text-red-500 text-xs mt-1">{getError("password")}</p>}
           <PasswordValidation password={formData.password} />
         </div>
 
-        <label className="flex gap-2 text-sm text-gray-600 mt-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={formData.agreeToTerms}
-            onChange={(e) => handleInputChange("agreeToTerms", e.target.checked)}
-          />
-          <span>
-            I agree to the <a href="/terms" className="text-green-600 hover:underline font-medium">Terms</a>,{" "}
-            <a href="/privacy" className="text-green-600 hover:underline font-medium">Privacy</a> &{" "}
-            <a href="/fees" className="text-green-600 hover:underline font-medium">Fees</a>.
-          </span>
-        </label>
-        {fieldErr("agreeToTerms") && <p className="text-red-500 text-xs">{fieldErr("agreeToTerms")}</p>}
+        {/* agreeToTerms */}
+        <div className="mt-4">
+          <label className="flex items-start gap-3 text-sm text-gray-600 cursor-pointer">
+            <input
+              type="checkbox"
+              name="agreeToTerms"
+              checked={formData.agreeToTerms}
+              onChange={(e) => handleChange("agreeToTerms", e.target.checked)}
+              className="mt-0.5 rounded focus:ring-green-500 text-green-600 disabled:opacity-50"
+              disabled={loading}
+            />
+            <span className="text-left">
+              I agree to the{" "}
+              <a href="/terms" className="text-green-600 hover:underline font-medium hover:text-green-700 transition-colors" target="_blank" rel="noopener noreferrer">
+                Terms
+              </a>
+              ,{" "}
+              <a href="/privacy" className="text-green-600 hover:underline font-medium hover:text-green-700 transition-colors" target="_blank" rel="noopener noreferrer">
+                Privacy
+              </a>{" "}
+              &{" "}
+              <a href="/fees" className="text-green-600 hover:underline font-medium hover:text-green-700 transition-colors" target="_blank" rel="noopener noreferrer">
+                Fees
+              </a>
+              .
+            </span>
+          </label>
+          {getError("agreeToTerms") && <p className="text-red-500 text-xs mt-1 ml-7">{getError("agreeToTerms")}</p>}
+        </div>
 
+        {/* Submit Button */}
         <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+          whileHover={{ scale: isValid && !loading ? 1.02 : 1 }}
+          whileTap={{ scale: isValid && !loading ? 0.98 : 1 }}
           type="submit"
-          disabled={loading}
-          className={`w-full bg-green-600 text-white py-3 rounded-lg font-semibold transition-all duration-200 ${
-            loading ? "opacity-60 cursor-not-allowed" : "hover:bg-green-700"
+          disabled={!isValid || loading}
+          className={`w-full py-3 rounded-lg font-semibold mt-6 transition-all duration-200 ${
+            !isValid || loading ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-green-600 text-white hover:bg-green-700"
           }`}
         >
           {loading ? (
             <span className="flex items-center justify-center gap-2">
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
               Creating Account...
             </span>
           ) : (
@@ -135,9 +236,10 @@ function RegistrationForm({ formData, handleInputChange, handleFormSubmit, handl
           )}
         </motion.button>
 
-        <p className="text-center text-sm text-gray-600 mt-3">
+        {/* Login Link */}
+        <p className="text-center text-sm text-gray-600 pt-4">
           Already have an account?{" "}
-          <Link to="/login" className="text-green-600 hover:underline font-medium">
+          <Link to="/login" className="text-green-600 hover:underline font-medium hover:text-green-700 transition-colors">
             Log In
           </Link>
         </p>

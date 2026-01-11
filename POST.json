@@ -1,0 +1,230 @@
+POST
+Register
+https://cosplitz-backend.onrender.com/api/register/
+
+{
+    "email": "w5mngxrc1l@bwmyga.com",
+    "password": "Test123456",
+    "first_name": "John",
+    "last_name": "Phil",
+    "nationality" : "Nigeria"
+}
+
+POST
+Login
+https://cosplitz-backend.onrender.com/api/login/
+
+{
+    "email": "86btzppket@mrotzis.com",
+    "password": "Test123456"
+}
+
+GET
+user details
+https://cosplitz-backend.onrender.com/api/user/info
+
+{
+  "id": 6,
+  "last_login": null,
+  "is_superuser": false,
+  "created_at": "2025-10-28T18:17:32.522437Z",
+  "updated_at": "2025-10-28T18:22:44.681686Z",
+  "email": "etveis0nyd@daouse.com",
+  "first_name": "John",
+  "last_name": "Doe",
+  "username": "john_12",
+  "is_admin": false,
+  "is_active": true,
+  "groups": [],
+  "user_permissions": []
+}
+
+GET
+Get OTP
+https://cosplitz-backend.onrender.com/api/otp/11/
+
+{
+  "message": "OTP sent"
+}
+
+POST
+Verify_otp
+https://cosplitz-backend.onrender.com/api/verify_otp
+
+{
+    "email": "86btzppket@mrotzis.com",
+    "otp": "576528"
+}
+
+kyc
+POST
+submit
+https://cosplitz-backend.onrender.com/api//kyc/submit/
+
+curl --location 'https://cosplitz-backend.onrender.com/api//kyc/submit/' \
+--form 'user="1"' \
+--form 'first_name="John"' \
+--form 'last_name="Doe"' \
+--form 'nationality="nigerian"' \
+--form 'email="john@example.com"' \
+--form 'city="lagos"' \
+--form 'district="ikorodu"' \
+--form 'full_address="No. 5, Herbert Macaulay Way"' \
+--form 'document_type="passport"' \
+--form 'document_front=@"DgHyAOGT6/bg-video.jpg"' \
+--form 'document_back=@"fX-tFy5Pk/bg-user-3.jpg"'
+
+Splitz
+GET
+All Avaliable splitz
+https://cosplitz-backend.onrender.com/api/api/splits/
+
+{
+  "status": "success",
+  "data": [
+    {
+      "id": 1,
+      "created_at": "2025-12-05T08:36:32.737315Z",
+      "updated_at": "2025-12-05T08:36:32.738076Z",
+      "title": "Grocries",
+      "category": "Housing",
+      "image_url": null,
+      "amount": 0,
+      "max_participants": 0,
+      "split_method": "SpecificAmounts",
+      "start_date": "2025-11-01",
+      "end_date": "2026-10-31",
+      "location": "Apartment 3B",
+      "visibility_radius": 0,
+      "rules": null,
+      "user": 7
+    }
+  ]
+}
+
+POST
+Create Split
+https://cosplitz-backend.onrender.com/api/api/splits/
+
+{
+    "title": "Grocries",
+    "category": "Housing",
+    "split_method": "SpecificAmounts",
+    "start_date": "2025-11-01",
+    "end_date": "2026-10-31",
+    "location": "Apartment 3B"
+}
+
+PATCH
+Update Splitz
+https://cosplitz-backend.onrender.com/api/splits/2/
+
+{
+    "title": "Monthly Rent",
+    "category": "Housing",
+    "image_url": null,
+    "amount": 0,
+    "max_participants": 0,
+    "split_method": "SpecificAmounts",
+    "start_date": "2025-11-01",
+    "end_date": "2026-10-31",
+    "location": "Apartment 3B",
+    "visibility_radius": 0,
+    "rules": null,
+    "user": 9
+}
+
+DELETE
+Delete Splitz
+
+POST
+Join Split
+http://localhost:8000/api/splits/3/join_splits/
+
+{
+  "status": "success",
+  "message": "Successfully joined split"
+}
+
+GET
+My splits
+https://cosplitz-backend.onrender.com/api/splits/my_splits/
+
+{
+    "email": "sorew99080@asurad.com",
+    "password": "Testing123",
+    "first_name": "Peter",
+    "last_name": "Philemon",
+    "username": "peterpeter", 
+    "nationality": "nigerian"
+}
+
+GET
+User notifications
+https://cosplitz-backend.onrender.com/api/notifications/
+
+{
+    "title": "Monthly Rent",
+    "category": "Housing",
+    "image_url": null,
+    "amount": 0,
+    "max_participants": 0,
+    "split_method": "SpecificAmounts",
+    "start_date": "2025-11-01",
+    "end_date": "2026-10-31",
+    "location": "Apartment 3B",
+    "visibility_radius": 0,
+    "rules": null,
+    "user": 9
+}
+
+GET
+Single notification
+https://cosplitz-backend.onrender.com/api/notifications/1/
+
+{
+  "id": 1,
+  "notification_type": "split_created",
+  "title": "Split Created Successfully",
+  "message": "Your split \"Monthly Rent & Utilities\" has been created.",
+  "is_read": false,
+  "created_at": "2025-11-18T15:31:16.186441Z",
+  "read_at": null,
+  "user": 9
+}
+
+POST
+Mark All Read
+https://cosplitz-backend.onrender.com/api/notifications/mark_all_read/
+
+{
+  "message": "Successfully marked as read"
+}
+
+Admin
+POST
+admin_login
+/admin-api/login/
+
+{
+    "email": "admin@example.com",
+    "password": "admin123!"
+}
+
+POST
+forget_password
+/admin-api/forget_password/
+
+{
+    "email": "mguythtrfgg@gmail.com"
+}
+
+POST
+reset_password
+/admin-api/reset_password/
+
+{
+    "email": "mguythtrfgg@gmail.com",
+    "token": "635412",
+    "password": "Adminrrd"
+}

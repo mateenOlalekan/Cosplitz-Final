@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useAuthStore } from "../../../store/authStore"; // <-- now uses store
+import { useAuthStore } from "../../../store/authStore";
 import { ArrowLeft, Mail } from "lucide-react";
 import { z } from "zod";
 
