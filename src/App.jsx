@@ -42,12 +42,12 @@ function PublicOnly({ children }) {
   return isAuthenticated ? <Navigate to="/dashboard" replace /> : children;
 }
 
-/* ---------- router ---------- */
+
 export default function App() {
   return (
     <Suspense fallback={<LoadingScreen />}>
       <Routes>
-        {/* -------------------- PUBLIC (redirect if logged-in) -------------------- */}
+        {/* ---------- PUBLIC ---------- */}
         <Route path="/" element={<Home />} />
         <Route path="/pre-onboard" element={<PreOnboard />} />
         <Route path="/post-onboard" element={<PostOnboard />} />
@@ -59,8 +59,10 @@ export default function App() {
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/password-reset-success" element={<PasswordResetSuccess />} />
 
-  
-            <Route element={<DashboardLayout />}>
+        {/* ---------- PROTECTED (only after login/register) ---------- */}
+        <Route element={<AuthGuard />}>
+          <Route element={<DashboardLayout />}>
+            <Route path="kyc-verification" element={<div>KYC</div>} />
             <Route path="/dashboard" element={<MainOverview />} />
             <Route path="main" element={<MainOverview />} />
             <Route path="analytics" element={<Analytics />} />
@@ -71,7 +73,6 @@ export default function App() {
             <Route path="kyc-flow" element={<KYCFlow />} />
             <Route path="post-onboarding" element={<PostOnboard />} />
 
-            {/* settings sub-tree */}
             <Route path="settings" element={<SettingsLayout />}>
               <Route index element={<MyProfile />} />
               <Route path="profile" element={<MyProfile />} />
@@ -81,19 +82,15 @@ export default function App() {
               <Route path="support" element={<Support />} />
             </Route>
           </Route>
-        {/* -------------------- PROTECTED DASHBOARD (user + admin) -------------------- */}
-        <Route element={<AuthGuard />}>
 
-
-          {/* -------------------- PROTECTED ADMIN ONLY -------------------- */}
+          {/* -------------------- ADMIN (same gate) -------------------- */}
           <Route path="/admin" element={<DashboardLayout />}>
             <Route index element={<div>Admin Overview</div>} />
             <Route path="allsplitz" element={<div>All Splits</div>} />
-            <Route path="kyc-verification" element={<div>KYC</div>} />
           </Route>
         </Route>
 
-        {/* -------------------- 404 -------------------- */}
+        {/* ---------- 404 ---------- */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
