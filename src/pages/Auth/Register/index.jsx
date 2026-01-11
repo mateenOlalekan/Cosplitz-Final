@@ -13,7 +13,7 @@ const STEP_SUCCESS = 3;
 
 export default function Register() {
   const navigate = useNavigate();
-  const { register, tempRegister, error, clearError } = useAuthStore();
+  const { register, tempRegister, error, clearError, isLoading } = useAuthStore();
 
   const [step, setStep] = useState(STEP_FORM);
   const [formData, setFormData] = useState({
@@ -111,7 +111,7 @@ export default function Register() {
                   clearError();
                   alert(`${p} registration coming soon!`);
                 }}
-                loading={false}
+                loading={isLoading} // ← real spinner flag
                 error={error}
               />
             )}
