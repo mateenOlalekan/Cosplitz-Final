@@ -25,7 +25,7 @@ export default function Register() {
     agreeToTerms: false,
   });
 
-  /* ---------- keep UI in sync with store ---------- */
+  /* keep UI in sync with store */
   useEffect(() => {
     if (tempRegister?.email && step === STEP_FORM) setStep(STEP_VERIFY);
   }, [tempRegister, step]);
@@ -48,8 +48,13 @@ export default function Register() {
         password: formData.password,
         nationality: formData.nationality,
       };
+      /* 1. register + auto-login + auto-getOTP  */
       const res = await register(payload);
-      if (res.success) setStep(STEP_VERIFY); // store already filled tempRegister
+      if (res.success) {
+        /* 2. go straight to OTP screen */
+        setStep(STEP_VERIFY);
+      }
+      /* error is already surfaced by store */
     },
     [formData, register, clearError]
   );
@@ -111,7 +116,7 @@ export default function Register() {
                   clearError();
                   alert(`${p} registration coming soon!`);
                 }}
-                loading={isLoading} // ← real spinner flag
+                loading={isLoading}
                 error={error}
               />
             )}

@@ -1,7 +1,17 @@
-/* src/store/authStore.js – with console.log breadcrumbs */
+/* src/store/authStore.js – auto-login + first-class getOTP */
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { authService } from "../services/authApi";
+
+/* ---------- tiny coloured logger ---------- */
+const COL = {
+  ok: "color: #2ecc71; font-weight: bold",
+  warn: "color: #f39c12; font-weight: bold",
+  err: "color: #e74c3c; font-weight: bold",
+  info: "color: #3498db; font-weight: bold",
+};
+const log = (msg, style = COL.info, ...rest) =>
+  console.log(`%c[AuthStore] ${msg}`, style, ...rest);
 
 export const useAuthStore = create(
   persist(
@@ -17,7 +27,7 @@ export const useAuthStore = create(
 
       /* ---------- low-level setters ---------- */
       setToken: (token, persist = true) => {
-        console.log("[AuthStore] setToken ->", token?.slice(-6), "persist:", persist);
+        log(`setToken (${persist ? "local" : "session"}) ➜ …${token?.slice(-6)}`, COL.ok);
         set({ token });
         try {
           if (persist) {
@@ -28,120 +38,121 @@ export const useAuthStore = create(
             localStorage.removeItem("authToken");
           }
         } catch (e) {
-          console.warn("[AuthStore] setToken localStorage error:", e);
+          log("setToken localStorage error", COL.err, e);
         }
       },
 
       setUser: (u) => {
-        console.log("[AuthStore] setUser ->", u);
+        log("setUser", COL.ok, u);
         set({ user: u });
         try {
           u
             ? localStorage.setItem("userInfo", JSON.stringify(u))
             : localStorage.removeItem("userInfo");
         } catch (e) {
-          console.warn("[AuthStore] setUser localStorage error:", e);
+          log("setUser localStorage error", COL.err, e);
         }
       },
 
       setError: (msg) => {
-        console.warn("[AuthStore] setError ->", msg);
+        log("setError", COL.err, msg);
         set({ error: msg });
       },
       clearError: () => {
-        console.log("[AuthStore] clearError");
+        log("clearError", COL.warn);
         set({ error: null });
       },
 
-      /* ---------- registration ---------- */
+      /* ---------- registration → auto-login → auto-getOTP ---------- */
       register: async (userData) => {
-        console.log("[AuthStore] register called with ->", userData);
+        log("register called with", userData);
         set({ isLoading: true, error: null });
         const res = await authService.register(userData);
-        console.log("[AuthStore] register response ->", res);
         if (res.error) {
           const msg = res.data?.message || res.data?.error || "Registration failed";
-          console.error("[AuthStore] register FAILED ->", msg);
+          log("register FAILED", COL.err, msg);
           set({ error: msg, isLoading: false });
           return { success: false, error: msg, status: res.status };
         }
         const temp = { email: userData.email, userId: res.data?.user?.id || res.data?.id, ...res.data };
-        console.log("[AuthStore] register SUCCESS – tempRegister ->", temp);
+        log("register SUCCESS – tempRegister", COL.ok, temp);
         set({ tempRegister: temp, error: null, isLoading: false, cameThroughAuth: true });
+
+        /* 1.  AUTO-LOGIN with same credentials  */
+        log("auto-login with registered credentials");
+        const loginRes = await get().login({
+          email: userData.email,
+          password: userData.password,
+        });
+        if (!loginRes.success) {
+          log("auto-login failed – surface error", COL.err, loginRes.error);
+          set({ error: loginRes.error });
+          return { success: false, error: loginRes.error };
+        }
+
+        /* 2.  AUTO-getOTP (now that we have a token)  */
+        const userId = loginRes.data.user.id;
+        log("auto-getOTP for logged-in user", userId);
+        const otpRes = await get().getOTP(userId);
+        if (!otpRes.success) {
+          log("auto-getOTP failed – surface error", COL.err, otpRes.error);
+          set({ error: otpRes.error || "Server did not send OTP. Please tap Resend Code." });
+        }
         return { success: true, data: res.data, requiresVerification: true };
       },
 
       setPendingVerification: (data) => {
-        console.log("[AuthStore] setPendingVerification ->", data);
+        log("setPendingVerification", COL.warn, data);
         set({ tempRegister: data });
       },
 
-      /* ---------- otp ---------- */
-      verifyOTP: async (identifier, otp) => {
-        console.log("[AuthStore] verifyOTP -> identifier:", identifier, "otp:", otp);
+      /* ---------- NEW: first-class getOTP ---------- */
+      getOTP: async (userId) => {
+        log("getOTP – userId", userId);
         set({ isLoading: true, error: null });
-        const res = await authService.verifyOTP(identifier, otp);
-        console.log("[AuthStore] verifyOTP response ->", res);
+        const res = await authService.getOTP(userId);
         if (res.error) {
-          const msg = res.data?.message || "Invalid OTP";
-          console.error("[AuthStore] verifyOTP FAILED ->", msg);
+          const msg = res.data?.message || "Failed to get OTP";
+          log("getOTP FAILED", COL.err, msg);
           set({ error: msg, isLoading: false });
           return { success: false, error: msg };
         }
-        const { token, user } = res.data?.token ? res.data : { token: res.data?.access_token, user: res.data?.user || res.data?.data };
-        if (!token || !user) {
-          console.error("[AuthStore] verifyOTP incomplete – missing token/user");
-          set({ error: "Verification incomplete", isLoading: false });
-          return { success: false, error: "Verification incomplete" };
+        /* insist backend really says “sent” */
+        if (res.data?.message !== "OTP sent") {
+          log('getOTP backend did NOT return { message: "OTP sent" }', COL.warn, res.data);
+          const msg = res.data?.message || "OTP not dispatched by server";
+          set({ error: msg, isLoading: false });
+          return { success: false, error: msg };
         }
-        console.log("[AuthStore] verifyOTP SUCCESS – token:", token.slice(-6), "user:", user);
-        set({ user, token, tempRegister: null, error: null, isLoading: false });
-        try {
-          localStorage.setItem("authToken", token);
-          localStorage.setItem("userInfo", JSON.stringify(user));
-          sessionStorage.removeItem("authToken");
-          sessionStorage.removeItem("userInfo");
-        } catch (e) {
-          console.warn("[AuthStore] verifyOTP localStorage error:", e);
-        }
-        return { success: true, data: { user, token } };
+        log("getOTP SUCCESS – server claims OTP was sent", COL.ok);
+        set({ isLoading: false });
+        return { success: true, message: "OTP sent" };
       },
 
+      /* ---------- resendOTP now DELEGATES to getOTP ---------- */
       resendOTP: async (userId) => {
-        console.log("[AuthStore] resendOTP -> userId:", userId);
-        set({ isLoading: true, error: null });
-        const res = await authService.resendOTP(userId);
-        console.log("[AuthStore] resendOTP response ->", res);
-        if (res.error) {
-          const msg = res.data?.message || "Failed to resend OTP";
-          console.error("[AuthStore] resendOTP FAILED ->", msg);
-          set({ error: msg, isLoading: false });
-          return { success: false, error: msg };
-        }
-        console.log("[AuthStore] resendOTP SUCCESS");
-        set({ isLoading: false });
-        return { success: true, message: "OTP resent successfully" };
+        /* simply call the new method */
+        return get().getOTP(userId);
       },
 
       /* ---------- login ---------- */
       login: async (credentials) => {
-        console.log("[AuthStore] login called with ->", credentials);
+        log("login called with", credentials);
         set({ isLoading: true, error: null });
         const res = await authService.login(credentials);
-        console.log("[AuthStore] login response ->", res);
         if (res.error) {
           const msg = res.data?.message || res.data?.error || "Login failed";
-          console.error("[AuthStore] login FAILED ->", msg);
+          log("login FAILED", COL.err, msg);
           set({ error: msg, isLoading: false });
           return { success: false, error: msg };
         }
         const { token, user } = res.data?.token ? res.data : { token: res.data?.access_token, user: res.data?.user || res.data?.data };
         if (!token || !user) {
-          console.error("[AuthStore] login incomplete – missing token/user");
+          log("login incomplete – missing token/user", COL.err);
           set({ error: "Invalid response from server", isLoading: false });
           return { success: false, error: "Invalid response from server" };
         }
-        console.log("[AuthStore] login SUCCESS – token:", token.slice(-6), "user:", user);
+        log("login SUCCESS – token …%s user", token.slice(-6), user);
         set({ user, token, error: null, isLoading: false, cameThroughAuth: true });
         try {
           localStorage.setItem("authToken", token);
@@ -149,20 +160,19 @@ export const useAuthStore = create(
           sessionStorage.removeItem("authToken");
           sessionStorage.removeItem("userInfo");
         } catch (e) {
-          console.warn("[AuthStore] login localStorage error:", e);
+          log("login localStorage error", COL.err, e);
         }
         return { success: true, data: { user, token } };
       },
 
       /* ---------- logout ---------- */
       logout: async () => {
-        console.log("[AuthStore] logout called");
+        log("logout called", COL.warn);
         set({ isLoading: true });
         try {
           await authService.logout();
-          console.log("[AuthStore] logout API call finished");
         } catch (e) {
-          console.warn("[AuthStore] logout API error (ignored):", e);
+          log("logout API error (ignored)", COL.warn, e);
         }
         set({ user: null, token: null, error: null, tempRegister: null, isLoading: false, cameThroughAuth: false });
         try {
@@ -171,66 +181,62 @@ export const useAuthStore = create(
           sessionStorage.removeItem("authToken");
           sessionStorage.removeItem("userInfo");
         } catch (e) {
-          console.warn("[AuthStore] logout localStorage error:", e);
+          log("logout localStorage error", COL.warn, e);
         }
         if (!window.location.pathname.includes("/login") && !window.location.pathname.includes("/register")) {
-          console.log("[AuthStore] redirecting to /login");
           setTimeout(() => (window.location.href = "/login"), 100);
         }
       },
 
       /* ---------- password reset ---------- */
       forgotPassword: async (email) => {
-        console.log("[AuthStore] forgotPassword -> email:", email);
+        log("forgotPassword – email", email);
         set({ isLoading: true, error: null });
         const res = await authService.forgotPassword(email);
-        console.log("[AuthStore] forgotPassword response ->", res);
         if (res.error) {
           const msg = res.data?.message || "Failed to send reset email";
-          console.error("[AuthStore] forgotPassword FAILED ->", msg);
+          log("forgotPassword FAILED", COL.err, msg);
           set({ error: msg, isLoading: false });
           return { success: false, error: msg };
         }
-        console.log("[AuthStore] forgotPassword SUCCESS");
+        log("forgotPassword SUCCESS", COL.ok);
         set({ isLoading: false });
         return { success: true, message: "Password reset email sent" };
       },
 
       resetPassword: async (data) => {
-        console.log("[AuthStore] resetPassword -> data:", data);
+        log("resetPassword – data", data);
         set({ isLoading: true, error: null });
         const res = await authService.resetPassword(data);
-        console.log("[AuthStore] resetPassword response ->", res);
         if (res.error) {
           const msg = res.data?.message || "Password reset failed";
-          console.error("[AuthStore] resetPassword FAILED ->", msg);
+          log("resetPassword FAILED", COL.err, msg);
           set({ error: msg, isLoading: false });
           return { success: false, error: msg };
         }
-        console.log("[AuthStore] resetPassword SUCCESS");
+        log("resetPassword SUCCESS", COL.ok);
         set({ isLoading: false });
         return { success: true, message: "Password reset successful" };
       },
 
       /* ---------- user info ---------- */
       fetchUserInfo: async () => {
-        console.log("[AuthStore] fetchUserInfo called");
+        log("fetchUserInfo started");
         set({ isLoading: true, error: null });
         const res = await authService.getUserInfo();
-        console.log("[AuthStore] fetchUserInfo response ->", res);
         if (res.error) {
           if (res.status !== 401) set({ error: res.data?.message });
-          console.warn("[AuthStore] fetchUserInfo FAILED (non-401) ->", res.data?.message);
+          log("fetchUserInfo FAILED (non-401)", COL.warn, res.data?.message);
           set({ isLoading: false });
           return { success: false };
         }
         const user = res.data?.user || res.data;
-        console.log("[AuthStore] fetchUserInfo SUCCESS -> user:", user);
+        log("fetchUserInfo SUCCESS – user", COL.ok, user);
         set({ user, isLoading: false });
         try {
           localStorage.setItem("userInfo", JSON.stringify(user));
         } catch (e) {
-          console.warn("[AuthStore] fetchUserInfo localStorage error:", e);
+          log("fetchUserInfo localStorage error", COL.err, e);
         }
         return { success: true, data: user };
       },
@@ -238,50 +244,29 @@ export const useAuthStore = create(
       /* ---------- helpers ---------- */
       isAuthenticated: () => {
         const ok = !!get().token && !!get().user;
-        console.log("[AuthStore] isAuthenticated ->", ok);
+        log("isAuthenticated ->", ok);
         return ok;
       },
       isAdmin: () => {
         const u = get().user;
         const ok = u?.role === "admin" || u?.is_admin === true;
-        console.log("[AuthStore] isAdmin ->", ok);
+        log("isAdmin ->", ok);
         return ok;
       },
-
-      /* ---------- hydration-safe initializer ---------- */
       initializeAuth: () => {
-        console.log("[AuthStore] initializeAuth started");
+        log("initializeAuth started");
         try {
           const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
           const userRaw = localStorage.getItem("userInfo");
           const user = userRaw ? JSON.parse(userRaw) : null;
-          console.log("[AuthStore] initializeAuth – token:", token?.slice(-6), "user:", user);
           set({ token: token || null, user, _authInitialized: true });
-          if (token && !user) {
-            console.log("[AuthStore] token exists but no user – fetching user info");
-            get().fetchUserInfo();
-          }
+          if (token && !user) get().fetchUserInfo();
         } catch (err) {
-          console.error("[AuthStore] initializeAuth error:", err);
+          log("initializeAuth error", COL.err, err);
           set({ token: null, user: null, _authInitialized: true });
         }
       },
-
       isAuthInitialized: () => get()._authInitialized,
-
-      /* ---------- legacy support ---------- */
-      completeRegistration: (userData, token) => {
-        console.log("[AuthStore] completeRegistration -> user:", userData, "token:", token?.slice(-6));
-        set({ user: userData, token, tempRegister: null, error: null, isLoading: false });
-        try {
-          localStorage.setItem("authToken", token);
-          localStorage.setItem("userInfo", JSON.stringify(userData));
-          sessionStorage.removeItem("authToken");
-          sessionStorage.removeItem("userInfo");
-        } catch (e) {
-          console.warn("[AuthStore] completeRegistration localStorage error:", e);
-        }
-      },
     }),
     {
       name: "auth-storage",
@@ -290,4 +275,6 @@ export const useAuthStore = create(
   )
 );
 
+// global off-switch for production
+if (typeof window !== "undefined") window.DEBUG_AUTH = true; // set false to silence
 export default useAuthStore;
