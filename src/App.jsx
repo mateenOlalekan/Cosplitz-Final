@@ -59,9 +59,8 @@ export default function App() {
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/password-reset-success" element={<PasswordResetSuccess />} />
 
-        {/* -------------------- PROTECTED DASHBOARD (user + admin) -------------------- */}
-        <Route element={<AuthGuard />}>
-          <Route element={<DashboardLayout />}>
+  
+            <Route element={<DashboardLayout />}>
             <Route path="/dashboard" element={<MainOverview />} />
             <Route path="main" element={<MainOverview />} />
             <Route path="analytics" element={<Analytics />} />
@@ -82,6 +81,9 @@ export default function App() {
               <Route path="support" element={<Support />} />
             </Route>
           </Route>
+        {/* -------------------- PROTECTED DASHBOARD (user + admin) -------------------- */}
+        <Route element={<AuthGuard />}>
+
 
           {/* -------------------- PROTECTED ADMIN ONLY -------------------- */}
           <Route path="/admin" element={<DashboardLayout />}>
