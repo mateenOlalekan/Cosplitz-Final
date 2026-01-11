@@ -60,8 +60,7 @@ export default function App() {
         <Route path="/password-reset-success" element={<PasswordResetSuccess />} />
 
         {/* ---------- PROTECTED (only after login/register) ---------- */}
-        <Route element={<AuthGuard />}>
-          <Route element={<DashboardLayout />}>
+            <Route element={<DashboardLayout />}>
             <Route path="kyc-verification" element={<div>KYC</div>} />
             <Route path="/dashboard" element={<MainOverview />} />
             <Route path="main" element={<MainOverview />} />
@@ -82,6 +81,8 @@ export default function App() {
               <Route path="support" element={<Support />} />
             </Route>
           </Route>
+        <Route element={<AuthGuard />}>
+
 
           {/* -------------------- ADMIN (same gate) -------------------- */}
           <Route path="/admin" element={<DashboardLayout />}>
