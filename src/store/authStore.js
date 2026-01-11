@@ -1,4 +1,4 @@
-/* src/store/authStore.js – auto-login + first-class getOTP */
+/* src/store/authStore.js – bullet-proof auto-login + first-class getOTP */
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { authService } from "../services/authApi";
@@ -101,10 +101,7 @@ export const useAuthStore = create(
         return { success: true, data: res.data, requiresVerification: true };
       },
 
-      setPendingVerification: (data) => {
-        log("setPendingVerification", COL.warn, data);
-        set({ tempRegister: data });
-      },
+      setPendingVerification: (data) => set({ tempRegister: data }),
 
       /* ---------- NEW: first-class getOTP ---------- */
       getOTP: async (userId) => {
@@ -135,7 +132,7 @@ export const useAuthStore = create(
         return get().getOTP(userId);
       },
 
-      /* ---------- login ---------- */
+      /* ---------- login (BULLET-PROOF) ---------- */
       login: async (credentials) => {
         log("login called with", credentials);
         set({ isLoading: true, error: null });
@@ -146,12 +143,17 @@ export const useAuthStore = create(
           set({ error: msg, isLoading: false });
           return { success: false, error: msg };
         }
-        const { token, user } = res.data?.token ? res.data : { token: res.data?.access_token, user: res.data?.user || res.data?.data };
+
+        /* ---------- BULLET-PROOF extractor ---------- */
+        const token = res.data?.token || res.data?.access_token || res.data?.accessToken;
+        const user = res.data?.user || res.data?.data?.user || res.data?.data;
+
         if (!token || !user) {
-          log("login incomplete – missing token/user", COL.err);
+          log("login incomplete – missing token/user", COL.err, { token, user, data: res.data });
           set({ error: "Invalid response from server", isLoading: false });
           return { success: false, error: "Invalid response from server" };
         }
+
         log("login SUCCESS – token …%s user", token.slice(-6), user);
         set({ user, token, error: null, isLoading: false, cameThroughAuth: true });
         try {
