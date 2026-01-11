@@ -1,5 +1,14 @@
-/* src/services/authApi.js – UNIFIED & PRODUCTION READY */
-const API_BASE_URL = "https://cosplitz-backend.onrender.com/api"; // ← NO trailing slash
+/* src/services/authApi.js – bullet-proof + coloured console logger */
+const API_BASE_URL = "https://cosplitz-backend.onrender.com/api";
+
+/* ---------- tiny coloured logger ---------- */
+const COL = {
+  ok: "color: #2ecc71; font-weight: bold",
+  err: "color: #e74c3c; font-weight: bold",
+  info: "color: #3498db; font-weight: bold",
+};
+const log = (msg, style = COL.info, ...rest) =>
+  console.log(`%c[AuthApi] ${msg}`, style, ...rest);
 
 /* ---------- helpers ---------- */
 const getAuthToken = () => {
@@ -13,9 +22,8 @@ const getAuthToken = () => {
 const isAuthPath = (path = "") =>
   ["/register", "/verify", "/login", "/verify_otp"].some((p) => path.includes(p));
 
-/* ---------- core fetch wrapper (unchanged behaviour) ---------- */
+/* ---------- core fetch wrapper (with logs) ---------- */
 async function request(path, options = {}) {
-  /*  strip leading slash so we never build “//”  */
   const cleanPath = path.replace(/^\/+/, "");
   const url = `${API_BASE_URL}/${cleanPath}`;
 
@@ -33,11 +41,12 @@ async function request(path, options = {}) {
     config.body = JSON.stringify(config.body);
   }
 
+  log(`→ ${config.method} ${url}`, COL.info, config.body ?? "");
   let response;
   try {
     response = await fetch(url, config);
   } catch (netErr) {
-    console.error("Network error:", netErr);
+    log("× NETWORK FAIL", COL.err, netErr);
     return { status: 0, data: { message: "Network error. Check connection." }, error: true };
   }
 
@@ -48,6 +57,8 @@ async function request(path, options = {}) {
   } catch {
     json = { message: "Invalid server response." };
   }
+
+  log(`← ${response.status} ${url}`, response.ok ? COL.ok : COL.err, json);
 
   if (!response.ok) {
     const { status } = response;
@@ -118,12 +129,12 @@ export const kycService = {
  * SPLITS
  * ============================================================ */
 export const splitsService = {
-  list: () => request("api/splits/"), // public available splits
+  list: () => request("api/splits/"),
   create: (splitData) => request("api/splits/", { method: "POST", body: splitData }),
   update: (id, splitData) => request(`splits/${id}/`, { method: "PATCH", body: splitData }),
   remove: (id) => request(`splits/${id}/`, { method: "DELETE" }),
   join: (id) => request(`splits/${id}/join_splits/`, { method: "POST" }),
-  mine: () => request("splits/my_splits/"), // authenticated user splits
+  mine: () => request("splits/my_splits/"),
 };
 
 /* ============================================================
