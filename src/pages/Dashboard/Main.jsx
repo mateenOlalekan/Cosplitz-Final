@@ -22,14 +22,14 @@ export default function Main(){
     navigate("/dashboard/create-splitz");
   };
     return(
-    <div className="flex flex-col gap-5 mt-3 px-4">
-      {/* 🟩 Quick Access Categories */}
+    <>
+    <div className="flex flex-col gap-5 mt-10 md:mt-3 px-4">
       <section className="flex flex-col gap-3">
         <h2 className="text-base font-semibold text-gray-900">
           Quick Access Categories
         </h2>
 
-        <div className="flex gap-1 px-2 overflow-x-auto scrollbar-hide">
+        <div className="">
           {categories.map((cat, i) => (
             <button
               key={i}
@@ -40,7 +40,7 @@ export default function Main(){
                 alt={cat.label}
                 className="w-12 h-12 mx-auto mb-1.5"
               />
-              <p className="text-[10px] font-medium text-gray-900 leading-tight">
+              <p className="text-[10px] font-medium text-gray-900">
                 {cat.label}
               </p>
             </button>
@@ -48,7 +48,7 @@ export default function Main(){
         </div>
       </section>
 
-      {/* 🟨 Special Deals */}
+
       <section className="flex flex-col gap-4">
         <h2 className="text-lg font-bold text-gray-900">#SpecialForYou</h2>
 
@@ -65,8 +65,8 @@ export default function Main(){
               <div className="relative z-10 p-4 flex flex-col justify-between h-full">
                 {/* Deal Header */}
                 <div className="flex justify-between items-center mb-3">
-                  <div className="bg-[#F8F8F8CC] rounded-lg py-1 px-4 text-xs text-[#1A051D]">
-                    {deal.special}
+                  <div className="bg-[#F8F8F8CC] rounded-xl py-1 px-2 text-xs text-[#1A051D]">
+                    {deal.badge}
                   </div>
 
                   {deal.discount && (
@@ -76,7 +76,6 @@ export default function Main(){
                   )}
                 </div>
 
-                {/* Deal Content */}
                 <div className="mb-4">
                   <h3 className="text-base font-semibold mb-1">{deal.title}</h3>
                   <p className="text-emerald-100 text-sm leading-snug">
@@ -87,7 +86,6 @@ export default function Main(){
                   </p>
                 </div>
 
-                {/* Deal Footer */}
                 <div className="flex justify-between items-center gap-3">
                   <div className="flex items-center gap-4 text-xs text-white">
                     <span className="flex items-center gap-1">
@@ -108,11 +106,12 @@ export default function Main(){
           ))}
         </div>
       </section>
-      {/* 🟦 Create Splitz Banner */}
-      <section className="flex flex-col">
+    </div>
+      
+      <section className="flex flex-col md:px-0 px-4 ">
         <div
           className="w-full bg-linear-to-r from-[#096A0F] to-[#1F8225]
-          px-5 py-5 rounded-lg flex flex-col sm:flex-row
+          px-5 py-5  mt-5 flex flex-col sm:flex-row
           sm:justify-between sm:items-center gap-4"
         >
           <div className="flex flex-col text-white">
@@ -134,6 +133,6 @@ export default function Main(){
           </button>
         </div>
       </section>
-    </div>
-    )
-}
+    
+    </>
+)}
