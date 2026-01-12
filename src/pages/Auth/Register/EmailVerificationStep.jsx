@@ -94,18 +94,8 @@ export default function EmailVerificationStep({ email, userId, onBack, onSuccess
 
       <div className="flex gap-2 mt-2" onPaste={handlePaste}>
         {otp.map((d, i) => (
-          <input
-            key={i}
-            id={`otp-${i}`}
-            type="text"
-            maxLength={1}
-            inputMode="numeric"
-            pattern="[0-9]*"
-            value={d}
-            onChange={e => handleChange(e.target.value, i)}
-            onKeyDown={e => handleKey(i, e)}
-            disabled={loading}
-            className="w-10 h-10 sm:w-12 sm:h-12 text-center text-lg font-bold border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-600 outline-none disabled:opacity-50"
+          <input  key={i} id={`otp-${i}`}  type="text" maxLength={1} inputMode="numeric" pattern="[0-9]*" value={d} onChange={e => handleChange(e.target.value, i)}
+            onKeyDown={e => handleKey(i, e)}  disabled={loading} className="w-10 h-10 sm:w-12 sm:h-12 text-center text-lg font-bold border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-600 outline-none disabled:opacity-50"
             autoFocus={i === 0}
           />
         ))}
@@ -124,8 +114,7 @@ export default function EmailVerificationStep({ email, userId, onBack, onSuccess
       {error && <p className="text-red-600 text-sm text-center max-w-xs mt-2">{error}</p>}
 
       <button
-        type="button"
-        disabled={loading || otp.some(x => x === '')}
+        type="button" disabled={loading || otp.some(x => x === '')}
         onClick={() => handleVerify()}
         className={`w-full bg-green-600 text-white py-3 rounded-lg font-semibold mt-4 ${loading || otp.some(x => x === '') ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-700'}`}
       >

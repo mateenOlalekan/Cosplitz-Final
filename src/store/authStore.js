@@ -10,14 +10,7 @@ export const registrationSchema = z.object({
   lastName    : z.string().min(1, 'Last name is required'),
   email       : z.string().email('Invalid email address'),
   nationality : z.string().optional(),
-  password    : z
-    .string()
-    .min(8, 'Password must be ≥ 8 characters')
-    .regex(/[A-Z]/, 'Password must contain an uppercase letter')
-    .regex(/\d/, 'Password must contain a number'),
-  agreeToTerms: z.boolean().refine(Boolean, {
-    message: 'You must agree to the terms and conditions',
-  }),
+  password    : z.string().min(8, 'Password must be ≥ 8 characters').regex(/[A-Z]/, 'Password must contain an uppercase letter').regex(/\d/, 'Password must contain a number'),agreeToTerms: z.boolean().refine(Boolean, {message: 'You must agree to the terms and conditions',}),
 });
 
 /* -------------------- store -------------------- */

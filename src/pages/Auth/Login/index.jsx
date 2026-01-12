@@ -19,7 +19,7 @@ const loginSchema = z.object({
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state?.from?.pathname || '/dashboard';
+  const from = location.state?.from?.pathname || '/login';
 
   const { login, isLoading, error, setError, clearError, isAuthenticated } = useAuthStore();
 
