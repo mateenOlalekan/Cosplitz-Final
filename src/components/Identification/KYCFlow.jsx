@@ -119,3 +119,12 @@
 // }
 
 // export default KYCFlow;
+import React from 'react'
+
+function KYCFlow() {
+  return (
+    <div>KYCFlow</div>
+  )
+}
+
+export default KYCFlow

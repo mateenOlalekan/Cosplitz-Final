@@ -1,10 +1,8 @@
-// src/store/authStore.js
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { z } from 'zod';
 import { authService } from '../services/authApi';
 
-// Zod schemas remain unchanged
 export const registrationSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
@@ -25,7 +23,7 @@ export const useAuthStore = create(
       token: null,
       error: null,
       isLoading: false,
-      tempRegister: null,
+      tempRegister: null, // { email, userId }
 
       // Internal helpers
       _saveToken: (token, persist = true) => {
@@ -69,7 +67,7 @@ export const useAuthStore = create(
       clearError: () => set({ error: null }),
       setLoading: (loading) => set({ isLoading: loading }),
 
-      // ✅ **NEW** – Register action that matches your UI flow
+      // Register action
       register: async (userData) => {
         set({ isLoading: true, error: null });
         const res = await authService.register(userData);
@@ -81,7 +79,7 @@ export const useAuthStore = create(
         return res;
       },
 
-      // ✅ **FIXED** – Login action (ensure token persists)
+      // Login action
       login: async (credentials, { remember = false } = {}) => {
         set({ isLoading: true, error: null });
         const res = await authService.login(credentials);
@@ -99,7 +97,7 @@ export const useAuthStore = create(
         return res;
       },
 
-      // ✅ **ENHANCED** – Logout clears ALL storage
+      // Logout
       logout: () => {
         set({ user: null, token: null, error: null, tempRegister: null, isLoading: false });
         try {
@@ -112,14 +110,14 @@ export const useAuthStore = create(
         window.location.href = '/login';
       },
 
-      // ✅ **CORRECT** – Getters
+      // Getters
       isAuthenticated: () => !!get().token,
       isAdmin: () => {
         const u = get().user;
         return u?.role === 'admin' || u?.is_admin === true;
       },
 
-      // ✅ **ROBUST** – Hydrate on app start
+      // Re-hydrate auth on app start
       initializeAuth: () => {
         try {
           const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');

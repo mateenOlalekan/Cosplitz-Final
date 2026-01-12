@@ -8,11 +8,6 @@ import { registrationSchema } from '../../../store/authStore';
 import PasswordValidation from './PasswordValidation';
 import { getAllCountries } from '../../../services/countryService';
 
-/**
- * RegistrationForm.jsx
- * Handles user input, validation, and submission of registration data
- * All business logic is delegated to parent via callbacks
- */
 export default function RegistrationForm({
   formData,
   handleInputChange,
@@ -30,12 +25,10 @@ export default function RegistrationForm({
   const nationalityRef = useRef(null);
   const dropdownRef = useRef(null);
 
-  // Load countries on mount
   useEffect(() => {
     getAllCountries().then(setCountries).catch(console.warn);
   }, []);
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (
@@ -51,9 +44,6 @@ export default function RegistrationForm({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  /**
-   * Validate single field using Zod schema
-   */
   const validateField = (field, value) => {
     try {
       registrationSchema.shape[field].parse(value);
@@ -63,9 +53,6 @@ export default function RegistrationForm({
     }
   };
 
-  /**
-   * Handle field change with real-time validation
-   */
   const handleChange = (field, value) => {
     handleInputChange((prev) => ({ ...prev, [field]: value }));
     const errorMsg = validateField(field, value);
@@ -77,9 +64,6 @@ export default function RegistrationForm({
     setFieldErrors((prev) => ({ ...prev, [field]: errorMsg }));
   };
 
-  /**
-   * Nationality dropdown filter
-   */
   const handleNationalityChange = (value) => {
     handleChange('nationality', value);
     if (!value.trim()) {
@@ -96,14 +80,8 @@ export default function RegistrationForm({
     setOpen(false);
   };
 
-  /**
-   * Form submit wrapper with full validation
-   * ✅ FIX: Pass formData instead of event object
-   */
   const onSubmit = (e) => {
     e.preventDefault();
-
-    // Full Zod validation
     const result = registrationSchema.safeParse(formData);
     if (!result.success) {
       const errors = {};
@@ -113,16 +91,13 @@ export default function RegistrationForm({
       setFieldErrors(errors);
       return;
     }
-
-    // ✅ CORRECT: Pass the actual form data object (not e)
-    console.log('Submitting payload:', formData); // Debug log to verify
-    handleFormSubmit(formData); // This was the bug - passing formData instead of e
+    handleFormSubmit(formData);
   };
 
-  const inputBaseClass =
-    'w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors';
   const inputClass = (hasError) =>
-    `${inputBaseClass} ${hasError ? 'border-red-300' : 'border-gray-300 focus:border-green-500'}`;
+    `w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors ${
+      hasError ? 'border-red-300' : 'border-gray-300 focus:border-green-500'
+    }`;
 
   return (
     <div>
@@ -139,7 +114,6 @@ export default function RegistrationForm({
         </div>
       )}
 
-      {/* Social Login Options */}
       <div className="grid grid-cols-1 gap-2 mb-3">
         <motion.button
           whileHover={{ scale: 1.02 }}
@@ -170,11 +144,8 @@ export default function RegistrationForm({
       </div>
 
       <form onSubmit={onSubmit} className="space-y-3">
-        {/* First Name */}
         <div>
-          <label className="text-sm font-medium text-gray-700 mb-1 block">
-            First Name *
-          </label>
+          <label className="text-sm font-medium text-gray-700 mb-1 block">First Name *</label>
           <input
             type="text"
             value={formData.firstName}
@@ -184,16 +155,11 @@ export default function RegistrationForm({
             className={inputClass(fieldErrors.firstName)}
             required
           />
-          {fieldErrors.firstName && (
-            <p className="text-red-600 text-xs mt-1">{fieldErrors.firstName}</p>
-          )}
+          {fieldErrors.firstName && <p className="text-red-600 text-xs mt-1">{fieldErrors.firstName}</p>}
         </div>
 
-        {/* Last Name */}
         <div>
-          <label className="text-sm font-medium text-gray-700 mb-1 block">
-            Last Name *
-          </label>
+          <label className="text-sm font-medium text-gray-700 mb-1 block">Last Name *</label>
           <input
             type="text"
             value={formData.lastName}
@@ -203,16 +169,11 @@ export default function RegistrationForm({
             className={inputClass(fieldErrors.lastName)}
             required
           />
-          {fieldErrors.lastName && (
-            <p className="text-red-600 text-xs mt-1">{fieldErrors.lastName}</p>
-          )}
+          {fieldErrors.lastName && <p className="text-red-600 text-xs mt-1">{fieldErrors.lastName}</p>}
         </div>
 
-        {/* Email */}
         <div>
-          <label className="text-sm font-medium text-gray-700 mb-1 block">
-            Email Address *
-          </label>
+          <label className="text-sm font-medium text-gray-700 mb-1 block">Email Address *</label>
           <input
             type="email"
             value={formData.email}
@@ -222,16 +183,11 @@ export default function RegistrationForm({
             className={inputClass(fieldErrors.email)}
             required
           />
-          {fieldErrors.email && (
-            <p className="text-red-600 text-xs mt-1">{fieldErrors.email}</p>
-          )}
+          {fieldErrors.email && <p className="text-red-600 text-xs mt-1">{fieldErrors.email}</p>}
         </div>
 
-        {/* Nationality (Autocomplete) */}
         <div className="relative" ref={dropdownRef}>
-          <label className="text-sm font-medium text-gray-700 mb-1 block">
-            Nationality
-          </label>
+          <label className="text-sm font-medium text-gray-700 mb-1 block">Nationality</label>
           <div className="relative">
             <input
               ref={nationalityRef}
@@ -243,20 +199,13 @@ export default function RegistrationForm({
               onBlur={() => handleBlur('nationality')}
               className={`${inputClass(fieldErrors.nationality)} pr-10`}
             />
-            <ChevronDown
-              size={18}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-            />
+            <ChevronDown size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
           {open && (
             <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
               {filtered.length ? (
                 filtered.map((c) => (
-                  <div
-                    key={c.code}
-                    onClick={() => selectCountry(c.name)}
-                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
-                  >
+                  <div key={c.code} onClick={() => selectCountry(c.name)} className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm">
                     {c.name}
                   </div>
                 ))
@@ -265,16 +214,11 @@ export default function RegistrationForm({
               )}
             </div>
           )}
-          {fieldErrors.nationality && (
-            <p className="text-red-600 text-xs mt-1">{fieldErrors.nationality}</p>
-          )}
+          {fieldErrors.nationality && <p className="text-red-600 text-xs mt-1">{fieldErrors.nationality}</p>}
         </div>
 
-        {/* Password */}
         <div className="mb-4">
-          <label className="text-sm font-medium text-gray-700 mb-1 block">
-            Password *
-          </label>
+          <label className="text-sm font-medium text-gray-700 mb-1 block">Password *</label>
           <div className="relative">
             <input
               type={showPassword ? 'text' : 'password'}
@@ -294,12 +238,9 @@ export default function RegistrationForm({
             </button>
           </div>
           <PasswordValidation password={formData.password} />
-          {fieldErrors.password && (
-            <p className="text-red-600 text-xs mt-1">{fieldErrors.password}</p>
-          )}
+          {fieldErrors.password && <p className="text-red-600 text-xs mt-1">{fieldErrors.password}</p>}
         </div>
 
-        {/* Terms Agreement */}
         <div>
           <label className="flex gap-2 text-sm text-gray-600 mt-2 cursor-pointer">
             <input
@@ -307,40 +248,26 @@ export default function RegistrationForm({
               checked={formData.agreeToTerms}
               onChange={(e) => handleChange('agreeToTerms', e.target.checked)}
               onBlur={() => handleBlur('agreeToTerms')}
-              className={`rounded focus:ring-green-500 ${
-                fieldErrors.agreeToTerms ? 'border-red-300' : ''
-              }`}
+              className={`rounded focus:ring-green-500 ${fieldErrors.agreeToTerms ? 'border-red-300' : ''}`}
             />
             <span>
               I agree to the{' '}
-              <a href="/terms" className="text-green-600 hover:underline font-medium">
-                Terms
-              </a>
-              ,{' '}
-              <a href="/privacy" className="text-green-600 hover:underline font-medium">
-                Privacy
-              </a>{' '}
+              <a href="/terms" className="text-green-600 hover:underline font-medium">Terms</a>,{' '}
+              <a href="/privacy" className="text-green-600 hover:underline font-medium">Privacy</a>{' '}
               &{' '}
-              <a href="/fees" className="text-green-600 hover:underline font-medium">
-                Fees
-              </a>
+              <a href="/fees" className="text-green-600 hover:underline font-medium">Fees</a>
               .
             </span>
           </label>
-          {fieldErrors.agreeToTerms && (
-            <p className="text-red-600 text-xs mt-1">{fieldErrors.agreeToTerms}</p>
-          )}
+          {fieldErrors.agreeToTerms && <p className="text-red-600 text-xs mt-1">{fieldErrors.agreeToTerms}</p>}
         </div>
 
-        {/* Submit Button */}
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           type="submit"
           disabled={loading}
-          className={`w-full bg-green-600 text-white py-3 rounded-lg font-semibold transition-all duration-200 ${
-            loading ? 'opacity-60 cursor-not-allowed' : 'hover:bg-green-700'
-          }`}
+          className={`w-full bg-green-600 text-white py-3 rounded-lg font-semibold transition-all duration-200 ${loading ? 'opacity-60 cursor-not-allowed' : 'hover:bg-green-700'}`}
         >
           {loading ? (
             <span className="flex items-center justify-center gap-2">
@@ -354,9 +281,7 @@ export default function RegistrationForm({
 
         <p className="text-center text-sm text-gray-600 mt-3">
           Already have an account?{' '}
-          <Link to="/login" className="text-green-600 hover:underline font-medium">
-            Log In
-          </Link>
+          <Link to="/login" className="text-green-600 hover:underline font-medium">Log In</Link>
         </p>
       </form>
     </div>
