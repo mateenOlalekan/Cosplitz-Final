@@ -13,7 +13,7 @@ function DashboardHeader({ setSidebarOpen, sidebarOpen, isMobile }) {
         <div className="px-4 py-4">
           <div className="flex items-center justify-between mb-2">
             <img src={logo} alt="Logo" className="h-7 w-auto cursor-pointer" onClick={() => navigate("/dashboard")} />
-            <button onClick={() => setSidebarOpen((s) => !s)} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors" aria-label="Toggle sidebar">
+            <button onClick={() => setSidebarOpen(!sidebarOpen)}  className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors" aria-label="Toggle sidebar">
               <Menu size={20} />
             </button>
           </div>

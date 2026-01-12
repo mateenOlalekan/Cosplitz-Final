@@ -1,248 +1,111 @@
-import { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
-import { FcGoogle } from "react-icons/fc";
-import { PiAppleLogoBold } from "react-icons/pi";
-import { Eye, EyeOff } from "lucide-react";
-import { z } from "zod";
-import PasswordValidation from "./PasswordValidation";
+import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { FcGoogle } from 'react-icons/fc';
+import { PiAppleLogoBold } from 'react-icons/pi';
+import { Eye, EyeOff, ChevronDown } from 'lucide-react';
+import PasswordValidation from './PasswordValidation';
+import { getAllCountries } from '../../../services/countryService';
 
-/* ---------- Zod schema ---------- */
-const schema = z.object({
-  firstName: z.string().min(2, "First name must be at least 2 characters"),
-  lastName: z.string().min(2, "Last name must be at least 2 characters"),
-  email: z.string().email("Please enter a valid email address"),
-  nationality: z.string().optional(),
-  password: z
-    .string()
-    .min(8, "Password must be at least 8 characters")
-    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-    .regex(/\d/, "Password must contain at least one number"),
-  agreeToTerms: z.literal(true, {
-    errorMap: () => ({ message: "You must agree to the terms & conditions" }),
-  }),
-});
-
-function RegistrationForm({ formData, handleInputChange, handleFormSubmit, handleSocialRegister, loading, error }) {
+function RegistrationForm({ formData, handleInputChange, handleFormSubmit, handleSocialRegister, loading, error, validationErrors }) {
   const [showPassword, setShowPassword] = useState(false);
-  const [touched, setTouched] = useState({});
+  const [countries, setCountries] = useState([]);
+  const [filtered, setFiltered] = useState([]);
+  const [open, setOpen] = useState(false);
+  const nationalityRef = useRef(null);
+  const dropdownRef = useRef(null);
 
-  /* ---------- derived validation ---------- */
-  const fieldErrors = useMemo(() => {
-    const res = schema.safeParse(formData);
-    return res.success ? {} : res.error.flatten().fieldErrors;
-  }, [formData]);
+  useEffect(() => {
+    getAllCountries().then(setCountries).catch(console.warn);
+  }, []);
 
-  /* ---------- helpers ---------- */
-  const getError = (name) => (touched[name] && fieldErrors[name]?.[0] ? fieldErrors[name][0] : "");
+  useEffect(() => {
+    const outside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target) && nationalityRef.current && !nationalityRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', outside);
+    return () => document.removeEventListener('mousedown', outside);
+  }, []);
 
-  const handleBlur = (name) => setTouched((t) => ({ ...t, [name]: true }));
-
-  const handleChange = (name, value) => {
-    handleInputChange(name, value);
-    if (!touched[name]) setTouched((t) => ({ ...t, [name]: true }));
+  const onNationalityChange = (val) => {
+    handleInputChange('nationality', val);
+    if (!val.trim()) { setFiltered(countries); setOpen(true); return; }
+    setFiltered(countries.filter(c => c.name.toLowerCase().includes(val.toLowerCase())));
+    setOpen(true);
   };
 
-  /* ---------- submit ---------- */
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setTouched(Object.fromEntries(schema.keyof().options.map((k) => [k, true])));
-    const res = schema.safeParse(formData);
-    if (!res.success) return;
-    handleFormSubmit(e);
+  const selectCountry = (name) => {
+    handleInputChange('nationality', name);
+    setOpen(false);
   };
-
-  const isValid = useMemo(() => schema.safeParse(formData).success, [formData]);
 
   return (
-    <div className="w-full">
-      <div className="text-center mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Create Your Account</h1>
-        <p className="text-gray-500 text-sm mt-1">Let's get started with real-time cost sharing.</p>
+    <div>
+      <h1 className="text-2xl sm:text-3xl text-center font-bold text-gray-900">Create Your Account</h1>
+      <p className="text-gray-500 text-center text-sm mt-1 mb-4">Let's get started with real-time cost sharing.</p>
+
+      {error && <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-3 text-center">{error}</div>}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="button" onClick={() => handleSocialRegister('google')} className="flex items-center justify-center gap-3 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"><FcGoogle size={20} /><span className="text-gray-700 text-sm">Sign Up with Google</span></motion.button>
+        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="button" onClick={() => handleSocialRegister('apple')} className="flex items-center justify-center gap-3 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"><PiAppleLogoBold size={20} /><span className="text-gray-700 text-sm">Sign Up with Apple</span></motion.button>
       </div>
 
-      {/* Social Login Buttons */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
-        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="button" onClick={() => handleSocialRegister("google")} disabled={loading} className="flex items-center justify-center gap-3 px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-          <FcGoogle size={20} />
-          <span className="text-gray-700 text-sm">Sign Up with Google</span>
-        </motion.button>
+      <div className="flex items-center my-4"><div className="flex-grow border-t border-gray-300"></div><span className="mx-2 text-gray-500 text-sm">Or</span><div className="flex-grow border-t border-gray-300"></div></div>
 
-        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="button" onClick={() => handleSocialRegister("apple")} disabled={loading} className="flex items-center justify-center gap-3 px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-          <PiAppleLogoBold size={20} />
-          <span className="text-gray-700 text-sm">Sign Up with Apple</span>
-        </motion.button>
-      </div>
-
-      {/* Divider */}
-      <div className="flex items-center my-4">
-        <div className="flex-grow border-t border-gray-300"></div>
-        <span className="mx-4 text-gray-500 text-sm">Or sign up with email</span>
-        <div className="flex-grow border-t border-gray-300"></div>
-      </div>
-
-      {/* Error Message from Store */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-4 text-center">{error}</div>
-      )}
-
-      {/* Registration Form */}
-      <form onSubmit={handleSubmit} className="space-y-2">
-        {/* firstName */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-gray-700 block">First Name *</label>
-          <input
-            type="text"
-            name="firstName"
-            value={formData.firstName}
-            onChange={(e) => handleChange("firstName", e.target.value)}
-            onBlur={() => handleBlur("firstName")}
-            placeholder="Enter your first name"
-            className={`w-full px-3 py-1.5 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors ${
-              getError("firstName") ? "border-red-400" : "border-gray-300 focus:border-green-600"
-            } disabled:opacity-50`}
-            disabled={loading}
-          />
-          {getError("firstName") && <p className="text-red-500 text-xs mt-1">{getError("firstName")}</p>}
-        </div>
-
-        {/* lastName */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-gray-700 block">Last Name *</label>
-          <input
-            type="text"
-            name="lastName"
-            value={formData.lastName}
-            onChange={(e) => handleChange("lastName", e.target.value)}
-            onBlur={() => handleBlur("lastName")}
-            placeholder="Enter your last name"
-            className={`w-full px-3 py-1.5 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors ${
-              getError("lastName") ? "border-red-400" : "border-gray-300 focus:border-green-600"
-            } disabled:opacity-50`}
-            disabled={loading}
-          />
-          {getError("lastName") && <p className="text-red-500 text-xs mt-1">{getError("lastName")}</p>}
-        </div>
-
-        {/* email */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-gray-700 block">Email Address *</label>
-          <input
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={(e) => handleChange("email", e.target.value)}
-            onBlur={() => handleBlur("email")}
-            placeholder="you@example.com"
-            className={`w-full px-3 py-1.5 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors ${
-              getError("email") ? "border-red-400" : "border-gray-300 focus:border-green-600"
-            } disabled:opacity-50`}
-            disabled={loading}
-          />
-          {getError("email") && <p className="text-red-500 text-xs mt-1">{getError("email")}</p>}
-        </div>
+      <form onSubmit={handleFormSubmit} className="space-y-3">
+        {[
+          { key: 'firstName', label: 'First Name', type: 'text' },
+          { key: 'lastName', label: 'Last Name', type: 'text' },
+          { key: 'email', label: 'Email Address', type: 'email' },
+        ].map(f => (
+          <div key={f.key}>
+            <label className="text-sm font-medium text-gray-700 mb-1 block">{f.label} *</label>
+            <input type={f.type} value={formData[f.key]} placeholder={`Enter your ${f.label.toLowerCase()}`} onChange={e => handleInputChange(f.key, e.target.value)} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors ${validationErrors[f.key] ? 'border-red-300' : 'border-gray-300'}`} required />
+            {validationErrors[f.key] && <p className="text-red-600 text-xs mt-1">{validationErrors[f.key]}</p>}
+          </div>
+        ))}
 
         {/* nationality */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-gray-700 block">Nationality</label>
-          <input
-            type="text"
-            name="nationality"
-            value={formData.nationality}
-            onChange={(e) => handleChange("nationality", e.target.value)}
-            placeholder="Enter your Nationality"
-            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors disabled:opacity-50"
-            disabled={loading}
-          />
+        <div className="relative" ref={dropdownRef}>
+          <label className="text-sm font-medium text-gray-700 mb-1 block">Nationality</label>
+          <div className="relative">
+            <input ref={nationalityRef} type="text" value={formData.nationality} placeholder="Select your nationality" onChange={e => onNationalityChange(e.target.value)} onFocus={() => setOpen(true)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors pr-10" />
+            <ChevronDown size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          </div>
+          {open && (
+            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+              {filtered.length ? filtered.map(c => <div key={c.code} onClick={() => selectCountry(c.name)} className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm">{c.name}</div>)
+                : <div className="px-3 py-2 text-gray-500 text-sm">No countries found</div>}
+            </div>
+          )}
         </div>
 
         {/* password */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-gray-700 block">Password *</label>
+        <div className="mb-4">
+          <label className="text-sm font-medium text-gray-700 mb-1 block">Password *</label>
           <div className="relative">
-            <input
-              type={showPassword ? "text" : "password"}
-              name="password"
-              value={formData.password}
-              onChange={(e) => handleChange("password", e.target.value)}
-              onBlur={() => handleBlur("password")}
-              placeholder="Create a strong password"
-              className={`w-full px-3 py-1.5 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors pr-10 ${
-                getError("password") ? "border-red-400" : "border-gray-300 focus:border-green-600"
-              } disabled:opacity-50`}
-              disabled={loading}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((s) => !s)}
-              disabled={loading}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
-              aria-label={showPassword ? "Hide password" : "Show password"}
-            >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
+            <input type={showPassword ? 'text' : 'password'} value={formData.password} placeholder="Create your password" onChange={e => handleInputChange('password', e.target.value)} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-colors pr-10 ${validationErrors.password ? 'border-red-300' : 'border-gray-300'}`} required />
+            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-2 pr-1 flex items-center text-gray-400 hover:text-gray-600 transition-colors">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
           </div>
-          {getError("password") && <p className="text-red-500 text-xs mt-1">{getError("password")}</p>}
           <PasswordValidation password={formData.password} />
+          {validationErrors.password && <p className="text-red-600 text-xs mt-1">{validationErrors.password}</p>}
         </div>
 
-        {/* agreeToTerms */}
-        <div className="mt-4">
-          <label className="flex items-start gap-3 text-sm text-gray-600 cursor-pointer">
-            <input
-              type="checkbox"
-              name="agreeToTerms"
-              checked={formData.agreeToTerms}
-              onChange={(e) => handleChange("agreeToTerms", e.target.checked)}
-              className="mt-0.5 rounded focus:ring-green-500 text-green-600 disabled:opacity-50"
-              disabled={loading}
-            />
-            <span className="text-left">
-              I agree to the{" "}
-              <a href="/terms" className="text-green-600 hover:underline font-medium hover:text-green-700 transition-colors" target="_blank" rel="noopener noreferrer">
-                Terms
-              </a>
-              ,{" "}
-              <a href="/privacy" className="text-green-600 hover:underline font-medium hover:text-green-700 transition-colors" target="_blank" rel="noopener noreferrer">
-                Privacy
-              </a>{" "}
-              &{" "}
-              <a href="/fees" className="text-green-600 hover:underline font-medium hover:text-green-700 transition-colors" target="_blank" rel="noopener noreferrer">
-                Fees
-              </a>
-              .
-            </span>
+        {/* terms */}
+        <div>
+          <label className="flex gap-2 text-sm text-gray-600 mt-2 cursor-pointer">
+            <input type="checkbox" checked={formData.agreeToTerms} onChange={e => handleInputChange('agreeToTerms', e.target.checked)} className={`rounded focus:ring-green-500 ${validationErrors.agreeToTerms ? 'border-red-300' : ''}`} />
+            <span>I agree to the <a href="/terms" className="text-green-600 hover:underline font-medium">Terms</a>, <a href="/privacy" className="text-green-600 hover:underline font-medium">Privacy</a> & <a href="/fees" className="text-green-600 hover:underline font-medium">Fees</a>.</span>
           </label>
-          {getError("agreeToTerms") && <p className="text-red-500 text-xs mt-1 ml-7">{getError("agreeToTerms")}</p>}
+          {validationErrors.agreeToTerms && <p className="text-red-600 text-xs mt-1">{validationErrors.agreeToTerms}</p>}
         </div>
 
-        {/* Submit Button */}
-        <motion.button
-          whileHover={{ scale: isValid && !loading ? 1.02 : 1 }}
-          whileTap={{ scale: isValid && !loading ? 0.98 : 1 }}
-          type="submit"
-          disabled={!isValid || loading}
-          className={`w-full py-3 rounded-lg font-semibold mt-6 transition-all duration-200 ${
-            !isValid || loading ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-green-600 text-white hover:bg-green-700"
-          }`}
-        >
-          {loading ? (
-            <span className="flex items-center justify-center gap-2">
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              Creating Account...
-            </span>
-          ) : (
-            "Create Account"
-          )}
+        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="submit" disabled={loading} className={`w-full bg-green-600 text-white py-3 rounded-lg font-semibold transition-all duration-200 ${loading ? 'opacity-60 cursor-not-allowed' : 'hover:bg-green-700'}`}>
+          {loading ? <span className="flex items-center justify-center gap-2"><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>Creating Account...</span> : 'Create Account'}
         </motion.button>
 
-        {/* Login Link */}
-        <p className="text-center text-sm text-gray-600 pt-4">
-          Already have an account?{" "}
-          <Link to="/login" className="text-green-600 hover:underline font-medium hover:text-green-700 transition-colors">
-            Log In
-          </Link>
-        </p>
+        <p className="text-center text-sm text-gray-600 mt-3">Already have an account? <Link to="/login" className="text-green-600 hover:underline font-medium">Log In</Link></p>
       </form>
     </div>
   );

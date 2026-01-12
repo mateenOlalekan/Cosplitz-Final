@@ -1,174 +1,135 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { useAuthStore } from "../../../store/authStore";
-import { ArrowLeft, Mail } from "lucide-react";
-import { z } from "zod";
+import { useEffect, useState } from 'react';
+import { authService } from '../../../services/authApi';
+import { useAuthStore } from '../../../store/authStore';
+import { ArrowLeft, Mail } from 'lucide-react';
 
-const otpSchema = z.string().length(6).regex(/^\d+$/);
-
-export default function EmailVerificationStep({ email, userId, onBack, onSuccess }) {
-  const { verifyOTP, resendOTP, isLoading, error, setError, clearError } = useAuthStore();
-
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+export default function EmailVerificationStep({ email, userId, onBack, onSuccess, onVerificationFailed }) {
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
   const [timer, setTimer] = useState(180);
-  const [resending, setResending] = useState(false);
-  const inputRefs = useRef([]);
+  const { clearError } = useAuthStore();
 
-  /* countdown */
   useEffect(() => {
     if (timer <= 0) return;
-    const id = setInterval(() => setTimer((t) => t - 1), 1000);
-    return () => clearInterval(id);
+    const i = setInterval(() => setTimer(t => t - 1), 1000);
+    return () => clearInterval(i);
   }, [timer]);
 
-  /* focus first input */
-  useEffect(() => {
-    inputRefs.current[0]?.focus();
-  }, []);
+  const handleChange = (val, idx) => {
+    if (!/^[0-9]?$/.test(val)) return;
+    const newOtp = [...otp];
+    newOtp[idx] = val;
+    setOtp(newOtp);
+    setError('');
+    if (val && idx < 5) document.getElementById(`otp-${idx + 1}`)?.focus();
+    if (newOtp.every(d => d !== '')) handleVerify(newOtp.join(''));
+  };
 
-  /* submit + auto-advance */
-  const handleSubmit = useCallback(
-    async (code) => {
-      try {
-        otpSchema.parse(code);
-      } catch (e) {
-        return setError(e.errors?.[0]?.message || "Invalid OTP");
-      }
-      clearError();
-      const res = await verifyOTP(email, code);
-      if (res.success) return onSuccess();
-      setError(res.error || "Verification failed");
-      setOtp(["", "", "", "", "", ""]);
-      inputRefs.current[0]?.focus();
-    },
-    [email, verifyOTP, onSuccess, setError, clearError]
-  );
+  const handleKey = (idx, e) => {
+    if (e.key === 'Backspace' && !otp[idx] && idx > 0) document.getElementById(`otp-${idx - 1}`)?.focus();
+  };
 
-  /* single-digit input helpers */
-  const handleChange = useCallback(
-    (val, idx) => {
-      if (!/^[0-9]?$/.test(val)) return;
-      const newOtp = [...otp];
-      newOtp[idx] = val;
-      setOtp(newOtp);
-      if (error) clearError();
-      if (val && idx < 5) inputRefs.current[idx + 1]?.focus();
-      if (newOtp.every(Boolean)) handleSubmit(newOtp.join(""));
-    },
-    [otp, error, clearError, handleSubmit]
-  );
+  const handlePaste = (e) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text/plain').trim();
+    if (/^\d{6}$/.test(pasted)) {
+      setOtp(pasted.split(''));
+      setError('');
+      handleVerify(pasted);
+    }
+  };
 
-  const handleKeyDown = useCallback(
-    (idx, e) => {
-      if (e.key === "Backspace" && !otp[idx] && idx > 0) inputRefs.current[idx - 1]?.focus();
-    },
-    [otp]
-  );
+  const handleVerify = async (code = null) => {
+    const codeStr = code || otp.join('');
+    if (codeStr.length !== 6) return setError('Enter the complete 6-digit code.');
+    setLoading(true);
+    setError('');
+    clearError();
+    try {
+      const res = await authService.verifyOTP(email, codeStr);
+      if (res?.success) return onSuccess();
+      const msg = res?.data?.message || 'Invalid OTP.';
+      setError(msg);
+      onVerificationFailed?.(msg);
+    } catch (err) {
+      console.error(err);
+      const msg = 'Verification failed.';
+      setError(msg);
+      onVerificationFailed?.(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const handlePaste = useCallback(
-    (e) => {
-      e.preventDefault();
-      const pasted = e.clipboardData.getData("text").trim();
-      if (/^\d{6}$/.test(pasted)) {
-        setOtp(pasted.split(""));
-        if (error) clearError();
-        handleSubmit(pasted);
-      } else {
-        setError("Paste a valid 6-digit code");
-      }
-    },
-    [error, clearError, setError, handleSubmit]
-  );
-
-  /* resend handler */
-  const handleResend = useCallback(async () => {
+  const handleResend = async () => {
     if (timer > 0) return;
-    setResending(true);
-    const res = await resendOTP(userId);
-    if (res.success) {
-      setTimer(180);
-      setOtp(["", "", "", "", "", ""]);
-      inputRefs.current[0]?.focus();
-    } else setError(res.error || "Could not resend");
-    setResending(false);
-  }, [timer, userId, resendOTP, setError]);
+    setResendLoading(true);
+    setError('');
+    try {
+      const res = await authService.resendOTP(userId);
+      if (res?.success) {
+        setTimer(180);
+        setOtp(['', '', '', '', '', '']);
+        document.getElementById('otp-0')?.focus();
+      } else setError(res?.data?.message || 'Could not resend OTP.');
+    } catch {
+      setError('Failed to resend OTP.');
+    } finally {
+      setResendLoading(false);
+    }
+  };
 
-  const formatTime = (t) => `${Math.floor(t / 60)}:${(t % 60).toString().padStart(2, "0")}`;
+  const fmt = t => `${Math.floor(t / 60)}:${(t % 60).toString().padStart(2, '0')}`;
 
   return (
     <div className="flex flex-col items-center gap-5 py-8 relative w-full">
-      <button onClick={onBack} className="absolute left-4 top-4 text-gray-600 hover:text-green-600 transition-colors disabled:opacity-50" disabled={isLoading} aria-label="Go back">
-        <ArrowLeft size={28} />
-      </button>
+      <button onClick={onBack} disabled={loading} className="absolute left-4 top-4 text-gray-600 hover:text-green-600 transition disabled:opacity-50"><ArrowLeft size={28} /></button>
 
       <h2 className="text-xl font-bold text-gray-800 mt-8">Verify Your Email</h2>
-      <p className="text-gray-500 text-sm text-center max-w-xs">
-        Enter the 6-digit code sent to <span className="text-green-600 font-medium">{email}</span>
-      </p>
+      <p className="text-gray-500 text-sm text-center max-w-xs">Enter the code sent to <span className="text-green-600 font-medium">{email}</span>.</p>
 
-      <div className="bg-[#1F82250D] rounded-full w-14 h-14 flex items-center justify-center">
-        <Mail className="text-[#1F8225]" size={24} />
-      </div>
+      <div className="bg-[#1F82250D] rounded-full w-14 h-14 flex items-center justify-center"><Mail className="text-[#1F8225]" size={24} /></div>
 
       <div className="flex gap-2 mt-2" onPaste={handlePaste}>
         {otp.map((d, i) => (
           <input
             key={i}
-            ref={(el) => (inputRefs.current[i] = el)}
+            id={`otp-${i}`}
             type="text"
-            inputMode="numeric"
             maxLength={1}
+            inputMode="numeric"
+            pattern="[0-9]*"
             value={d}
-            disabled={isLoading}
-            onChange={(e) => handleChange(e.target.value, i)}
-            onKeyDown={(e) => handleKeyDown(i, e)}
-            className={`w-10 h-10 sm:w-12 sm:h-12 text-center text-lg font-bold border-2 rounded-lg outline-none transition-all ${
-              error ? "border-red-400 focus:ring-2 focus:ring-red-300" : "border-gray-300 focus:ring-2 focus:ring-green-600"
-            } disabled:opacity-50`}
-            autoComplete="off"
-            aria-label={`Digit ${i + 1}`}
+            onChange={e => handleChange(e.target.value, i)}
+            onKeyDown={e => handleKey(i, e)}
+            disabled={loading}
+            className="w-10 h-10 sm:w-12 sm:h-12 text-center text-lg font-bold border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-600 outline-none disabled:opacity-50"
+            autoFocus={i === 0}
           />
         ))}
       </div>
 
       <div className="text-center mt-4">
         {timer > 0 ? (
-          <p className="text-sm text-gray-600">
-            Resend code in <span className="font-semibold text-green-600">{formatTime(timer)}</span>
-          </p>
+          <p className="text-sm text-gray-600">Resend code in <span className="font-semibold">{fmt(timer)}</span></p>
         ) : (
-          <button type="button" onClick={handleResend} disabled={resending} className="text-green-600 hover:text-green-700 font-medium text-sm disabled:opacity-50">
-            {resending ? (
-              <span className="flex items-center gap-2">
-                <div className="w-3 h-3 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
-                Resending...
-              </span>
-            ) : (
-              "Resend Code"
-            )}
+          <button type="button" onClick={handleResend} disabled={resendLoading} className="text-green-600 hover:text-green-700 font-medium text-sm transition-colors disabled:opacity-50">
+            {resendLoading ? <span className="flex items-center gap-2"><div className="w-3 h-3 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>Resending...</span> : 'Resend Code'}
           </button>
         )}
       </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg text-center max-w-xs mt-2">{error}</div>
-      )}
+      {error && <p className="text-red-600 text-sm text-center max-w-xs mt-2">{error}</p>}
 
       <button
         type="button"
-        onClick={() => handleSubmit(otp.join(""))}
-        disabled={isLoading || otp.some((d) => !d)}
-        className={`w-full py-3 rounded-lg font-semibold mt-4 transition-all ${
-          isLoading || otp.some((d) => !d) ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-green-600 text-white hover:bg-green-700 active:scale-[0.98]"
-        }`}
+        disabled={loading || otp.some(x => x === '')}
+        onClick={() => handleVerify()}
+        className={`w-full bg-green-600 text-white py-3 rounded-lg font-semibold mt-4 ${loading || otp.some(x => x === '') ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-700'}`}
       >
-        {isLoading ? (
-          <span className="flex items-center justify-center gap-2">
-            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            Verifying...
-          </span>
-        ) : (
-          "Verify Email"
-        )}
+        {loading ? <span className="flex items-center justify-center gap-2"><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>Verifying...</span> : 'Verify Email'}
       </button>
     </div>
   );
