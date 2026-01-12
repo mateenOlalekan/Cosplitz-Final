@@ -139,7 +139,7 @@ const handleFormSubmit = async (submittedData) => {
 
         completeRegistration(userData, loginRes.data.token);
         setCurrentStep(3);
-        cleanupTimer.current = setTimeout(() => navigate('/dashboard'), 2000);
+        cleanupTimer.current = setTimeout(() => navigate('/dashboard/post-onboarding'), 2000);
       } else {
         setError('Email verified! Please log in manually');
         setCurrentStep(3);
