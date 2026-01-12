@@ -66,12 +66,12 @@ export default function Register() {
     try {
       // Transform form data to API payload
       const payload = {
-        first_name: submittedData.firstName.trim(),
-        last_name: submittedData.lastName.trim(),
-        email: submittedData.email.toLowerCase().trim(),
-        password: submittedData.password,
-        username: submittedData.email.split('@')[0],
-        nationality: submittedData.nationality || '',
+        first_name: (submittedData.firstName || '').trim(),
+        last_name:  (submittedData.lastName  || '').trim(),
+        email:      (submittedData.email     || '').trim(),
+        password:   (submittedData.password  || '').trim(),
+        username:   (submittedData.email?.split('@')[0] || ''),
+        nationality:(submittedData.nationality || '').trim(),
       };
 
       const res = await authService.register(payload);
