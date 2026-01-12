@@ -104,36 +104,29 @@ export const authService = {
   },
 
   // ==== CORRECT: POST /otp/ with user_id in body ====
-  getOTP: async (userId) => {
-    if (!userId) return { status: 400, data: { message: 'User ID is required.' }, error: true };
-    
-    try {
-      // Backend expects: POST /api/otp/ { user_id: "291" }
-      const res = await request('/otp/', { 
-        method: 'POST', 
-        body: { user_id: userId.toString() } 
-      });
-      return res;
-    } catch (err) {
-      log('Get OTP error', COL.err, err);
-      return { status: 0, data: { message: 'Failed to send OTP. Try resend button.' }, error: true };
-    }
-  },
+getOTP: async (userId) => {
+  if (!userId) {
+    return {
+      status: 400,
+      data: { message: 'User ID is required.' },
+      error: true,
+    };
+  }
 
-  verifyOTP: async (identifier, otp) => {
-    if (!identifier || !otp) return { status: 400, data: { message: 'Email and OTP are required.' }, error: true };
-    
-    const body = /@/.test(identifier)
-      ? { email: identifier.toLowerCase().trim(), otp: otp.toString().trim() }
-      : { user_id: identifier.toString(), otp: otp.toString().trim() };
-    
-    try {
-      return await request('/verify_otp', { method: 'POST', body });
-    } catch (err) {
-      log('Verify OTP error', COL.err, err);
-      return { status: 0, data: { message: 'OTP verification failed.' }, error: true };
-    }
-  },
+  try {
+    return await request(`/otp/${userId}/`, {
+      method: 'GET',
+    });
+  } catch (err) {
+    log('Get OTP error', COL.err, err);
+    return {
+      status: 0,
+      data: { message: 'Failed to send OTP. Try resend button.' },
+      error: true,
+    };
+  }
+},
+
 
   resendOTP: (userId) => authService.getOTP(userId),
 
