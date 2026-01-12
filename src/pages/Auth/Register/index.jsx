@@ -8,7 +8,12 @@ import RegistrationForm from './RegistrationForm';
 import EmailVerificationStep from './EmailVerificationStep';
 import Successful from './Successful';
 
-
+/**
+ * Multi-step registration flow:
+ * Step 1: Registration form → creates account
+ * Step 2: OTP verification → confirms email
+ * Step 3: Success → auto-redirects to dashboard
+ */
 export default function Register() {
   const navigate = useNavigate();
   const cleanupTimer = useRef(null);
@@ -58,7 +63,13 @@ export default function Register() {
     clearError();
   }, [currentStep, clearError]);
 
-
+  /**
+   * Step 1: Submit registration
+   * - Validates form data (Zod schema)
+   * - Calls /register/ endpoint
+   * - Stores temp data for OTP step
+   * - Auto-triggers OTP send
+   */
   const handleFormSubmit = async (submittedData) => {
     clearError();
     setStoreLoading(true);
@@ -67,12 +78,15 @@ export default function Register() {
       // Transform form data to API payload
       const payload = {
         first_name: (submittedData.firstName || '').trim(),
-        last_name:  (submittedData.lastName  || '').trim(),
-        email:      (submittedData.email     || '').trim(),
-        password:   (submittedData.password  || '').trim(),
-        username:   (submittedData.email?.split('@')[0] || ''),
-        nationality:(submittedData.nationality || '').trim(),
+        last_name: (submittedData.lastName || '').trim(),
+        email: (submittedData.email || '').trim().toLowerCase(),
+        password: (submittedData.password || '').trim(),
+        username: (submittedData.email?.split('@')[0] || ''),
+        nationality: (submittedData.nationality || '').trim(),
       };
+
+      // Debug log to verify payload
+      console.log('API payload:', payload);
 
       const res = await authService.register(payload);
 
@@ -121,7 +135,12 @@ export default function Register() {
     }
   };
 
-
+  /**
+   * Step 2: OTP verification success callback
+   * - Automatically logs in the user to get a token
+   * - Stores token and user data in global state
+   * - Advances to success step
+   */
   const handleEmailVerificationSuccess = async () => {
     try {
       // Auto-login to obtain token
@@ -163,20 +182,26 @@ export default function Register() {
     }
   };
 
-
+  /**
+   * Step 2: OTP verification failure callback
+   */
   const handleVerificationFailed = (message) => {
     setError(message);
     // Optional: reload after delay to reset form
     cleanupTimer.current = setTimeout(() => window.location.reload(), 1500);
   };
 
-
+  /**
+   * Back button handler (Step 2 → Step 1)
+   */
   const handleBackToStep1 = () => {
     clearError();
     setCurrentStep(1);
   };
 
-
+  /**
+   * Social registration placeholder
+   */
   const handleSocialRegister = (provider) => {
     setError(`${provider} registration is coming soon!`);
   };

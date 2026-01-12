@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { FcGoogle } from 'react-icons/fc';
 import { PiAppleLogoBold } from 'react-icons/pi';
 import { Eye, EyeOff, ChevronDown } from 'lucide-react';
-import { z } from 'zod';
 import { registrationSchema } from '../../../store/authStore';
 import PasswordValidation from './PasswordValidation';
 import { getAllCountries } from '../../../services/countryService';
@@ -99,6 +98,7 @@ export default function RegistrationForm({
 
   /**
    * Form submit wrapper with full validation
+   * ✅ FIX: Pass formData instead of event object
    */
   const onSubmit = (e) => {
     e.preventDefault();
@@ -114,8 +114,9 @@ export default function RegistrationForm({
       return;
     }
 
-    // Delegate to parent
-    handleFormSubmit(e);
+    // ✅ CORRECT: Pass the actual form data object (not e)
+    console.log('Submitting payload:', formData); // Debug log to verify
+    handleFormSubmit(formData); // This was the bug - passing formData instead of e
   };
 
   const inputBaseClass =
@@ -260,9 +261,7 @@ export default function RegistrationForm({
                   </div>
                 ))
               ) : (
-                <div className="px-3 py-2 text-gray-500 text-sm">
-                  No countries found
-                </div>
+                <div className="px-3 py-2 text-gray-500 text-sm">No countries found</div>
               )}
             </div>
           )}

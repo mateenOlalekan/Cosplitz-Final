@@ -1,7 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { authService } from '../../../services/authApi';
 import { ArrowLeft, Mail } from 'lucide-react';
-export default function EmailVerificationStep({  email,  userId,  onBack,  onSuccess,  onVerificationFailed,}) {
+
+
+export default function EmailVerificationStep({
+  email,
+  userId,
+  onBack,
+  onSuccess,
+  onVerificationFailed,
+}) {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,7 +25,9 @@ export default function EmailVerificationStep({  email,  userId,  onBack,  onSuc
     return () => clearInterval(interval);
   }, [timer]);
 
-
+  /**
+   * Handle OTP digit input with auto-advance
+   */
   const handleChange = (value, index) => {
     if (!/^[0-9]?$/.test(value)) return;
 
@@ -36,7 +46,6 @@ export default function EmailVerificationStep({  email,  userId,  onBack,  onSuc
       handleVerify(newOtp.join(''));
     }
   };
-
 
   const handleKeyDown = (index, e) => {
     if (e.key === 'Backspace' && !otp[index] && index > 0) {
