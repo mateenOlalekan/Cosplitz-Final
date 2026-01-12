@@ -60,6 +60,14 @@ export default function Register() {
 
 
   const handleFormSubmit = async (submittedData) => {
+    if(!submittedData){
+      setError("Forn Submision failed, Please try again.")
+    }
+    const {firstName,lastName,email,password,nationality} = submittedData;
+    if(!firstName || !lastName || !email || !password || !nationality){
+      setError("All required filed must be filled")
+      return;
+    }
     clearError();
     setStoreLoading(true);
 
