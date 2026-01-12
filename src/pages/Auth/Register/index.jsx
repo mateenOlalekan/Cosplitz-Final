@@ -63,8 +63,8 @@ export default function Register() {
     if(!submittedData){
       setError("Forn Submision failed, Please try again.")
     }
-    const {firstName,lastName,email,password,nationality} = submittedData;
-    if(!firstName || !lastName || !email || !password || !nationality){
+    const {firstName,lastName,email,password} = submittedData;
+    if(!firstName || !lastName || !email || !password ){
       setError("All required filed must be filled")
       return;
     }
