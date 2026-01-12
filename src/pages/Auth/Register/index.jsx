@@ -18,7 +18,7 @@ export default function Register() {
   const navigate = useNavigate();
   const cleanupTimer = useRef(null);
 
-  // Global auth state
+  // ✅ FIX: Extract store values at top level, NOT inside JSX
   const {
     setError,
     clearError,
@@ -26,6 +26,7 @@ export default function Register() {
     setLoading: setStoreLoading,
     setPendingVerification,
     completeRegistration,
+    isLoading: storeLoading, // Extract here
   } = useAuthStore();
 
   // Local step state
@@ -65,10 +66,6 @@ export default function Register() {
 
   /**
    * Step 1: Submit registration
-   * - Validates form data (Zod schema)
-   * - Calls /register/ endpoint
-   * - Stores temp data for OTP step
-   * - Auto-triggers OTP send
    */
   const handleFormSubmit = async (submittedData) => {
     clearError();
@@ -85,7 +82,6 @@ export default function Register() {
         nationality: (submittedData.nationality || '').trim(),
       };
 
-      // Debug log to verify payload
       console.log('API payload:', payload);
 
       const res = await authService.register(payload);
@@ -137,9 +133,6 @@ export default function Register() {
 
   /**
    * Step 2: OTP verification success callback
-   * - Automatically logs in the user to get a token
-   * - Stores token and user data in global state
-   * - Advances to success step
    */
   const handleEmailVerificationSuccess = async () => {
     try {
@@ -156,7 +149,7 @@ export default function Register() {
           first_name: formData.firstName,
           last_name: formData.lastName,
           name: `${formData.firstName} ${formData.lastName}`,
-          role: 'user', // Default role; backend can override
+          role: 'user',
           is_active: true,
           email_verified: true,
           username: formData.email.split('@')[0],
@@ -165,18 +158,8 @@ export default function Register() {
 
         completeRegistration(userData, loginRes.data.token);
         setCurrentStep(3);
-
-        // Redirect to dashboard after success animation
-        useEffect(() => {
-          return () => {
-            if (cleanupTimer.current) {
-              clearTimeout(cleanupTimer.current);
-            }
-          };
-        }, []);
-
+        cleanupTimer.current = setTimeout(() => navigate('/dashboard'), 2000);
       } else {
-        // Auto-login failed; ask user to login manually
         setError('Email verified! Please log in with your credentials.');
         setCurrentStep(3);
         cleanupTimer.current = setTimeout(() => navigate('/login'), 2000);
@@ -194,7 +177,6 @@ export default function Register() {
    */
   const handleVerificationFailed = (message) => {
     setError(message);
-    // Optional: reload after delay to reset form
     cleanupTimer.current = setTimeout(() => window.location.reload(), 1500);
   };
 
@@ -278,7 +260,7 @@ export default function Register() {
                 handleInputChange={setFormData}
                 handleFormSubmit={handleFormSubmit}
                 handleSocialRegister={handleSocialRegister}
-                loading={isLoading}
+                loading={storeLoading} // ✅ Use extracted value
                 error={storeError}
               />
             )}
