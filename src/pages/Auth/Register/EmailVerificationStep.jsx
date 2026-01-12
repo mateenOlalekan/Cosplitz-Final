@@ -1,10 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { authService } from '../../../services/authApi';
-import { ArrowLeft, Mail } from 'lucide-react';
+import { ArrowLeft, Mail, AlertCircle, Info } from 'lucide-react';
 
-/**
- * Handles OTP verification and resend
- */
 export default function EmailVerificationStep({
   email,
   userId,
@@ -17,16 +14,15 @@ export default function EmailVerificationStep({
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [timer, setTimer] = useState(180);
+  const [backendError, setBackendError] = useState(null); // Store backend error details
   const inputRefs = useRef([]);
 
-  // Countdown timer
   useEffect(() => {
     if (timer <= 0) return;
     const interval = setInterval(() => setTimer((t) => t - 1), 1000);
     return () => clearInterval(interval);
   }, [timer]);
 
-  // Handle OTP input
   const handleChange = (value, index) => {
     if (!/^[0-9]?$/.test(value)) return;
     const newOtp = [...otp];
@@ -43,7 +39,6 @@ export default function EmailVerificationStep({
     }
   };
 
-  // Handle paste
   const handlePaste = (e) => {
     e.preventDefault();
     const pasted = e.clipboardData.getData('text/plain').trim();
@@ -55,7 +50,6 @@ export default function EmailVerificationStep({
     }
   };
 
-  // Verify OTP
   const handleVerify = async (code = null) => {
     const codeStr = code || otp.join('');
     if (codeStr.length !== 6) {
@@ -65,6 +59,7 @@ export default function EmailVerificationStep({
 
     setLoading(true);
     setError('');
+    setBackendError(null);
 
     try {
       const res = await authService.verifyOTP(email, codeStr);
@@ -73,35 +68,42 @@ export default function EmailVerificationStep({
       } else {
         const msg = res.data?.message || 'Invalid OTP';
         setError(msg);
+        setBackendError(res.data); // Show backend details
         onVerificationFailed?.(msg);
       }
     } catch (err) {
       console.error('OTP verify error:', err);
       const msg = 'Verification failed';
       setError(msg);
+      setBackendError({ error: err.message });
       onVerificationFailed?.(msg);
     } finally {
       setLoading(false);
     }
   };
 
-  // Resend OTP
   const handleResend = async () => {
     if (timer > 0) return;
     setResendLoading(true);
     setError('');
+    setBackendError(null);
+    
     try {
+      console.log(' Resending OTP for user ID:', userId);
       const res = await authService.resendOTP(userId);
+      
       if (res.success) {
         setTimer(180);
         setOtp(['', '', '', '', '', '']);
         inputRefs.current[0]?.focus();
       } else {
         setError(res.data?.message || 'Could not resend OTP');
+        setBackendError(res.data);
       }
     } catch (err) {
       console.error('Resend OTP error:', err);
-      setError('Failed to resend OTP');
+      setError('Failed to resend OTP. Try again.');
+      setBackendError({ error: err.message });
     } finally {
       setResendLoading(false);
     }
@@ -112,6 +114,7 @@ export default function EmailVerificationStep({
 
   return (
     <div className="flex flex-col items-center gap-5 py-8 relative w-full">
+      {/* Back Button */}
       <button
         onClick={onBack}
         disabled={loading}
@@ -122,6 +125,18 @@ export default function EmailVerificationStep({
       </button>
 
       <h2 className="text-xl font-bold text-gray-800 mt-8">Verify Your Email</h2>
+      
+      {/* Backend Error Info (for debugging) */}
+      {backendError && (
+        <div className="flex items-start gap-2 bg-yellow-50 border border-yellow-200 text-yellow-800 text-xs p-3 rounded-lg max-w-xs">
+          <Info size={14} className="mt-0.5" />
+          <div>
+            <p className="font-medium">Backend Response:</p>
+            <p className="mt-1">{JSON.stringify(backendError)}</p>
+          </div>
+        </div>
+      )}
+
       <p className="text-gray-500 text-sm text-center max-w-xs">
         Enter the code sent to <span className="text-green-600 font-medium break-all">{email}</span>
       </p>

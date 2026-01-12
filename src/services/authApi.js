@@ -2,8 +2,8 @@ const API_BASE_URL = 'https://cosplitz-backend.onrender.com/api';
 
 /* ---------- logger ---------- */
 const COL = {
-  ok  : 'color: #2ecc71; font-weight: bold',
-  err : 'color: #e74c3c; font-weight: bold',
+  ok: 'color: #2ecc71; font-weight: bold',
+  err: 'color: #e74c3c; font-weight: bold',
   info: 'color: #3498db; font-weight: bold',
   warn: 'color: #f39c12; font-weight: bold',
 };
@@ -28,7 +28,7 @@ async function request(path, options = {}) {
   const config = { method: options.method || 'GET', headers, ...options };
   if (config.body && !isForm && typeof config.body === 'object') config.body = JSON.stringify(config.body);
 
-  log(`→ ${config.method} ${url}`, COL.info, config.body ?? '(no body)');
+  log(`→ ${config.method} ${url}`, COL.info, config.body ? 'Has body' : 'No body');
 
   let resp;
   try {
@@ -43,17 +43,28 @@ async function request(path, options = {}) {
     const txt = await resp.text();
     json = txt ? JSON.parse(txt) : null;
   } catch {
-    json = { message: 'Invalid server response.' };
+    json = { message: 'Invalid server response (not JSON).' };
   }
+  
   log(`← ${resp.status} ${resp.statusText}`, resp.ok ? COL.ok : COL.err, json);
 
+  // ==== HANDLE ERRORS GRACEFULLY ====
+  if (resp.status === 500) {
+    return { 
+      status: 500, 
+      data: { 
+        message: json?.message || 'Server error. Please try again or contact support.' 
+      }, 
+      error: true 
+    };
+  }
+  
   if (resp.status === 401) {
     return { status: 401, data: { ...json, message: json?.message || 'Unauthorized. Please log in.' }, error: true, unauthorized: true };
   }
   if (resp.status === 400) return { status: 400, data: { ...json, message: json?.message || 'Invalid request data.' }, error: true };
   if (resp.status === 409) return { status: 409, data: { ...json, message: json?.message || 'This email is already registered.' }, error: true };
   if (resp.status === 404) return { status: 404, data: { ...json, message: json?.message || 'Resource not found.' }, error: true };
-  if (resp.status >= 500) return { status: resp.status, data: { ...json, message: json?.message || 'Server error. Try again later.' }, error: true };
   if (!resp.ok) return { status: resp.status, data: { ...json, message: json?.message || `Request failed (${resp.status})` }, error: true };
 
   return { status: resp.status, data: json, success: true };
@@ -90,21 +101,27 @@ export const authService = {
     }
   },
 
+  // ==== CORRECT: GET /otp/ with user_id as query param ====
   getOTP: async (userId) => {
     if (!userId) return { status: 400, data: { message: 'User ID is required.' }, error: true };
+    
     try {
-      return await request(`/otp/${userId}/`, { method: 'GET' });
+      // Backend expects: GET /api/otp/?user_id=291
+      const res = await request(`/otp/?user_id=${userId}`, { method: 'GET' });
+      return res;
     } catch (err) {
       log('Get OTP error', COL.err, err);
-      return { status: 0, data: { message: 'Failed to send OTP.' }, error: true };
+      return { status: 0, data: { message: 'Failed to send OTP. Try resend button.' }, error: true };
     }
   },
 
   verifyOTP: async (identifier, otp) => {
     if (!identifier || !otp) return { status: 400, data: { message: 'Email and OTP are required.' }, error: true };
+    
     const body = /@/.test(identifier)
       ? { email: identifier.toLowerCase().trim(), otp: otp.toString().trim() }
-      : { user_id: identifier, otp: otp.toString().trim() };
+      : { user_id: identifier.toString(), otp: otp.toString().trim() };
+    
     try {
       return await request('/verify_otp', { method: 'POST', body });
     } catch (err) {
@@ -143,5 +160,4 @@ export const authService = {
   },
 };
 
-/* ---------- default ---------- */
 export default { request, authService };

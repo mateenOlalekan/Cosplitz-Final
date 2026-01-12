@@ -8,14 +8,10 @@ import RegistrationForm from './RegistrationForm';
 import EmailVerificationStep from './EmailVerificationStep';
 import Successful from './Successful';
 
-/**
- * Multi-step registration flow: Step 1 → Step 2 → Step 3
- */
 export default function Register() {
   const navigate = useNavigate();
   const cleanupTimer = useRef(null);
 
-  // ✅ Extract store values at top level
   const {
     setError,
     clearError,
@@ -26,10 +22,10 @@ export default function Register() {
     isLoading: storeLoading,
   } = useAuthStore();
 
-  // Local state
   const [currentStep, setCurrentStep] = useState(1);
   const [userId, setUserId] = useState(null);
   const [registeredEmail, setRegisteredEmail] = useState('');
+  const [otpSent, setOtpSent] = useState(false); // Track if OTP was sent
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -45,7 +41,6 @@ export default function Register() {
     { id: 3, label: 'Success', description: 'Account created successfully' },
   ];
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (cleanupTimer.current) clearTimeout(cleanupTimer.current);
@@ -53,13 +48,12 @@ export default function Register() {
     };
   }, [clearError]);
 
-  // Reset errors on step change
   useEffect(() => {
     clearError();
   }, [currentStep, clearError]);
 
   /**
-   * Step 1: Registration submit
+   * Step 1: Submit registration
    */
   const handleFormSubmit = async (submittedData) => {
     clearError();
@@ -74,6 +68,8 @@ export default function Register() {
         username: submittedData.email.split('@')[0],
         nationality: submittedData.nationality.trim(),
       };
+
+      console.log('📤 Registering with:', payload);
 
       const res = await authService.register(payload);
 
@@ -94,16 +90,22 @@ export default function Register() {
       setRegisteredEmail(email);
       setPendingVerification({ email, userId: id, firstName: submittedData.firstName, lastName: submittedData.lastName });
 
-      // ✅ CONSUME getOTP immediately after registration
+      // ==== TRY TO SEND OTP ====
+      console.log('📤 Sending OTP for user ID:', id);
       const otpRes = await authService.getOTP(id);
+      
       if (otpRes.error) {
-        console.warn('OTP auto-send failed:', otpRes.data?.message);
-        setError('Failed to send OTP. Use the resend button.');
+        console.warn('⚠️ OTP auto-send failed:', otpRes.data?.message);
+        setError(`OTP send failed: ${otpRes.data?.message}. Please use the resend button.`);
+        setOtpSent(false);
+      } else {
+        console.log('✅ OTP sent successfully');
+        setOtpSent(true);
       }
 
       setCurrentStep(2);
     } catch (err) {
-      console.error('Registration error:', err);
+      console.error('❌ Registration error:', err);
       setError(err.message || 'Network error');
     } finally {
       setStoreLoading(false);
@@ -111,7 +113,7 @@ export default function Register() {
   };
 
   /**
-   * Step 2: OTP success → auto-login → dashboard
+   * Step 2: OTP verification success → auto-login → dashboard
    */
   const handleEmailVerificationSuccess = async () => {
     try {
@@ -143,7 +145,7 @@ export default function Register() {
         cleanupTimer.current = setTimeout(() => navigate('/login'), 2000);
       }
     } catch (err) {
-      console.error('Auto-login failed:', err);
+      console.error('❌ Auto-login failed:', err);
       setError('Email verified! Please log in manually');
       setCurrentStep(3);
       cleanupTimer.current = setTimeout(() => navigate('/login'), 2000);
@@ -221,6 +223,7 @@ export default function Register() {
                 onBack={handleBackToStep1}
                 onSuccess={handleEmailVerificationSuccess}
                 onVerificationFailed={handleVerificationFailed}
+                otpSent={otpSent}
               />
             )}
             {currentStep === 3 && <Successful />}
