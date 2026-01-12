@@ -20,7 +20,7 @@ export default function Main(){
     navigate("/dashboard/create-splitz");
   };
     return(
-    <div className="flex flex-col gap-5 mt-3">
+    <div className="flex flex-col gap-5 mt-3 px-4">
       {/* 🟩 Quick Access Categories */}
       <section className="flex flex-col gap-3">
         <h2 className="text-base font-semibold text-gray-900">
