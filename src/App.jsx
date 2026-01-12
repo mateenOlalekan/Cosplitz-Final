@@ -71,7 +71,6 @@ export default function App() {
             <Route path="notification" element={<Notification />} />
             <Route path="kyc-flow" element={<KYCFlow />} />
             <Route path="post-onboarding" element={<PostOnboard />} />
-
             <Route path="settings" element={<SettingsLayout />}>
               <Route index element={<MyProfile />} />
               <Route path="profile" element={<MyProfile />} />

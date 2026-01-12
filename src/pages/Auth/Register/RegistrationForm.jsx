@@ -124,7 +124,7 @@ function RegistrationForm({
       )}
 
       {/* Social */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+      <div className="grid grid-cols-1  gap-2 mb-3">
         <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="button" onClick={() => handleSocialRegister('google')} className="flex items-center justify-center gap-3 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
           <FcGoogle size={20} />
           <span className="text-gray-700 text-sm">Sign Up with Google</span>
