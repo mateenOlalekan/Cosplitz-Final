@@ -1,143 +1,168 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { z } from 'zod';
-import { authService } from '../services/authApi';
+const API_BASE_URL = 'https://cosplitz-backend.onrender.com/api';
 
-export const registrationSchema = z.object({
-  firstName: z.string().min(1, 'First name is required'),
-  lastName: z.string().min(1, 'Last name is required'),
-  email: z.string().email('Invalid email address'),
-  nationality: z.string().optional(),
-  password: z.string().min(8, 'Password must be ≥ 8 characters')
-            .regex(/[A-Z]/, 'Password must contain an uppercase letter')
-            .regex(/\d/, 'Password must contain a number'),
-  agreeToTerms: z.boolean().refine(Boolean, {
-    message: 'You must agree to the terms and conditions',
-  }),
-});
+/* ---------- logger ---------- */
+const COL = {
+  ok: 'color: #2ecc71; font-weight: bold',
+  err: 'color: #e74c3c; font-weight: bold',
+  info: 'color: #3498db; font-weight: bold',
+  warn: 'color: #f39c12; font-weight: bold',
+};
+const log = (msg, style = COL.info, ...rest) =>
+  console.log(`%c[AuthApi] ${msg}`, style, ...rest);
 
-export const useAuthStore = create(
-  persist(
-    (set, get) => ({
-      user: null,
-      token: null,
-      error: null,
-      isLoading: false,
-      tempRegister: null, // { email, userId }
+/* ---------- store ---------- */
+import { useAuthStore } from '../store/authStore';
 
-      // Internal helpers
-      _saveToken: (token, persist = true) => {
-        try {
-          if (persist) {
-            localStorage.setItem('authToken', token);
-            sessionStorage.removeItem('authToken');
-          } else {
-            sessionStorage.setItem('authToken', token);
-            localStorage.removeItem('authToken');
-          }
-        } catch (e) {
-          console.warn('[AuthStore] storage error', e);
-        }
-      },
-      _saveUser: (userObj) => {
-        try {
-          if (userObj) localStorage.setItem('userInfo', JSON.stringify(userObj));
-          else localStorage.removeItem('userInfo');
-        } catch (e) {
-          console.warn('[AuthStore] storage error', e);
-        }
-      },
+/* ---------- core request ---------- */
+async function request(path, options = {}) {
+  const url = `${API_BASE_URL}${path}`;
+  const token = options.getToken ? options.getToken() : useAuthStore.getState().token;
+  const isForm = options.body instanceof FormData;
 
-      // Actions
-      setToken: (token, persist = true) => {
-        set({ token });
-        get()._saveToken(token, persist);
-      },
-      setUser: (userObj) => {
-        set({ user: userObj });
-        get()._saveUser(userObj);
-      },
-      setPendingVerification: (data) => set({ tempRegister: data }),
-      completeRegistration: (userData, token) => {
-        set({ user: userData, token, tempRegister: null, error: null });
-        get()._saveToken(token, true);
-        get()._saveUser(userData);
-      },
-      setError: (msg) => set({ error: msg }),
-      clearError: () => set({ error: null }),
-      setLoading: (loading) => set({ isLoading: loading }),
+  const headers = {
+    ...(isForm ? {} : { 'Content-Type': 'application/json', Accept: 'application/json' }),
+    ...(options.headers || {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
 
-      // Register action
-      register: async (userData) => {
-        set({ isLoading: true, error: null });
-        const res = await authService.register(userData);
-        if (res.success) {
-          set({ isLoading: false });
-        } else {
-          set({ error: res.data?.message || 'Registration failed', isLoading: false });
-        }
-        return res;
-      },
+  const config = { method: options.method || 'GET', headers, ...options };
+  if (config.body && !isForm && typeof config.body === 'object') config.body = JSON.stringify(config.body);
 
-      // Login action
-      login: async (credentials, { remember = false } = {}) => {
-        set({ isLoading: true, error: null });
-        const res = await authService.login(credentials);
-        if (res.success) {
-          set({
-            user: res.data.user,
-            token: res.data.token,
-            isLoading: false,
-          });
-          get()._saveToken(res.data.token, remember);
-          get()._saveUser(res.data.user);
-        } else {
-          set({ error: res.data?.message || 'Login failed', isLoading: false });
-        }
-        return res;
-      },
+  log(`→ ${config.method} ${url}`, COL.info, config.body ? 'Has body' : 'No body');
 
-      // Logout
-      logout: () => {
-        set({ user: null, token: null, error: null, tempRegister: null, isLoading: false });
-        try {
-          localStorage.removeItem('authToken');
-          localStorage.removeItem('userInfo');
-          sessionStorage.clear();
-        } catch (e) {
-          console.warn('[AuthStore] storage error', e);
-        }
-        window.location.href = '/login';
-      },
+  let resp;
+  try {
+    resp = await fetch(url, config);
+  } catch (netErr) {
+    log('× NETWORK FAIL', COL.err, netErr);
+    return { status: 0, data: { message: 'Network error. Check connection.' }, error: true };
+  }
 
-      // Getters
-      isAuthenticated: () => !!get().token,
-      isAdmin: () => {
-        const u = get().user;
-        return u?.role === 'admin' || u?.is_admin === true;
-      },
+  let json = null;
+  try {
+    const txt = await resp.text();
+    json = txt ? JSON.parse(txt) : null;
+  } catch {
+    json = { message: 'Invalid server response (not JSON).' };
+  }
+  
+  log(`← ${resp.status} ${resp.statusText}`, resp.ok ? COL.ok : COL.err, json);
 
-      // Re-hydrate auth on app start
-      initializeAuth: () => {
-        try {
-          const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-          const userRaw = localStorage.getItem('userInfo');
-          set({
-            token: token || null,
-            user: userRaw ? JSON.parse(userRaw) : null,
-            isLoading: false,
-          });
-        } catch (err) {
-          console.error('[AuthStore] init error', err);
-          set({ token: null, user: null, isLoading: false });
-        }
-      },
-    }),
-    {
-      name: 'auth-storage',
-      partialize: (state) => ({ token: state.token, user: state.user }),
+  // ==== HANDLE ALL ERROR STATUSES ====
+  if (resp.status === 500) {
+    return { 
+      status: 500, 
+      data: { 
+        message: json?.message || 'Server error. Please try again later.' 
+      }, 
+      error: true 
+    };
+  }
+  
+  if (resp.status === 401) {
+    return { status: 401, data: { ...json, message: json?.message || 'Unauthorized. Please log in.' }, error: true, unauthorized: true };
+  }
+  if (resp.status === 404) {
+    return { status: 404, data: { ...json, message: json?.message || 'Endpoint not found.' }, error: true };
+  }
+  if (resp.status === 400) return { status: 400, data: { ...json, message: json?.message || 'Invalid request data.' }, error: true };
+  if (resp.status === 409) return { status: 409, data: { ...json, message: json?.message || 'This email is already registered.' }, error: true };
+  if (!resp.ok) return { status: resp.status, data: { ...json, message: json?.message || `Request failed (${resp.status})` }, error: true };
+
+  return { status: resp.status, data: json, success: true };
+}
+
+/* ---------- auth ---------- */
+export const authService = {
+  register: async (userData) => {
+    try {
+      const res = await request('/register/', { method: 'POST', body: userData });
+      if (res.status === 409) res.data.message = 'This email is already registered. Please use a different email or try logging in.';
+      return res;
+    } catch (err) {
+      log('Registration error', COL.err, err);
+      return { status: 0, data: { message: 'Registration failed. Please try again.' }, error: true };
     }
-  )
-);
+  },
 
-export default useAuthStore;
+  login: async ({ email, password }) => {
+    try {
+      return await request('/login/', { method: 'POST', body: { email: email.toLowerCase().trim(), password } });
+    } catch (err) {
+      log('Login error', COL.err, err);
+      return { status: 0, data: { message: 'Login failed. Please try again.' }, error: true };
+    }
+  },
+
+  getUserInfo: async () => {
+    try {
+      return await request('/user/info', { method: 'GET' });
+    } catch (err) {
+      log('Get user info error', COL.err, err);
+      return { status: 0, data: { message: 'Failed to fetch user information.' }, error: true };
+    }
+  },
+
+  // ==== CORRECT: POST /otp/ with user_id in body ====
+  getOTP: async (userId) => {
+    if (!userId) return { status: 400, data: { message: 'User ID is required.' }, error: true };
+    
+    try {
+      // Backend expects: POST /api/otp/ { user_id: "291" }
+      const res = await request('/otp/', { 
+        method: 'POST', 
+        body: { user_id: userId.toString() } 
+      });
+      return res;
+    } catch (err) {
+      log('Get OTP error', COL.err, err);
+      return { status: 0, data: { message: 'Failed to send OTP. Try resend button.' }, error: true };
+    }
+  },
+
+  verifyOTP: async (identifier, otp) => {
+    if (!identifier || !otp) return { status: 400, data: { message: 'Email and OTP are required.' }, error: true };
+    
+    const body = /@/.test(identifier)
+      ? { email: identifier.toLowerCase().trim(), otp: otp.toString().trim() }
+      : { user_id: identifier.toString(), otp: otp.toString().trim() };
+    
+    try {
+      return await request('/verify_otp', { method: 'POST', body });
+    } catch (err) {
+      log('Verify OTP error', COL.err, err);
+      return { status: 0, data: { message: 'OTP verification failed.' }, error: true };
+    }
+  },
+
+  resendOTP: (userId) => authService.getOTP(userId),
+
+  logout: async () => {
+    try {
+      return await request('/logout/', { method: 'POST' });
+    } catch (err) {
+      log('Logout API error', COL.warn, err);
+      return { status: 0, data: { message: 'Logged out locally.' }, success: true };
+    }
+  },
+
+  forgotPassword: async (email) => {
+    try {
+      return await request('/forgot-password/', { method: 'POST', body: { email: email.toLowerCase().trim() } });
+    } catch (err) {
+      log('Forgot password error', COL.err, err);
+      return { status: 0, data: { message: 'Failed to send reset email.' }, error: true };
+    }
+  },
+
+  resetPassword: async (data) => {
+    try {
+      return await request('/reset-password/', { method: 'POST', body: data });
+    } catch (err) {
+      log('Reset password error', COL.err, err);
+      return { status: 0, data: { message: 'Password reset failed.' }, error: true };
+    }
+  },
+};
+
+export default { request, authService };

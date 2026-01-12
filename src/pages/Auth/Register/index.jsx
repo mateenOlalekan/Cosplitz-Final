@@ -52,69 +52,70 @@ export default function Register() {
     clearError();
   }, [currentStep, clearError]);
 
-  /**
-   * Step 1: Submit registration
-   */
-  const handleFormSubmit = async (submittedData) => {
-    clearError();
-    setStoreLoading(true);
 
-    try {
-      const payload = {
-        first_name: submittedData.firstName.trim(),
-        last_name: submittedData.lastName.trim(),
-        email: submittedData.email.toLowerCase().trim(),
-        password: submittedData.password,
-        username: submittedData.email.split('@')[0],
-        nationality: submittedData.nationality.trim(),
-      };
+const handleFormSubmit = async (submittedData) => {
+  clearError();
+  setStoreLoading(true);
 
-      console.log('📤 Registering with:', payload);
+  try {
+    // Transform form data to API payload
+    const payload = {
+      first_name: submittedData.firstName.trim(),
+      last_name: submittedData.lastName.trim(),
+      email: submittedData.email.toLowerCase().trim(),
+      password: submittedData.password,
+      username: submittedData.email.split('@')[0],
+      nationality: submittedData.nationality.trim(),
+    };
 
-      const res = await authService.register(payload);
+    console.log('📤 Registering with payload:', payload);
 
-      if (!res.success) {
-        setError(res.data?.message || 'Registration failed');
-        return;
-      }
+    const res = await authService.register(payload);
 
-      const id = res.data?.user?.id || res.data?.user_id || res.data?.id;
-      const email = res.data?.user?.email || res.data?.email || payload.email;
-
-      if (!id) {
-        setError('Registration succeeded but user ID is missing');
-        return;
-      }
-
-      setUserId(id);
-      setRegisteredEmail(email);
-      setPendingVerification({ email, userId: id, firstName: submittedData.firstName, lastName: submittedData.lastName });
-
-      // ==== TRY TO SEND OTP ====
-      console.log('📤 Sending OTP for user ID:', id);
-      const otpRes = await authService.getOTP(id);
-      
-      if (otpRes.error) {
-        console.warn('⚠️ OTP auto-send failed:', otpRes.data?.message);
-        setError(`OTP send failed: ${otpRes.data?.message}. Please use the resend button.`);
-        setOtpSent(false);
-      } else {
-        console.log('✅ OTP sent successfully');
-        setOtpSent(true);
-      }
-
-      setCurrentStep(2);
-    } catch (err) {
-      console.error('❌ Registration error:', err);
-      setError(err.message || 'Network error');
-    } finally {
-      setStoreLoading(false);
+    if (!res.success) {
+      setError(res.data?.message || 'Registration failed');
+      return;
     }
-  };
 
-  /**
-   * Step 2: OTP verification success → auto-login → dashboard
-   */
+    const id = res.data?.user?.id || res.data?.user_id || res.data?.id;
+    const email = res.data?.user?.email || res.data?.email || payload.email;
+
+    if (!id) {
+      setError('Registration succeeded but user ID is missing');
+      return;
+    }
+
+    setUserId(id);
+    setRegisteredEmail(email);
+    setPendingVerification({ 
+      email, 
+      userId: id, 
+      firstName: submittedData.firstName, 
+      lastName: submittedData.lastName 
+    });
+
+
+    console.log('Sending OTP for user ID:', id);
+    const otpRes = await authService.getOTP(id);
+    console.log('OTP Response:', otpRes);
+
+    if (otpRes.error) {
+      console.warn(' OTP auto-send failed:', otpRes.data?.message);
+      setError(`OTP send failed: ${otpRes.data?.message}. Please use the resend button.`);
+      setOtpSent(false);
+    } else {
+      console.log(' OTP sent successfully');
+      setOtpSent(true);
+    }
+
+    setCurrentStep(2);
+  } catch (err) {
+    console.error('❌ Registration error:', err);
+    setError(err.message || 'Network error');
+  } finally {
+    setStoreLoading(false);
+  }
+};
   const handleEmailVerificationSuccess = async () => {
     try {
       const loginRes = await authService.login({
