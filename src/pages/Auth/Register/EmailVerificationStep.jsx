@@ -2,7 +2,16 @@ import { useEffect, useRef, useState } from 'react';
 import { authService } from '../../../services/authApi';
 import { ArrowLeft, Mail } from 'lucide-react';
 
-
+/**
+ * EmailVerificationStep.jsx
+ * Handles OTP input, verification, and resend logic
+ * Props:
+ * - email: User's email address
+ * - userId: User ID for API calls
+ * - onBack: Callback to return to previous step
+ * - onSuccess: Callback when OTP is verified
+ * - onVerificationFailed: Callback when verification fails
+ */
 export default function EmailVerificationStep({
   email,
   userId,
@@ -47,13 +56,18 @@ export default function EmailVerificationStep({
     }
   };
 
+  /**
+   * Handle backspace with auto-retreat
+   */
   const handleKeyDown = (index, e) => {
     if (e.key === 'Backspace' && !otp[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
   };
 
-
+  /**
+   * Handle paste event (Ctrl+V)
+   */
   const handlePaste = (e) => {
     e.preventDefault();
     const pasted = e.clipboardData.getData('text/plain').trim();
@@ -65,7 +79,9 @@ export default function EmailVerificationStep({
     }
   };
 
-
+  /**
+   * Verify OTP with backend
+   */
   const handleVerify = async (code = null) => {
     const codeStr = code || otp.join('');
     if (codeStr.length !== 6) {
@@ -95,7 +111,9 @@ export default function EmailVerificationStep({
     }
   };
 
-
+  /**
+   * Resend OTP with cooldown
+   */
   const handleResend = async () => {
     if (timer > 0) return;
 
