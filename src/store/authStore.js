@@ -114,8 +114,9 @@ getOTP: async (userId) => {
   }
 
   try {
-    return await request(`/otp/${userId}/`, {
-      method: 'GET',
+    return await request('/otp/', {
+      method: 'POST',
+      body: { user_id: userId },
     });
   } catch (err) {
     log('Get OTP error', COL.err, err);
