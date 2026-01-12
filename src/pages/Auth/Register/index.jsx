@@ -167,7 +167,14 @@ export default function Register() {
         setCurrentStep(3);
 
         // Redirect to dashboard after success animation
-        cleanupTimer.current = setTimeout(() => navigate('/dashboard'), 2000);
+        useEffect(() => {
+          return () => {
+            if (cleanupTimer.current) {
+              clearTimeout(cleanupTimer.current);
+            }
+          };
+        }, []);
+
       } else {
         // Auto-login failed; ask user to login manually
         setError('Email verified! Please log in with your credentials.');
@@ -271,7 +278,7 @@ export default function Register() {
                 handleInputChange={setFormData}
                 handleFormSubmit={handleFormSubmit}
                 handleSocialRegister={handleSocialRegister}
-                loading={useAuthStore((s) => s.isLoading)}
+                loading={isLoading}
                 error={storeError}
               />
             )}
