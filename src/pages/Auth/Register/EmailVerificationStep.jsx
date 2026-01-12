@@ -1,47 +1,49 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { authService } from '../../../services/authApi';
-import { useAuthStore } from '../../../store/authStore';
 import { ArrowLeft, Mail } from 'lucide-react';
-
-export default function EmailVerificationStep({
-  email,
-  userId,
-  onBack,
-  onSuccess,
-  onVerificationFailed,
-}) {
-  /* ---------- local state ---------- */
+export default function EmailVerificationStep({  email,  userId,  onBack,  onSuccess,  onVerificationFailed,}) {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
-  const [timer, setTimer] = useState(180); // 3-min cooldown
+  const [timer, setTimer] = useState(180); // 3-minute cooldown
 
-  const { clearError } = useAuthStore();
+  const inputRefs = useRef([]);
 
-  /* ---------- countdown ---------- */
+  // Countdown timer for resend button
   useEffect(() => {
     if (timer <= 0) return;
-    const i = setInterval(() => setTimer((t) => t - 1), 1000);
-    return () => clearInterval(i);
+    const interval = setInterval(() => setTimer((t) => t - 1), 1000);
+    return () => clearInterval(interval);
   }, [timer]);
 
-  /* ---------- field change + auto-verify ---------- */
-  const handleChange = (val, idx) => {
-    if (!/^[0-9]?$/.test(val)) return;
+
+  const handleChange = (value, index) => {
+    if (!/^[0-9]?$/.test(value)) return;
+
     const newOtp = [...otp];
-    newOtp[idx] = val;
+    newOtp[index] = value;
     setOtp(newOtp);
     setError('');
 
-    if (val && idx < 5) document.getElementById(`otp-${idx + 1}`)?.focus();
-    if (newOtp.every((d) => d !== '')) handleVerify(newOtp.join('')); // auto-submit when full
+    // Auto-advance to next input
+    if (value && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+
+    // Auto-submit when complete
+    if (newOtp.every((d) => d !== '')) {
+      handleVerify(newOtp.join(''));
+    }
   };
 
-  const handleKey = (idx, e) => {
-    if (e.key === 'Backspace' && !otp[idx] && idx > 0)
-      document.getElementById(`otp-${idx - 1}`)?.focus();
+
+  const handleKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
   };
+
 
   const handlePaste = (e) => {
     e.preventDefault();
@@ -54,99 +56,114 @@ export default function EmailVerificationStep({
     }
   };
 
-  /* ---------- verify ---------- */
+
   const handleVerify = async (code = null) => {
     const codeStr = code || otp.join('');
-    if (codeStr.length !== 6) return setError('Please enter the complete 6-digit code.');
+    if (codeStr.length !== 6) {
+      setError('Please enter the complete 6-digit code.');
+      return;
+    }
 
     setLoading(true);
     setError('');
-    clearError();
 
     try {
       const res = await authService.verifyOTP(email, codeStr);
-      if (res?.success) {
-        onSuccess(); // ← parent routes to Success page
+      if (res.success) {
+        onSuccess(); // Notify parent of success
       } else {
-        const msg = res?.data?.message || 'Invalid OTP. Please try again.';
-        setError(msg);
-        onVerificationFailed?.(msg);
+        const message = res.data?.message || 'Invalid OTP. Please try again.';
+        setError(message);
+        onVerificationFailed?.(message);
       }
     } catch (err) {
-      console.error('OTP verify error', err);
-      const msg = 'Verification failed. Please try again.';
-      setError(msg);
-      onVerificationFailed?.(msg);
+      console.error('OTP verification error:', err);
+      const message = 'Verification failed. Please try again.';
+      setError(message);
+      onVerificationFailed?.(message);
     } finally {
       setLoading(false);
     }
   };
 
-  /* ---------- resend ---------- */
+
   const handleResend = async () => {
     if (timer > 0) return;
+
     setResendLoading(true);
     setError('');
+
     try {
       const res = await authService.resendOTP(userId);
-      if (res?.success) {
-        setTimer(180);
-        setOtp(['', '', '', '', '', '']);
-        document.getElementById('otp-0')?.focus();
+      if (res.success) {
+        setTimer(180); // Reset cooldown
+        setOtp(['', '', '', '', '', '']); // Clear inputs
+        inputRefs.current[0]?.focus(); // Focus first input
       } else {
-        setError(res?.data?.message || 'Could not resend OTP.');
+        setError(res.data?.message || 'Could not resend OTP.');
       }
     } catch (err) {
-      console.error('Resend error', err);
-      setError('Failed to resend OTP. Try again.');
+      console.error('Resend OTP error:', err);
+      setError('Failed to resend OTP. Please try again.');
     } finally {
       setResendLoading(false);
     }
   };
 
-  const fmtTime = (s) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
+  const formatTime = (seconds) =>
+    `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
 
   return (
     <div className="flex flex-col items-center gap-5 py-8 relative w-full">
-      {/* back button */}
-      <button onClick={onBack} disabled={loading} className="absolute left-4 top-4 text-gray-600 hover:text-green-600 transition disabled:opacity-50">
+      {/* Back Button */}
+      <button
+        onClick={onBack}
+        disabled={loading}
+        className="absolute left-4 top-4 text-gray-600 hover:text-green-600 transition disabled:opacity-50"
+        aria-label="Go back"
+      >
         <ArrowLeft size={28} />
       </button>
 
       <h2 className="text-xl font-bold text-gray-800 mt-8">Verify Your Email</h2>
       <p className="text-gray-500 text-sm text-center max-w-xs">
-        Enter the code sent to <span className="text-green-600 font-medium">{email}</span>.
+        Enter the code sent to{' '}
+        <span className="text-green-600 font-medium break-all">{email}</span>.
       </p>
 
+      {/* Email Icon */}
       <div className="bg-[#1F82250D] rounded-full w-14 h-14 flex items-center justify-center">
         <Mail className="text-[#1F8225]" size={24} />
       </div>
 
-      {/* OTP inputs */}
+      {/* OTP Input Fields */}
       <div className="flex gap-2 mt-2" onPaste={handlePaste}>
-        {otp.map((d, i) => (
+        {otp.map((digit, index) => (
           <input
-            key={i}
-            id={`otp-${i}`}
+            key={index}
+            id={`otp-${index}`}
+            ref={(el) => (inputRefs.current[index] = el)}
             type="text"
-            maxLength={1}
             inputMode="numeric"
             pattern="[0-9]*"
-            value={d}
-            onChange={(e) => handleChange(e.target.value, i)}
-            onKeyDown={(e) => handleKey(i, e)}
+            maxLength={1}
+            value={digit}
+            onChange={(e) => handleChange(e.target.value, index)}
+            onKeyDown={(e) => handleKeyDown(index, e)}
             disabled={loading}
             className="w-10 h-10 sm:w-12 sm:h-12 text-center text-lg font-bold border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-600 outline-none disabled:opacity-50"
-            autoFocus={i === 0}
+            autoFocus={index === 0}
+            aria-label={`OTP digit ${index + 1}`}
           />
         ))}
       </div>
 
-      {/* timer / resend */}
+      {/* Timer / Resend */}
       <div className="text-center mt-4">
         {timer > 0 ? (
           <p className="text-sm text-gray-600">
-            Resend code in <span className="font-semibold">{fmtTime(timer)}</span>
+            Resend code in{' '}
+            <span className="font-semibold">{formatTime(timer)}</span>
           </p>
         ) : (
           <button
@@ -167,15 +184,20 @@ export default function EmailVerificationStep({
         )}
       </div>
 
-      {error && <p className="text-red-600 text-sm text-center max-w-xs mt-2">{error}</p>}
+      {/* Error Message */}
+      {error && (
+        <p className="text-red-600 text-sm text-center max-w-xs mt-2">{error}</p>
+      )}
 
-      {/* manual verify button */}
+      {/* Verify Button */}
       <button
         type="button"
-        disabled={loading || otp.some((x) => x === '')}
+        disabled={loading || otp.some((d) => d === '')}
         onClick={() => handleVerify()}
         className={`w-full bg-green-600 text-white py-3 rounded-lg font-semibold mt-4 ${
-          loading || otp.some((x) => x === '') ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-700'
+          loading || otp.some((d) => d === '')
+            ? 'opacity-50 cursor-not-allowed'
+            : 'hover:bg-green-700'
         }`}
       >
         {loading ? (

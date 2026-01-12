@@ -1,4 +1,3 @@
-// src/pages/Register/RegistrationForm.jsx  (COMPLETED)
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -10,17 +9,12 @@ import { registrationSchema } from '../../../store/authStore';
 import PasswordValidation from './PasswordValidation';
 import { getAllCountries } from '../../../services/countryService';
 
-/* -------------- Zod helpers -------------- */
-const fieldRules = {
-  firstName   : registrationSchema.shape.firstName,
-  lastName    : registrationSchema.shape.lastName,
-  email       : registrationSchema.shape.email,
-  nationality : registrationSchema.shape.nationality,
-  password    : registrationSchema.shape.password,
-  agreeToTerms: registrationSchema.shape.agreeToTerms,
-};
-
-function RegistrationForm({
+/**
+ * RegistrationForm.jsx
+ * Handles user input, validation, and submission of registration data
+ * All business logic is delegated to parent via callbacks
+ */
+export default function RegistrationForm({
   formData,
   handleInputChange,
   handleFormSubmit,
@@ -28,64 +22,73 @@ function RegistrationForm({
   loading,
   error,
 }) {
-  /* ---------- local state ---------- */
   const [showPassword, setShowPassword] = useState(false);
-  const [countries, setCountries]       = useState([]);
-  const [filtered, setFiltered]         = useState([]);
-  const [open, setOpen]                 = useState(false);
+  const [countries, setCountries] = useState([]);
+  const [filtered, setFiltered] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const nationalityRef = useRef(null);
-  const dropdownRef    = useRef(null);
+  const dropdownRef = useRef(null);
 
-  /* ---------- country list ---------- */
+  // Load countries on mount
   useEffect(() => {
     getAllCountries().then(setCountries).catch(console.warn);
   }, []);
 
-  /* ---------- click-outside ---------- */
+  // Close dropdown on outside click
   useEffect(() => {
-    const outside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target) && nationalityRef.current && !nationalityRef.current.contains(e.target)) setOpen(false);
+    const handleClickOutside = (e) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target) &&
+        nationalityRef.current &&
+        !nationalityRef.current.contains(e.target)
+      ) {
+        setOpen(false);
+      }
     };
-    document.addEventListener('mousedown', outside);
-    return () => document.removeEventListener('mousedown', outside);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  /* ---------- Zod validation helpers ---------- */
+  /**
+   * Validate single field using Zod schema
+   */
   const validateField = (field, value) => {
     try {
-      fieldRules[field].parse(value);
-      return ''; // no error
+      registrationSchema.shape[field].parse(value);
+      return '';
     } catch (err) {
       return err.issues?.[0]?.message || 'Invalid value';
     }
   };
 
-  const [fieldErrors, setFieldErrors] = useState({
-    firstName   : '',
-    lastName    : '',
-    email       : '',
-    nationality : '',
-    password    : '',
-    agreeToTerms: '',
-  });
+  /**
+   * Handle field change with real-time validation
+   */
+  const handleChange = (field, value) => {
+    handleInputChange((prev) => ({ ...prev, [field]: value }));
+    const errorMsg = validateField(field, value);
+    setFieldErrors((prev) => ({ ...prev, [field]: errorMsg }));
+  };
 
   const handleBlur = (field) => {
-    const msg = validateField(field, formData[field]);
-    setFieldErrors((f) => ({ ...f, [field]: msg }));
+    const errorMsg = validateField(field, formData[field]);
+    setFieldErrors((prev) => ({ ...prev, [field]: errorMsg }));
   };
 
-  const handleChange = (field, value) => {
-    handleInputChange(field, value); // parent state
-    const msg = validateField(field, value);
-    setFieldErrors((f) => ({ ...f, [field]: msg }));
-  };
-
-  /* ---------- nationality ---------- */
-  const onNationalityChange = (val) => {
-    handleChange('nationality', val);
-    if (!val.trim()) { setFiltered(countries); setOpen(true); return; }
-    setFiltered(countries.filter((c) => c.name.toLowerCase().includes(val.toLowerCase())));
+  /**
+   * Nationality dropdown filter
+   */
+  const handleNationalityChange = (value) => {
+    handleChange('nationality', value);
+    if (!value.trim()) {
+      setFiltered(countries);
+      setOpen(true);
+      return;
+    }
+    setFiltered(countries.filter((c) => c.name.toLowerCase().includes(value.toLowerCase())));
     setOpen(true);
   };
 
@@ -94,134 +97,185 @@ function RegistrationForm({
     setOpen(false);
   };
 
-  /* ---------- submit wrapper ---------- */
+  /**
+   * Form submit wrapper with full validation
+   */
   const onSubmit = (e) => {
     e.preventDefault();
-    // validate all
-    const full = registrationSchema.safeParse(formData);
-    if (!full.success) {
-      const errs = {};
-      full.error.issues.forEach((i) => (errs[i.path[0]] = i.message));
-      setFieldErrors(errs);
+
+    // Full Zod validation
+    const result = registrationSchema.safeParse(formData);
+    if (!result.success) {
+      const errors = {};
+      result.error.issues.forEach((issue) => {
+        errors[issue.path[0]] = issue.message;
+      });
+      setFieldErrors(errors);
       return;
     }
-    handleFormSubmit(e); // parent handler
+
+    // Delegate to parent
+    handleFormSubmit(e);
   };
 
-  /* ---------- UI helpers ---------- */
-  const fieldClass = (err) =>
-    `w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors ${
-      err ? 'border-red-300' : 'border-gray-300'
-    }`;
+  const inputBaseClass =
+    'w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors';
+  const inputClass = (hasError) =>
+    `${inputBaseClass} ${hasError ? 'border-red-300' : 'border-gray-300 focus:border-green-500'}`;
 
   return (
     <div>
-      <h1 className="text-2xl sm:text-3xl text-center font-bold text-gray-900">Create Your Account</h1>
-      <p className="text-gray-500 text-center text-sm mt-1 mb-4">Let's get started with real-time cost sharing.</p>
+      <h1 className="text-2xl sm:text-3xl text-center font-bold text-gray-900">
+        Create Your Account
+      </h1>
+      <p className="text-gray-500 text-center text-sm mt-1 mb-4">
+        Let's get started with real-time cost sharing.
+      </p>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-3 text-center">{error}</div>
+        <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-3 text-center">
+          {error}
+        </div>
       )}
 
-      {/* Social */}
-      <div className="grid grid-cols-1  gap-2 mb-3">
-        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="button" onClick={() => handleSocialRegister('google')} className="flex items-center justify-center gap-3 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+      {/* Social Login Options */}
+      <div className="grid grid-cols-1 gap-2 mb-3">
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          type="button"
+          onClick={() => handleSocialRegister('google')}
+          className="flex items-center justify-center gap-3 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+        >
           <FcGoogle size={20} />
           <span className="text-gray-700 text-sm">Sign Up with Google</span>
         </motion.button>
-        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="button" onClick={() => handleSocialRegister('apple')} className="flex items-center justify-center gap-3 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          type="button"
+          onClick={() => handleSocialRegister('apple')}
+          className="flex items-center justify-center gap-3 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+        >
           <PiAppleLogoBold size={20} />
           <span className="text-gray-700 text-sm">Sign Up with Apple</span>
         </motion.button>
       </div>
 
       <div className="flex items-center my-4">
-        <div className="flex-grow border-t border-gray-300"></div>
+        <div className="flex-grow border-t border-gray-300" />
         <span className="mx-2 text-gray-500 text-sm">Or</span>
-        <div className="flex-grow border-t border-gray-300"></div>
+        <div className="flex-grow border-t border-gray-300" />
       </div>
 
       <form onSubmit={onSubmit} className="space-y-3">
-        {/* firstName */}
+        {/* First Name */}
         <div>
-          <label className="text-sm font-medium text-gray-700 mb-1 block">First Name *</label>
+          <label className="text-sm font-medium text-gray-700 mb-1 block">
+            First Name *
+          </label>
           <input
             type="text"
             value={formData.firstName}
             placeholder="Enter your first name"
             onChange={(e) => handleChange('firstName', e.target.value)}
             onBlur={() => handleBlur('firstName')}
-            className={fieldClass(fieldErrors.firstName)}
+            className={inputClass(fieldErrors.firstName)}
             required
           />
-          {fieldErrors.firstName && <p className="text-red-600 text-xs mt-1">{fieldErrors.firstName}</p>}
+          {fieldErrors.firstName && (
+            <p className="text-red-600 text-xs mt-1">{fieldErrors.firstName}</p>
+          )}
         </div>
 
-        {/* lastName */}
+        {/* Last Name */}
         <div>
-          <label className="text-sm font-medium text-gray-700 mb-1 block">Last Name *</label>
+          <label className="text-sm font-medium text-gray-700 mb-1 block">
+            Last Name *
+          </label>
           <input
             type="text"
             value={formData.lastName}
             placeholder="Enter your last name"
             onChange={(e) => handleChange('lastName', e.target.value)}
             onBlur={() => handleBlur('lastName')}
-            className={fieldClass(fieldErrors.lastName)}
+            className={inputClass(fieldErrors.lastName)}
             required
           />
-          {fieldErrors.lastName && <p className="text-red-600 text-xs mt-1">{fieldErrors.lastName}</p>}
+          {fieldErrors.lastName && (
+            <p className="text-red-600 text-xs mt-1">{fieldErrors.lastName}</p>
+          )}
         </div>
 
-        {/* email */}
+        {/* Email */}
         <div>
-          <label className="text-sm font-medium text-gray-700 mb-1 block">Email Address *</label>
+          <label className="text-sm font-medium text-gray-700 mb-1 block">
+            Email Address *
+          </label>
           <input
             type="email"
             value={formData.email}
             placeholder="Enter your email"
             onChange={(e) => handleChange('email', e.target.value)}
             onBlur={() => handleBlur('email')}
-            className={fieldClass(fieldErrors.email)}
+            className={inputClass(fieldErrors.email)}
             required
           />
-          {fieldErrors.email && <p className="text-red-600 text-xs mt-1">{fieldErrors.email}</p>}
+          {fieldErrors.email && (
+            <p className="text-red-600 text-xs mt-1">{fieldErrors.email}</p>
+          )}
         </div>
 
-        {/* nationality (autocomplete) */}
+        {/* Nationality (Autocomplete) */}
         <div className="relative" ref={dropdownRef}>
-          <label className="text-sm font-medium text-gray-700 mb-1 block">Nationality</label>
+          <label className="text-sm font-medium text-gray-700 mb-1 block">
+            Nationality
+          </label>
           <div className="relative">
             <input
               ref={nationalityRef}
               type="text"
               value={formData.nationality}
               placeholder="Select your nationality"
-              onChange={(e) => onNationalityChange(e.target.value)}
+              onChange={(e) => handleNationalityChange(e.target.value)}
               onFocus={() => setOpen(true)}
               onBlur={() => handleBlur('nationality')}
-              className={fieldClass(fieldErrors.nationality) + ' pr-10'}
+              className={`${inputClass(fieldErrors.nationality)} pr-10`}
             />
-            <ChevronDown size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <ChevronDown
+              size={18}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+            />
           </div>
           {open && (
             <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
               {filtered.length ? (
                 filtered.map((c) => (
-                  <div key={c.code} onClick={() => selectCountry(c.name)} className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm">
+                  <div
+                    key={c.code}
+                    onClick={() => selectCountry(c.name)}
+                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                  >
                     {c.name}
                   </div>
                 ))
               ) : (
-                <div className="px-3 py-2 text-gray-500 text-sm">No countries found</div>
+                <div className="px-3 py-2 text-gray-500 text-sm">
+                  No countries found
+                </div>
               )}
             </div>
           )}
-          {fieldErrors.nationality && <p className="text-red-600 text-xs mt-1">{fieldErrors.nationality}</p>}
+          {fieldErrors.nationality && (
+            <p className="text-red-600 text-xs mt-1">{fieldErrors.nationality}</p>
+          )}
         </div>
 
-        {/* password */}
+        {/* Password */}
         <div className="mb-4">
-          <label className="text-sm font-medium text-gray-700 mb-1 block">Password *</label>
+          <label className="text-sm font-medium text-gray-700 mb-1 block">
+            Password *
+          </label>
           <div className="relative">
             <input
               type={showPassword ? 'text' : 'password'}
@@ -229,18 +283,24 @@ function RegistrationForm({
               placeholder="Create your password"
               onChange={(e) => handleChange('password', e.target.value)}
               onBlur={() => handleBlur('password')}
-              className={fieldClass(fieldErrors.password) + ' pr-10'}
+              className={`${inputClass(fieldErrors.password)} pr-10`}
               required
             />
-            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-2 pr-1 flex items-center text-gray-400 hover:text-gray-600 transition-colors">
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute inset-y-0 right-2 pr-1 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+            >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
           <PasswordValidation password={formData.password} />
-          {fieldErrors.password && <p className="text-red-600 text-xs mt-1">{fieldErrors.password}</p>}
+          {fieldErrors.password && (
+            <p className="text-red-600 text-xs mt-1">{fieldErrors.password}</p>
+          )}
         </div>
 
-        {/* agreeToTerms */}
+        {/* Terms Agreement */}
         <div>
           <label className="flex gap-2 text-sm text-gray-600 mt-2 cursor-pointer">
             <input
@@ -248,7 +308,9 @@ function RegistrationForm({
               checked={formData.agreeToTerms}
               onChange={(e) => handleChange('agreeToTerms', e.target.checked)}
               onBlur={() => handleBlur('agreeToTerms')}
-              className={`rounded focus:ring-green-500 ${fieldErrors.agreeToTerms ? 'border-red-300' : ''}`}
+              className={`rounded focus:ring-green-500 ${
+                fieldErrors.agreeToTerms ? 'border-red-300' : ''
+              }`}
             />
             <span>
               I agree to the{' '}
@@ -266,10 +328,12 @@ function RegistrationForm({
               .
             </span>
           </label>
-          {fieldErrors.agreeToTerms && <p className="text-red-600 text-xs mt-1">{fieldErrors.agreeToTerms}</p>}
+          {fieldErrors.agreeToTerms && (
+            <p className="text-red-600 text-xs mt-1">{fieldErrors.agreeToTerms}</p>
+          )}
         </div>
 
-        {/* submit */}
+        {/* Submit Button */}
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
@@ -299,5 +363,3 @@ function RegistrationForm({
     </div>
   );
 }
-
-export default RegistrationForm;
