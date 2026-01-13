@@ -17,8 +17,8 @@ const LoadingScreen = lazy(() => import("./pages/Public/LoadingScreen"));
 const KYCFlow = lazy(() => import("./components/Identification/KYCFlow"));
 
 /* ---------- dashboard shells ---------- */
-const DashboardLayout = lazy(() => import("./components/Layout/DashoardLayout"));
-const SettingsLayout = lazy(() => import("./components/Layout/DashboardSettingLayout"));
+// const DashboardLayout = lazy(() => import("./components/Layout/DashoardLayout"));
+// const SettingsLayout = lazy(() => import("./components/Layout/DashboardSettingLayout"));
 
 /* ---------- dashboard pages ---------- */
 const MainOverview = lazy(() => import("./pages/Dashboard/Main"));
@@ -27,11 +27,11 @@ const Analytics = lazy(() => import("./pages/Dashboard/Analytics"));
 const Payment = lazy(() => import("./pages/Dashboard/Payment"));
 const Wallet = lazy(() => import("./pages/Dashboard/Wallet"));
 const Notification = lazy(() => import("./pages/Dashboard/Notification"));
-const MyProfile = lazy(() => import("./pages/Dashboard/Settings/MyProfile"));
-const NotificationSettings = lazy(() => import("./pages/Dashboard/Settings/Notifications"));
-const Verification = lazy(() => import("./pages/Dashboard/Settings/Verification"));
-const Support = lazy(() => import("./pages/Dashboard/Settings/Support"));
-const ResetPassword = lazy(() => import("./pages/Dashboard/Settings/ResetPassword"));
+// const MyProfile = lazy(() => import("./pages/Dashboard/Settings/MyProfile"));
+// const NotificationSettings = lazy(() => import("./pages/Dashboard/Settings/Notifications"));
+// const Verification = lazy(() => import("./pages/Dashboard/Settings/Verification"));
+// const Support = lazy(() => import("./pages/Dashboard/Settings/Support"));
+// const ResetPassword = lazy(() => import("./pages/Dashboard/Settings/ResetPassword"));
 
 /* ---------- 404 ---------- */
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -67,14 +67,14 @@ export default function App() {
             <Route path="kyc-verification" element={<div>KYC</div>} />
             <Route path="kyc-flow" element={<KYCFlow />} />
             <Route path="post-onboarding" element={<PostOnboard />} />
-            <Route path="settings" element={<SettingsLayout />}>
+            {/* <Route path="settings" element={<SettingsLayout />}>
               <Route index element={<MyProfile />} />
               <Route path="profile" element={<MyProfile />} />
               <Route path="notifications" element={<NotificationSettings />} />
               <Route path="verification" element={<Verification />} />
               <Route path="reset-password" element={<ResetPassword />} />
               <Route path="support" element={<Support />} />
-            </Route>
+            </Route> */}
           </Route>
 
           {/* ADMIN ROUTES */}

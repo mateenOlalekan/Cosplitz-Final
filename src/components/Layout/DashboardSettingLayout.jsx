@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Outlet } from "react-router-dom";
-import Sidebar from "./DashboardSidebar";
+import Sidebar from ".";
 import LogoutModal from "../Settings/LogoutModal";
 import DeleteAccountModal from "../Settings/DeleteAccount";
 import { useAuthStore } from "../../store/authStore";

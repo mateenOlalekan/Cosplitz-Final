@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { FcGoogle } from 'react-icons/fc';
 import { PiAppleLogoBold } from 'react-icons/pi';
 import { Eye, EyeOff, ChevronDown } from 'lucide-react';
-import { registrationSchema } from '../../../store/authStore';
+import { registrationSchema } from '../../../schemas/authSchemas';
 import PasswordValidation from './PasswordValidation';
 import { getAllCountries } from '../../../services/countryService';
 

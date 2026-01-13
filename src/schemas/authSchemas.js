@@ -2,36 +2,23 @@ import { z } from 'zod';
 
 
 export const loginSchema = z.object({
-  email: z.string()
-    .min(1, 'Email is required')
-    .email('Invalid email address'),
-  password: z.string()
-    .min(1, 'Password is required')
-    .min(6, 'Password must be at least 6 characters'),
-  rememberMe: z.boolean().optional(),
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(1, 'Password is required'),
 });
 
-export const registerSchema = z.object({
-  firstName: z.string()
-    .min(1, 'First name is required')
-    .min(2, 'First name must be at least 2 characters'),
-  lastName: z.string()
-    .min(1, 'Last name is required')
-    .min(2, 'Last name must be at least 2 characters'),
-  email: z.string()
-    .min(1, 'Email is required')
-    .email('Invalid email address'),
-  nationality: z.string()
-    .min(1, 'Nationality is required'),
+
+export const registrationSchema = z.object({
+  firstName: z.string().min(1, 'First name is required').max(50, 'Name too long'),
+  lastName: z.string().min(1, 'Last name is required').max(50, 'Name too long'),
+  email: z.string().email('Invalid email address').min(1, 'Email is required'),
+  nationality: z.string().optional(),
   password: z.string()
-    .min(1, 'Password is required')
     .min(8, 'Password must be at least 8 characters')
-    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-    .regex(/\d/, 'Password must contain at least one number'),
-  agreeToTerms: z.boolean()
-    .refine(val => val === true, {
-      message: 'You must agree to the terms and conditions',
-    }),
+    .regex(/[A-Z]/, 'Password must contain an uppercase letter')
+    .regex(/\d/, 'Password must contain a number'),
+  agreeToTerms: z.boolean().refine(val => val === true, {
+    message: 'You must agree to the terms and conditions'
+  })
 });
 
 export const otpSchema = z.object({

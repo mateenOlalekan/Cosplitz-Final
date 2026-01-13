@@ -1,6 +1,6 @@
 const API_BASE_URL = 'https://cosplitz-backend.onrender.com/api';
 
-/* ---------- logger ---------- */
+/* ---------- debug logger ---------- */
 const COL = {
   ok: 'color: #2ecc71; font-weight: bold',
   err: 'color: #e74c3c; font-weight: bold',
@@ -13,7 +13,7 @@ const log = (msg, style = COL.info, ...rest) =>
 /* ---------- store ---------- */
 import { useAuthStore } from '../store/authStore';
 
-/* ---------- core request ---------- */
+/* ---------- core request handler ---------- */
 async function request(path, options = {}) {
   const url = `${API_BASE_URL}${path}`;
   const token = options.getToken ? options.getToken() : useAuthStore.getState().token;
@@ -48,29 +48,19 @@ async function request(path, options = {}) {
   
   log(`← ${resp.status} ${resp.statusText}`, resp.ok ? COL.ok : COL.err, json);
 
-  // ==== HANDLE ERRORS GRACEFULLY ====
+  // ==== ERROR HANDLING ====
   if (resp.status === 500) {
-    return { 
-      status: 500, 
-      data: { 
-        message: json?.message || 'Server error. Please try again or contact support.' 
-      }, 
-      error: true 
-    };
+    return { status: 500, data: { message: json?.message || 'Server error. Please try again later.' }, error: true };
   }
-  
-  if (resp.status === 401) {
-    return { status: 401, data: { ...json, message: json?.message || 'Unauthorized. Please log in.' }, error: true, unauthorized: true };
-  }
-  if (resp.status === 400) return { status: 400, data: { ...json, message: json?.message || 'Invalid request data.' }, error: true };
-  if (resp.status === 409) return { status: 409, data: { ...json, message: json?.message || 'This email is already registered.' }, error: true };
-  if (resp.status === 404) return { status: 404, data: { ...json, message: json?.message || 'Resource not found.' }, error: true };
+  if (resp.status === 404) return { status: 404, data: { ...json, message: json?.message || 'Endpoint not found.' }, error: true };
+  if (resp.status === 401) return { status: 401, data: { ...json, message: json?.message || 'Unauthorized.' }, error: true, unauthorized: true };
+  if (resp.status === 400) return { status: 400, data: { ...json, message: json?.message || 'Invalid request.' }, error: true };
   if (!resp.ok) return { status: resp.status, data: { ...json, message: json?.message || `Request failed (${resp.status})` }, error: true };
 
   return { status: resp.status, data: json, success: true };
 }
 
-/* ---------- auth ---------- */
+/* ---------- AUTH SERVICE ---------- */
 export const authService = {
   register: async (userData) => {
     try {
@@ -101,14 +91,15 @@ export const authService = {
     }
   },
 
-  // ==== CORRECT: GET /otp/ with user_id as query param ====
+  // ==== BACKEND MATCH: GET /api/otp/{id}/ ====
   getOTP: async (userId) => {
     if (!userId) return { status: 400, data: { message: 'User ID is required.' }, error: true };
+    
     console.log(`[AuthApi] GET /otp/${userId}/`);
     
     try {
-      // Backend expects: GET /api/otp/?user_id=291
-      const res = await request(`/otp/${userId}`, { method: 'GET' });
+      const res = await request(`/otp/${userId}/`, { method: 'GET' });
+      console.log(`[AuthApi] Response:`, res);
       return res;
     } catch (err) {
       log('Get OTP error', COL.err, err);
@@ -116,6 +107,7 @@ export const authService = {
     }
   },
 
+  // ==== BACKEND MATCH: POST /api/verify_otp ====
   verifyOTP: async (identifier, otp) => {
     if (!identifier || !otp) return { status: 400, data: { message: 'Email and OTP are required.' }, error: true };
     
@@ -123,15 +115,22 @@ export const authService = {
       ? { email: identifier.toLowerCase().trim(), otp: otp.toString().trim() }
       : { user_id: identifier.toString(), otp: otp.toString().trim() };
     
+    console.log(`[AuthApi] POST /verify_otp with body:`, body);
+    
     try {
-      return await request('/verify_otp', { method: 'POST', body });
+      const res = await request('/verify_otp', { method: 'POST', body });
+      console.log(`[AuthApi] Response:`, res);
+      return res;
     } catch (err) {
       log('Verify OTP error', COL.err, err);
       return { status: 0, data: { message: 'OTP verification failed.' }, error: true };
     }
   },
 
-  resendOTP: (userId) => authService.getOTP(userId),
+  resendOTP: (userId) => {
+    console.log(`[AuthApi] Resending OTP for user: ${userId}`);
+    return authService.getOTP(userId);
+  },
 
   logout: async () => {
     try {
