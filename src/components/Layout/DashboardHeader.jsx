@@ -5,6 +5,7 @@ import logo from "../../assets/logo.svg";
 import { useAuthStore } from "../../store/authStore";
 import { useState } from "react";
 
+
 export default function DashboardHeader({ sidebarOpen, setSidebarOpen, isMobile, onSidebarToggle }) {
   const navigate = useNavigate();
   const { user } = useAuthStore();
