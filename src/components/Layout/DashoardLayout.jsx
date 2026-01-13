@@ -89,19 +89,19 @@ export default function DashboardLayout() {
 }
 
 // Wrapper component to render settings within dashboard layout
-function DashboardSettingLayoutWrapper() {
-  const location = useLocation();
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
+// function DashboardSettingLayoutWrapper() {
+//   const location = useLocation();
+//   const [showLogoutModal, setShowLogoutModal] = useState(false);
   
-  useEffect(() => {
-    if (location.state?.showLogoutModal) {
-      setShowLogoutModal(true);
-    }
-  }, [location.state]);
+//   useEffect(() => {
+//     if (location.state?.showLogoutModal) {
+//       setShowLogoutModal(true);
+//     }
+//   }, [location.state]);
 
-  return (
-    <div className="h-full">
-      <DashboardSettingLayout />
-    </div>
-  );
-}
+//   return (
+//     <div className="h-full">
+//       <DashboardSettingLayout />
+//     </div>
+//   );
+// }
