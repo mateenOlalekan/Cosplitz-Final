@@ -36,6 +36,24 @@ const ResetPassword = lazy(() => import("./pages/Dashboard/Settings/ResetPasswor
 /* ---------- 404 ---------- */
 const NotFound = lazy(() => import("./pages/NotFound"));
 
+/* Splitz Pages */
+// const CreateSplitz = lazy(() => import("./pages/Dashboard/Splits/CreateSplitz"));
+// const MySplitz = lazy(() => import("./pages/Dashboard/Splits/MySplitz"));
+// const Allsplitz = lazy(() => import("./components/Splitz/AllSplitsPage"));
+// const SplitzDetail = lazy(() => import("./pages/Dashboard/Splits/SplitzDetail"));
+// const SplitzSuccessful = lazy(() => import("./pages/Dashboard/Splits/SplitzSuccessful")); // 
+
+
+{/* ============================================
+                SPLITZ ROUTES
+            ============================================ */}
+            {/* <Route path="create-splitz" element={<CreateSplitz />} />
+            <Route path="allsplits" element={<Allsplitz/>}/>
+            <Route path="mysplitz" element={<MySplitz />} />
+            <Route path="splitz-details/:id" element={<SplitzDetail />} />
+            <Route path="splitz-success" element={<SplitzSuccessful />} /> */}
+
+
 /* ---------- public-only wrapper ---------- */
 function PublicOnly({ children }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated());

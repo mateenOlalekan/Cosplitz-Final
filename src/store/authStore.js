@@ -11,7 +11,7 @@ export const useAuthStore = create(
       token: null,
       error: null,
       isLoading: false,
-      tempRegister: null,
+      tempRegister: null, // { userId, email }
       rememberMe: true,
 
       /* -------------------- helpers -------------------- */
@@ -38,6 +38,19 @@ export const useAuthStore = create(
         }
       },
 
+      // ✅ NEW: Save temp registration data
+      _saveTempRegister(data) {
+        try {
+          if (data) {
+            localStorage.setItem('tempRegister', JSON.stringify(data));
+          } else {
+            localStorage.removeItem('tempRegister');
+          }
+        } catch (e) {
+          console.warn('[AuthStore] Temp storage error:', e);
+        }
+      },
+
       /* -------------------- low-level setters -------------------- */
       setToken: (token, persist = true) => {
         set({ token, rememberMe: persist });
@@ -49,12 +62,16 @@ export const useAuthStore = create(
         if (persist) get()._saveUser(userObj);
       },
 
-      setPendingVerification: (data) => set({ tempRegister: data }),
+      setPendingVerification: (data) => {
+        set({ tempRegister: data });
+        get()._saveTempRegister(data); // ✅ Persist to survive refresh
+      },
 
       completeRegistration: (userData, token) => {
         set({ user: userData, token, tempRegister: null, error: null, rememberMe: true });
         get()._saveToken(token, true);
         get()._saveUser(userData);
+        get()._saveTempRegister(null); // Clear temp data
       },
 
       setError: (msg) => set({ error: msg }),
@@ -71,32 +88,38 @@ export const useAuthStore = create(
           const res = await authService.register(userData);
 
           if (res.success) {
+            // ✅ FIXED: More robust userId extraction
             const userId = res.data?.user?.id || res.data?.user_id || res.data?.user?.user_id;
             const email = res.data?.user?.email || userData.email;
 
             if (!userId) {
+              console.error('❌ Registration response missing userId:', res);
               set({ error: 'Invalid registration response: missing user ID', isLoading: false });
               return { success: false, error: 'Invalid response from server' };
             }
 
-            // Store verification data
-            set({ tempRegister: { userId, email }, isLoading: false });
+            // ✅ FIXED: Store verification data BEFORE OTP request
+            get().setPendingVerification({ userId, email });
 
             // Auto-request OTP (no token needed during registration)
             const otpRes = await authService.getOTP(userId);
             
             if (!otpRes.success) {
+              console.error('❌ OTP request failed:', otpRes);
               set({ error: otpRes.data?.message || 'Failed to send OTP', tempRegister: null });
+              get()._saveTempRegister(null); // Clear on failure
               return { success: false, error: otpRes.data?.message };
             }
 
+            log('✅ Registration successful, OTP sent', COL.ok);
             return { success: true, data: { userId } };
           } else {
+            console.error('❌ Registration failed:', res);
             set({ error: res.data?.message || 'Registration failed', isLoading: false });
             return res;
           }
         } catch (err) {
-          console.error('[AuthStore] Registration error:', err);
+          console.error('❌ [AuthStore] Registration error:', err);
           set({ error: 'Registration failed', isLoading: false });
           return { success: false, error: 'Registration failed' };
         }
@@ -121,16 +144,25 @@ export const useAuthStore = create(
         return res;
       },
 
-      // 3. VERIFY OTP
+      // 3. VERIFY OTP - ✅ FIXED: Better error handling and logging
       verifyOTP: async (identifier, otp) => {
         set({ isLoading: true, error: null });
         
-        const userId = get().tempRegister?.userId;
+        // ✅ FIXED: Try multiple sources for identifier
+        const userId = get().tempRegister?.userId || identifier;
         const email = get().tempRegister?.email;
         const verifyIdentifier = userId || identifier || email;
 
+        // ✅ FIXED: Detailed logging for debugging
+        console.log('[AuthStore] Verifying OTP with:', { 
+          identifier, 
+          tempRegister: get().tempRegister,
+          verifyIdentifier 
+        });
+
         if (!verifyIdentifier) {
-          set({ error: 'No verification identifier available', isLoading: false });
+          console.error('❌ No verification identifier available');
+          set({ error: 'No verification identifier. Please register again.', isLoading: false });
           return { success: false, error: 'No identifier' };
         }
 
@@ -141,18 +173,21 @@ export const useAuthStore = create(
             const { user, token } = res.data;
             
             if (!user || !token) {
+              console.error('❌ Missing user or token in response:', res);
               set({ error: 'Invalid server response: missing user or token', isLoading: false, tempRegister: null });
               return { success: false, error: 'Invalid response' };
             }
 
             get().completeRegistration(user, token);
+            log('✅ OTP verification successful', COL.ok);
             return { success: true, data: { user, token } };
           } else {
+            console.error('❌ OTP verification failed:', res);
             set({ error: res.data?.message || 'OTP verification failed', isLoading: false });
             return res;
           }
         } catch (err) {
-          console.error('[AuthStore] Verify OTP error:', err);
+          console.error('❌ [AuthStore] Verify OTP error:', err);
           set({ error: 'OTP verification failed', isLoading: false });
           return { success: false, error: 'OTP verification failed' };
         }
@@ -162,8 +197,9 @@ export const useAuthStore = create(
       resendOTP: async () => {
         set({ error: null });
         const userId = get().tempRegister?.userId;
+        
         if (!userId) {
-          const err = { status: 400, data: { message: 'No pending registration' }, error: true };
+          const err = { status: 400, data: { message: 'No pending registration. Please register again.' }, error: true };
           set({ error: err.data.message });
           return err;
         }
@@ -211,7 +247,7 @@ export const useAuthStore = create(
 
           return { success: true, data: { user, token } };
         } catch (err) {
-          console.error('[AuthStore] Login error:', err);
+          console.error('❌ [AuthStore] Login error:', err);
           set({ error: 'Login failed', isLoading: false });
           return { success: false, error: 'Login failed' };
         }
@@ -230,6 +266,7 @@ export const useAuthStore = create(
         try {
           localStorage.removeItem('authToken');
           localStorage.removeItem('userInfo');
+          localStorage.removeItem('tempRegister'); // ✅ Clear temp data
           sessionStorage.clear();
         } catch (e) {
           console.warn('[AuthStore] Storage cleanup error:', e);
@@ -240,30 +277,6 @@ export const useAuthStore = create(
         }
       },
 
-      // // 7. FORGOT PASSWORD
-      // forgotPassword: async (email) => {
-      //   set({ isLoading: true, error: null });
-      //   const res = await authService.forgotPassword(email);
-      //   if (!res.success) {
-      //     set({ error: res.data?.message || 'Failed to send reset email', isLoading: false });
-      //   } else {
-      //     set({ isLoading: false });
-      //   }
-      //   return res;
-      // },
-
-      // // 8. RESET PASSWORD
-      // resetPassword: async (data) => {
-      //   set({ isLoading: true, error: null });
-      //   const res = await authService.resetPassword(data);
-      //   if (!res.success) {
-      //     set({ error: res.data?.message || 'Password reset failed', isLoading: false });
-      //   } else {
-      //     set({ isLoading: false });
-      //   }
-      //   return res;
-      // },
-
       /* -------------------- getters -------------------- */
       isAuthenticated: () => !!get().token && !!get().user,
       isAdmin: () => ['admin', true].includes(get().user?.role || get().user?.is_admin),
@@ -273,6 +286,17 @@ export const useAuthStore = create(
       /* -------------------- re-hydrate auth -------------------- */
       initializeAuth: async () => {
         try {
+          // ✅ NEW: Restore temp registration data
+          const tempData = localStorage.getItem('tempRegister');
+          if (tempData) {
+            try {
+              const tempRegister = JSON.parse(tempData);
+              set({ tempRegister });
+            } catch (e) {
+              console.warn('[AuthStore] Failed to parse tempRegister:', e);
+            }
+          }
+
           const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
           if (!token) return set({ isLoading: false });
 
@@ -288,14 +312,20 @@ export const useAuthStore = create(
             get()._saveUser(null);
           }
         } catch (err) {
-          console.error('[AuthStore] init error', err);
+          console.error('[AuthStore] init error:', err);
           set({ token: null, user: null, isLoading: false });
         }
       },
     }),
     {
       name: 'auth-storage',
-      partialize: (s) => ({ token: s.token, user: s.user, rememberMe: s.rememberMe }),
+      // ✅ NEW: Persist tempRegister to survive page refreshes
+      partialize: (s) => ({ 
+        token: s.token, 
+        user: s.user, 
+        rememberMe: s.rememberMe,
+        tempRegister: s.tempRegister // ✅ Persist temp registration data
+      }),
     },
   ),
 );

@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://cosplitz-backend.onrender.com/api';
+const API_BASE_URL = 'https://cosplitz-backend.onrender.com/api'; // ✅ Removed trailing space
 
 /* ---------- logger ---------- */
 const COL = {
@@ -38,15 +38,31 @@ async function request(path, options = {}) {
     return { status: 0, data: { message: 'Network error. Check connection.' }, error: true };
   }
 
+  // ✅ FIXED: Get raw text first for debugging
+  const responseText = await resp.text();
+  
+  // ✅ FIXED: Show raw response in logs for debugging
+  const isJson = responseText && responseText.trim().startsWith('{');
+  log(`← ${resp.status} ${resp.statusText}`, resp.ok ? COL.ok : COL.err, 
+    isJson ? responseText : `Non-JSON response: ${responseText.substring(0, 100)}...`);
+
   let json = null;
   try {
-    const txt = await resp.text();
-    json = txt ? JSON.parse(txt) : null;
-  } catch {
-    json = { message: 'Invalid server response (not JSON).' };
+    json = responseText ? JSON.parse(responseText) : null;
+  } catch (parseError) {
+    // ✅ FIXED: Return actual response text in error
+    console.error('❌ JSON Parse Error:', parseError);
+    return {
+      status: resp.status,
+      data: { 
+        message: `Server error (${resp.status}). Response was not JSON.`,
+        debug: responseText.substring(0, 300),
+        originalMessage: 'Invalid server response (not JSON).'
+      },
+      error: true,
+      responseText: responseText
+    };
   }
-  
-  log(`← ${resp.status} ${resp.statusText}`, resp.ok ? COL.ok : COL.err, json);
 
   // ==== HANDLE ERRORS GRACEFULLY ====
   if (resp.status === 500) {
@@ -64,7 +80,7 @@ async function request(path, options = {}) {
   }
   if (resp.status === 400) return { status: 400, data: { ...json, message: json?.message || 'Invalid request data.' }, error: true };
   if (resp.status === 409) return { status: 409, data: { ...json, message: json?.message || 'This email is already registered.' }, error: true };
-  if (resp.status === 404) return { status: 404, data: { ...json, message: json?.message || 'Resource not found.' }, error: true };
+  if (resp.status === 404) return { status: 404, data: { ...json, message: json?.message || 'API endpoint not found (404).' }, error: true };
   if (!resp.ok) return { status: resp.status, data: { ...json, message: json?.message || `Request failed (${resp.status})` }, error: true };
 
   return { status: resp.status, data: json, success: true };
@@ -101,17 +117,17 @@ export const authService = {
     }
   },
 
-  // ==== CORRECT: GET /otp/ with user_id as query param ====
+  // ✅ FIXED: Use path parameter format /otp/{userId}/
   getOTP: async (userId) => {
     if (!userId) return { status: 400, data: { message: 'User ID is required.' }, error: true };
     
     try {
-      // Backend expects: GET /api/otp/?user_id=291
-      const res = await request(`/otp/?user_id=${userId}`, { method: 'GET' });
+      log('📧 Sending OTP request for userId:', COL.info, userId);
+      const res = await request(`/otp/${userId}/`, { method: 'GET' });
       return res;
     } catch (err) {
       log('Get OTP error', COL.err, err);
-      return { status: 0, data: { message: 'Failed to send OTP. Try resend button.' }, error: true };
+      return { status: 0, data: { message: 'Failed to send OTP. Please try resend button.' }, error: true };
     }
   },
 
@@ -140,8 +156,10 @@ export const authService = {
       return { status: 0, data: { message: 'Logged out locally.' }, success: true };
     }
   },
+};
 
-  // forgotPassword: async (email) => {
+export default { request, authService };
+// forgotPassword: async (email) => {
   //   try {
   //     return await request('/forgot-password/', { method: 'POST', body: { email: email.toLowerCase().trim() } });
   //   } catch (err) {
@@ -157,7 +175,5 @@ export const authService = {
   //     log('Reset password error', COL.err, err);
   //     return { status: 0, data: { message: 'Password reset failed.' }, error: true };
   //   }
-  // },
-};
+  
 
-export default { request, authService };
