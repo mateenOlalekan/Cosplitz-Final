@@ -74,17 +74,15 @@ export const useAuthStore = create(
 
           // FIXED: Auto-request OTP without token
           const otpRes = await authService.getOTP(userId, () => null);
+          
           if (!otpRes.success) {
             set({ error: otpRes.data?.message || 'Failed to send OTP', isLoading: false, tempRegister: null });
             return { success: false, error: otpRes.data?.message };
           }
 
-          // Store minimal pending data
+          // Store minimal data for verification step
           set({ 
-            tempRegister: { 
-              userId, 
-              email: userData.email 
-            }, 
+            tempRegister: { userId, email: userData.email }, 
             isLoading: false 
           });
 
@@ -120,7 +118,7 @@ export const useAuthStore = create(
         const res = await authService.verifyOTP(userId, otp, () => get().token);
 
         if (res.success) {
-          // Backend returns { user, token } after verification
+          // Backend returns { user, token } after OTP verification
           const { user, token } = res.data;
           
           if (!user || !token) {
@@ -265,7 +263,7 @@ export const useAuthStore = create(
   ),
 );
 
-// Auto-initialize on module load
+// Auto-initialize on module load (browser only)
 if (typeof window !== 'undefined') {
   useAuthStore.getState().initializeAuth();
 }
