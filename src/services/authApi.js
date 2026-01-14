@@ -117,19 +117,22 @@ export const authService = {
     }
   },
 
-  // ✅ FIXED: Use path parameter format /otp/{userId}/
-  getOTP: async (userId) => {
-    if (!userId) return { status: 400, data: { message: 'User ID is required.' }, error: true };
+getOTP: async (userId) => {
+  if (!userId) return { status: 400, data: { message: 'User ID is required.' }, error: true };
+  
+  try {
+    const res = await request(`/otp/${userId}/`, { method: 'GET' });
     
-    try {
-      log('📧 Sending OTP request for userId:', COL.info, userId);
-      const res = await request(`/otp/${userId}/`, { method: 'GET' });
-      return res;
-    } catch (err) {
-      log('Get OTP error', COL.err, err);
-      return { status: 0, data: { message: 'Failed to send OTP. Please try resend button.' }, error: true };
+    // ✅ TEMP: Show OTP in console for testing
+    if (res.success && res.data?.otp) {
+      console.log('🔢 OTP CODE (DEV):', res.data.otp);
     }
-  },
+    
+    return res;
+  } catch (err) {
+    return { status: 0, data: { message: 'Failed to send OTP.' }, error: true };
+  }
+},
 
   verifyOTP: async (identifier, otp) => {
     if (!identifier || !otp) return { status: 400, data: { message: 'Email and OTP are required.' }, error: true };
