@@ -4,11 +4,16 @@ import { ArrowLeft, Mail, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
 
 export default function EmailVerificationStep({ onVerify, onResend, onBack, isLoading }) {
-  const { tempRegister, error } = useAuthStore();
+  const { tempRegister, error: storeError } = useAuthStore();
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [timer, setTimer] = useState(180);
   const [resendLoading, setResendLoading] = useState(false);
+  const [localError, setLocalError] = useState('');
   const inputRefs = useRef([]);
+
+  // Get data from store instead of props
+  const email = tempRegister?.email;
+  const userId = tempRegister?.userId;
 
   useEffect(() => {
     if (timer <= 0) return;
@@ -16,13 +21,19 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
     return () => clearInterval(interval);
   }, [timer]);
 
+  useEffect(() => {
+    // Clear local error when store error changes
+    if (storeError) setLocalError(storeError);
+  }, [storeError]);
+
   const handleChange = (value, index) => {
     if (!/^[0-9]?$/.test(value)) return;
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
+    setLocalError('');
+    
     if (value && index < 5) inputRefs.current[index + 1]?.focus();
-    if (newOtp.every(d => d !== '')) onVerify(newOtp.join(''));
   };
 
   const handleKeyDown = (index, e) => {
@@ -36,22 +47,49 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
     const pasted = e.clipboardData.getData('text/plain').trim();
     if (/^\d{6}$/.test(pasted)) {
       setOtp(pasted.split(''));
-      onVerify(pasted);
+      setLocalError('');
     }
+  };
+
+  const handleVerifyClick = () => {
+    const otpCode = otp.join('');
+    if (otpCode.length !== 6) {
+      setLocalError('Please enter the complete 6-digit code.');
+      return;
+    }
+    // Call the parent handler with OTP
+    onVerify(otpCode);
   };
 
   const handleResend = async () => {
     if (timer > 0) return;
+    
+    if (!userId) {
+      setLocalError('Cannot resend OTP. User ID is missing.');
+      return;
+    }
+
     setResendLoading(true);
-    await onResend();
-    setTimer(180);
-    setOtp(['', '', '', '', '', '']);
-    inputRefs.current[0]?.focus();
-    setResendLoading(false);
+    setLocalError('');
+    
+    try {
+      await onResend();
+      setTimer(180);
+      setOtp(['', '', '', '', '', '']);
+      inputRefs.current[0]?.focus();
+    } catch (err) {
+      setLocalError(err.message || 'Failed to resend OTP.');
+    } finally {
+      setResendLoading(false);
+    }
   };
 
   const formatTime = (seconds) =>
     `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
+
+  // Show verification button states
+  const canVerify = otp.every(d => d !== '') && !isLoading;
+  const verifyButtonText = isLoading ? 'Verifying...' : 'Verify Email';
 
   return (
     <div className="flex flex-col items-center gap-5 py-8 relative w-full">
@@ -69,7 +107,7 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
       <p className="text-gray-500 text-sm text-center max-w-xs">
         Enter the code sent to{' '}
         <span className="text-green-600 font-medium break-all">
-          {tempRegister?.email}
+          {email}
         </span>
       </p>
 
@@ -96,13 +134,15 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
         ))}
       </div>
 
-      {error && (
+      {/* Error Display */}
+      {(localError || storeError) && (
         <div className="flex items-center gap-2 text-red-600 text-sm mt-2">
           <AlertCircle size={16} />
-          <span>{error}</span>
+          <span>{localError || storeError}</span>
         </div>
       )}
 
+      {/* Timer / Resend */}
       <div className="text-center mt-4">
         {timer > 0 ? (
           <p className="text-sm text-gray-600">
@@ -119,6 +159,20 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
           </button>
         )}
       </div>
+
+      {/* VERIFY BUTTON - NEW! */}
+      <button
+        type="button"
+        onClick={handleVerifyClick}
+        disabled={!canVerify}
+        className={`mt-6 px-8 py-3 rounded-lg font-semibold transition-all ${
+          canVerify 
+            ? 'bg-green-600 text-white hover:bg-green-700 active:scale-[0.98]' 
+            : 'bg-greeen-500 text-gray-500 cursor-not-allowed'
+        }`}
+      >
+        {verifyButtonText}
+      </button>
     </div>
   );
 }

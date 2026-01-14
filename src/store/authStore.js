@@ -3,6 +3,16 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authService } from '../services/authApi';
 
+// ✅ FIX: Add local logger (authApi's logger not available here)
+const COL = {
+  ok: 'color: #2ecc71; font-weight: bold',
+  err: 'color: #e74c3c; font-weight: bold',
+  info: 'color: #3498db; font-weight: bold',
+  warn: 'color: #f39c12; font-weight: bold',
+};
+const log = (msg, style = COL.info, ...rest) =>
+  console.log(`%c[AuthStore] ${msg}`, style, ...rest);
+
 export const useAuthStore = create(
   persist(
     (set, get) => ({
@@ -11,7 +21,7 @@ export const useAuthStore = create(
       token: null,
       error: null,
       isLoading: false,
-      tempRegister: null, // { userId, email }
+      tempRegister: null,
       rememberMe: true,
 
       /* -------------------- helpers -------------------- */
@@ -38,7 +48,6 @@ export const useAuthStore = create(
         }
       },
 
-      // ✅ NEW: Save temp registration data
       _saveTempRegister(data) {
         try {
           if (data) {
@@ -64,14 +73,14 @@ export const useAuthStore = create(
 
       setPendingVerification: (data) => {
         set({ tempRegister: data });
-        get()._saveTempRegister(data); // ✅ Persist to survive refresh
+        get()._saveTempRegister(data);
       },
 
       completeRegistration: (userData, token) => {
         set({ user: userData, token, tempRegister: null, error: null, rememberMe: true });
         get()._saveToken(token, true);
         get()._saveUser(userData);
-        get()._saveTempRegister(null); // Clear temp data
+        get()._saveTempRegister(null);
       },
 
       setError: (msg) => set({ error: msg }),
@@ -80,7 +89,6 @@ export const useAuthStore = create(
 
       /* -------------------- auth flows -------------------- */
 
-      // 1. REGISTER + AUTO-SEND OTP (NO TOKEN NEEDED)
       register: async (userData) => {
         set({ isLoading: true, error: null });
         
@@ -88,44 +96,43 @@ export const useAuthStore = create(
           const res = await authService.register(userData);
 
           if (res.success) {
-            // ✅ FIXED: More robust userId extraction
             const userId = res.data?.user?.id || res.data?.user_id || res.data?.user?.user_id;
             const email = res.data?.user?.email || userData.email;
 
             if (!userId) {
-              console.error('❌ Registration response missing userId:', res);
+              log('❌ Registration response missing userId:', COL.err, res);
               set({ error: 'Invalid registration response: missing user ID', isLoading: false });
               return { success: false, error: 'Invalid response from server' };
             }
 
-            // ✅ FIXED: Store verification data BEFORE OTP request
+            log('✅ Registration successful, requesting OTP for userId:', COL.ok, userId);
+            
+            // Store verification data
             get().setPendingVerification({ userId, email });
 
-            // Auto-request OTP (no token needed during registration)
+            // Auto-request OTP
             const otpRes = await authService.getOTP(userId);
             
             if (!otpRes.success) {
-              console.error('❌ OTP request failed:', otpRes);
+              log('❌ OTP request failed:', COL.err, otpRes);
               set({ error: otpRes.data?.message || 'Failed to send OTP', tempRegister: null });
-              get()._saveTempRegister(null); // Clear on failure
               return { success: false, error: otpRes.data?.message };
             }
 
-            log('✅ Registration successful, OTP sent', COL.ok);
+            log('✅ OTP sent successfully', COL.ok);
             return { success: true, data: { userId } };
           } else {
-            console.error('❌ Registration failed:', res);
+            log('❌ Registration failed:', COL.err, res);
             set({ error: res.data?.message || 'Registration failed', isLoading: false });
             return res;
           }
         } catch (err) {
-          console.error('❌ [AuthStore] Registration error:', err);
+          log('❌ Registration error:', COL.err, err);
           set({ error: 'Registration failed', isLoading: false });
           return { success: false, error: 'Registration failed' };
         }
       },
 
-      // 2. GET OTP (manual)
       getOTP: async (userId) => {
         if (!userId) {
           const err = { status: 400, data: { message: 'User ID is required' }, error: true };
@@ -134,6 +141,8 @@ export const useAuthStore = create(
         }
         
         set({ isLoading: true, error: null });
+        log('📧 Fetching OTP for userId:', COL.info, userId);
+        
         const res = await authService.getOTP(userId);
         
         if (!res.success) {
@@ -144,28 +153,21 @@ export const useAuthStore = create(
         return res;
       },
 
-      // 3. VERIFY OTP - ✅ FIXED: Better error handling and logging
       verifyOTP: async (identifier, otp) => {
         set({ isLoading: true, error: null });
         
-        // ✅ FIXED: Try multiple sources for identifier
         const userId = get().tempRegister?.userId || identifier;
         const email = get().tempRegister?.email;
         const verifyIdentifier = userId || identifier || email;
 
-        // ✅ FIXED: Detailed logging for debugging
-        console.log('[AuthStore] Verifying OTP with:', { 
-          identifier, 
-          tempRegister: get().tempRegister,
-          verifyIdentifier 
-        });
-
         if (!verifyIdentifier) {
-          console.error('❌ No verification identifier available');
+          log('❌ No verification identifier available', COL.err);
           set({ error: 'No verification identifier. Please register again.', isLoading: false });
           return { success: false, error: 'No identifier' };
         }
 
+        log('🔢 Verifying OTP:', COL.info, { identifier: verifyIdentifier });
+        
         try {
           const res = await authService.verifyOTP(verifyIdentifier, otp);
 
@@ -173,27 +175,26 @@ export const useAuthStore = create(
             const { user, token } = res.data;
             
             if (!user || !token) {
-              console.error('❌ Missing user or token in response:', res);
+              log('❌ Missing user or token in response:', COL.err, res);
               set({ error: 'Invalid server response: missing user or token', isLoading: false, tempRegister: null });
               return { success: false, error: 'Invalid response' };
             }
 
-            get().completeRegistration(user, token);
             log('✅ OTP verification successful', COL.ok);
+            get().completeRegistration(user, token);
             return { success: true, data: { user, token } };
           } else {
-            console.error('❌ OTP verification failed:', res);
+            log('❌ OTP verification failed:', COL.err, res);
             set({ error: res.data?.message || 'OTP verification failed', isLoading: false });
             return res;
           }
         } catch (err) {
-          console.error('❌ [AuthStore] Verify OTP error:', err);
+          log('❌ Verify OTP error:', COL.err, err);
           set({ error: 'OTP verification failed', isLoading: false });
           return { success: false, error: 'OTP verification failed' };
         }
       },
 
-      // 4. RESEND OTP
       resendOTP: async () => {
         set({ error: null });
         const userId = get().tempRegister?.userId;
@@ -204,6 +205,7 @@ export const useAuthStore = create(
           return err;
         }
         
+        log('🔄 Resending OTP for userId:', COL.info, userId);
         const res = await authService.getOTP(userId);
         if (!res.success) {
           set({ error: res.data?.message || 'Failed to resend OTP' });
@@ -211,7 +213,6 @@ export const useAuthStore = create(
         return res;
       },
 
-      // 5. LOGIN + FETCH USER INFO
       login: async (credentials, { remember = false } = {}) => {
         set({ isLoading: true, error: null });
         
@@ -226,7 +227,6 @@ export const useAuthStore = create(
           const token = loginRes.data.token;
           let user = loginRes.data.user;
 
-          // Fetch full user info if not provided
           if (!user) {
             const userRes = await authService.getUserInfo();
             if (!userRes.success) {
@@ -247,29 +247,28 @@ export const useAuthStore = create(
 
           return { success: true, data: { user, token } };
         } catch (err) {
-          console.error('❌ [AuthStore] Login error:', err);
+          log('❌ Login error:', COL.err, err);
           set({ error: 'Login failed', isLoading: false });
           return { success: false, error: 'Login failed' };
         }
       },
 
-      // 6. LOGOUT
       logout: async (redirect = true) => {
         set({ isLoading: true });
         try { 
           await authService.logout(); 
         } catch (e) {
-          console.warn('[AuthStore] Logout API error:', e);
+          log('Logout API error', COL.warn, e);
         }
         
         set({ user: null, token: null, error: null, tempRegister: null, isLoading: false });
         try {
           localStorage.removeItem('authToken');
           localStorage.removeItem('userInfo');
-          localStorage.removeItem('tempRegister'); // ✅ Clear temp data
+          localStorage.removeItem('tempRegister');
           sessionStorage.clear();
         } catch (e) {
-          console.warn('[AuthStore] Storage cleanup error:', e);
+          console.warn('[AuthStore] Storage cleanup error', e);
         }
         
         if (redirect && typeof window !== 'undefined') {
@@ -277,16 +276,13 @@ export const useAuthStore = create(
         }
       },
 
-      /* -------------------- getters -------------------- */
       isAuthenticated: () => !!get().token && !!get().user,
       isAdmin: () => ['admin', true].includes(get().user?.role || get().user?.is_admin),
       getUserId: () => get().user?.id,
       getToken: () => get().token,
 
-      /* -------------------- re-hydrate auth -------------------- */
       initializeAuth: async () => {
         try {
-          // ✅ NEW: Restore temp registration data
           const tempData = localStorage.getItem('tempRegister');
           if (tempData) {
             try {
@@ -306,31 +302,28 @@ export const useAuthStore = create(
           if (res.success) {
             set({ user: res.data.user, isLoading: false });
           } else {
-            // Clear invalid token
             set({ token: null, user: null, isLoading: false });
             get()._saveToken(null, false);
             get()._saveUser(null);
           }
         } catch (err) {
-          console.error('[AuthStore] init error:', err);
+          log('❌ Init error:', COL.err, err);
           set({ token: null, user: null, isLoading: false });
         }
       },
     }),
     {
       name: 'auth-storage',
-      // ✅ NEW: Persist tempRegister to survive page refreshes
       partialize: (s) => ({ 
         token: s.token, 
         user: s.user, 
         rememberMe: s.rememberMe,
-        tempRegister: s.tempRegister // ✅ Persist temp registration data
+        tempRegister: s.tempRegister 
       }),
     },
   ),
 );
 
-// Auto-initialize on module load (browser only)
 if (typeof window !== 'undefined') {
   useAuthStore.getState().initializeAuth();
 }

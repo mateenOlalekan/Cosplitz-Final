@@ -35,7 +35,7 @@ export default function DashboardLayout() {
         <DashboardHeader onMenuClick={toggleSidebar} />
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+        <main className="flex-1 overflow-y-auto ">
           <Outlet />
         </main>
       </div>

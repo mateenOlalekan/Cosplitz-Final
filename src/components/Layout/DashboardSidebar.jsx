@@ -1,6 +1,6 @@
 // src/components/Dashboard/DashboardSidebar.jsx
 import { NavLink, useLocation, Link } from "react-router-dom";
-import { Home, Share2, MessageSquare, Wallet, MapPin, BarChart3 } from "lucide-react";
+import { Home, Share2, MessageSquare, Wallet, MapPin, BarChart3,Menu } from "lucide-react";
 import logo from "../../assets/logo.svg";
 import { useAuthStore } from "../../store/authStore";
 
@@ -28,16 +28,16 @@ export default function DashboardSidebar({ isOpen, onClose }) {
       `}
     >
       {/* Close button (mobile only) */}
-      <div className="flex items-center justify-between p-4 lg:hidden border-b border-gray-100">
-        <img src={logo} alt="Logo" className="h-8" />
-        <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
-      </div>
 
+
+        <div className="flex items-center  pl-7 py-4 gap-3">
+          <img 
+            src={logo} 
+            alt="Logo" 
+            className="h-10 cursor-pointer" 
+            onClick={() => navigate("/dashboard")} 
+          />
+        </div>
       {/* Navigation menu */}
       <nav className="flex-1 p-4 overflow-y-auto">
         <div className="space-y-1">

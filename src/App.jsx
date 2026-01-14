@@ -73,6 +73,7 @@ export default function App() {
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/password-reset-success" element={<PasswordResetSuccess />} />
 
+
         {/* PROTECTED ROUTES */}
         <Route element={<AuthGuard />}>
           {/* Main Dashboard with Layout */}

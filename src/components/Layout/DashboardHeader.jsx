@@ -13,30 +13,16 @@ export default function DashboardHeader({ onMenuClick }) {
     <header className="sticky top-0 bg-white border-b border-gray-200 z-30 px-4 py-3">
       <div className="flex items-center justify-between">
         {/* Left side: Mobile menu button + Logo */}
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={onMenuClick}
-            className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            aria-label="Open menu"
-          >
-            <Menu size={20} />
-          </button>
-          <img 
-            src={logo} 
-            alt="Logo" 
-            className="h-8 cursor-pointer" 
-            onClick={() => navigate("/dashboard")} 
-          />
-        </div>
-
-        {/* Right side: User actions */}
-        <div className="flex items-center gap-4">
-          {/* Location */}
-          <div className="hidden sm:flex items-center gap-1 text-gray-600">
+          <div className=" flex items-center gap-1 text-gray-600">
             <MapPin size={16} />
             <span className="text-sm">{user?.location || "Ikeja, Lagos"}</span>
             <ChevronDown size={16} />
           </div>
+
+        {/* Right side: User actions */}
+        <div className="flex items-center gap-4">
+          {/* Location */}
+
 
           {/* Welcome message */}
           <div className="hidden md:block text-sm text-gray-600">
@@ -65,7 +51,7 @@ export default function DashboardHeader({ onMenuClick }) {
           {/* Logout button */}
           <button
             onClick={logout}
-            className="px-3 py-1.5 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+            className="px-3 py-1.5 hidden text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
           >
             Logout
           </button>
