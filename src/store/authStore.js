@@ -11,7 +11,7 @@ export const useAuthStore = create(
       token: null,
       error: null,
       isLoading: false,
-      tempRegister: null, // { userId, email }
+      tempRegister: null,
       rememberMe: true,
 
       /* -------------------- helpers -------------------- */
@@ -66,30 +66,39 @@ export const useAuthStore = create(
       // 1. REGISTER + AUTO-SEND OTP (NO TOKEN NEEDED)
       register: async (userData) => {
         set({ isLoading: true, error: null });
-        const res = await authService.register(userData, () => get().token);
+        
+        try {
+          const res = await authService.register(userData);
 
-        if (res.success) {
-          const pendingUser = res.data.user || userData;
-          const userId = pendingUser.id || pendingUser.user_id;
+          if (res.success) {
+            const userId = res.data?.user?.id || res.data?.user_id || res.data?.user?.user_id;
+            const email = res.data?.user?.email || userData.email;
 
-          // FIXED: Auto-request OTP without token
-          const otpRes = await authService.getOTP(userId, () => null);
-          
-          if (!otpRes.success) {
-            set({ error: otpRes.data?.message || 'Failed to send OTP', isLoading: false, tempRegister: null });
-            return { success: false, error: otpRes.data?.message };
+            if (!userId) {
+              set({ error: 'Invalid registration response: missing user ID', isLoading: false });
+              return { success: false, error: 'Invalid response from server' };
+            }
+
+            // Store verification data
+            set({ tempRegister: { userId, email }, isLoading: false });
+
+            // Auto-request OTP (no token needed during registration)
+            const otpRes = await authService.getOTP(userId);
+            
+            if (!otpRes.success) {
+              set({ error: otpRes.data?.message || 'Failed to send OTP', tempRegister: null });
+              return { success: false, error: otpRes.data?.message };
+            }
+
+            return { success: true, data: { userId } };
+          } else {
+            set({ error: res.data?.message || 'Registration failed', isLoading: false });
+            return res;
           }
-
-          // Store minimal data for verification step
-          set({ 
-            tempRegister: { userId, email: userData.email }, 
-            isLoading: false 
-          });
-
-          return { success: true, data: { userId } };
-        } else {
-          set({ error: res.data?.message || 'Registration failed', isLoading: false });
-          return res;
+        } catch (err) {
+          console.error('[AuthStore] Registration error:', err);
+          set({ error: 'Registration failed', isLoading: false });
+          return { success: false, error: 'Registration failed' };
         }
       },
 
@@ -100,8 +109,10 @@ export const useAuthStore = create(
           set({ error: err.data.message });
           return err;
         }
+        
         set({ isLoading: true, error: null });
-        const res = await authService.getOTP(userId, () => get().token);
+        const res = await authService.getOTP(userId);
+        
         if (!res.success) {
           set({ error: res.data?.message || 'Failed to send OTP', isLoading: false });
         } else {
@@ -110,27 +121,40 @@ export const useAuthStore = create(
         return res;
       },
 
-      // 3. VERIFY OTP - FIXED: Handle direct response
+      // 3. VERIFY OTP
       verifyOTP: async (identifier, otp) => {
         set({ isLoading: true, error: null });
-        const userId = get().tempRegister?.userId || identifier;
         
-        const res = await authService.verifyOTP(userId, otp, () => get().token);
+        const userId = get().tempRegister?.userId;
+        const email = get().tempRegister?.email;
+        const verifyIdentifier = userId || identifier || email;
 
-        if (res.success) {
-          // Backend returns { user, token } after OTP verification
-          const { user, token } = res.data;
-          
-          if (!user || !token) {
-            set({ error: 'Invalid server response', isLoading: false, tempRegister: null });
-            return { success: false, error: 'Invalid response' };
+        if (!verifyIdentifier) {
+          set({ error: 'No verification identifier available', isLoading: false });
+          return { success: false, error: 'No identifier' };
+        }
+
+        try {
+          const res = await authService.verifyOTP(verifyIdentifier, otp);
+
+          if (res.success) {
+            const { user, token } = res.data;
+            
+            if (!user || !token) {
+              set({ error: 'Invalid server response: missing user or token', isLoading: false, tempRegister: null });
+              return { success: false, error: 'Invalid response' };
+            }
+
+            get().completeRegistration(user, token);
+            return { success: true, data: { user, token } };
+          } else {
+            set({ error: res.data?.message || 'OTP verification failed', isLoading: false });
+            return res;
           }
-
-          get().completeRegistration(user, token);
-          return { success: true, data: { user, token } };
-        } else {
-          set({ error: res.data?.message || 'OTP verification failed', isLoading: false });
-          return res;
+        } catch (err) {
+          console.error('[AuthStore] Verify OTP error:', err);
+          set({ error: 'OTP verification failed', isLoading: false });
+          return { success: false, error: 'OTP verification failed' };
         }
       },
 
@@ -144,7 +168,7 @@ export const useAuthStore = create(
           return err;
         }
         
-        const res = await authService.getOTP(userId, () => get().token);
+        const res = await authService.getOTP(userId);
         if (!res.success) {
           set({ error: res.data?.message || 'Failed to resend OTP' });
         }
@@ -155,77 +179,90 @@ export const useAuthStore = create(
       login: async (credentials, { remember = false } = {}) => {
         set({ isLoading: true, error: null });
         
-        const loginRes = await authService.login(credentials, () => get().token);
-        
-        if (!loginRes.success) {
-          set({ error: loginRes.data?.message || 'Login failed', isLoading: false });
-          return loginRes;
-        }
-
-        const token = loginRes.data.token;
-        
-        // Fetch full user info if not provided
-        let user = loginRes.data.user;
-        if (!user) {
-          const userRes = await authService.getUserInfo(() => token);
-          if (!userRes.success) {
-            set({ error: userRes.data?.message || 'Failed to fetch user info', isLoading: false });
-            return userRes;
+        try {
+          const loginRes = await authService.login(credentials);
+          
+          if (!loginRes.success) {
+            set({ error: loginRes.data?.message || 'Login failed', isLoading: false });
+            return loginRes;
           }
-          user = userRes.data.user;
+
+          const token = loginRes.data.token;
+          let user = loginRes.data.user;
+
+          // Fetch full user info if not provided
+          if (!user) {
+            const userRes = await authService.getUserInfo();
+            if (!userRes.success) {
+              set({ error: userRes.data?.message || 'Failed to fetch user info', isLoading: false });
+              return userRes;
+            }
+            user = userRes.data.user;
+          }
+
+          set({ 
+            user, 
+            token, 
+            isLoading: false,
+            rememberMe: remember,
+          });
+          get()._saveToken(token, remember);
+          get()._saveUser(user);
+
+          return { success: true, data: { user, token } };
+        } catch (err) {
+          console.error('[AuthStore] Login error:', err);
+          set({ error: 'Login failed', isLoading: false });
+          return { success: false, error: 'Login failed' };
         }
-
-        // Save everything
-        set({ 
-          user, 
-          token, 
-          isLoading: false,
-          rememberMe: remember,
-        });
-        get()._saveToken(token, remember);
-        get()._saveUser(user);
-
-        return { success: true, data: { user, token } };
       },
 
       // 6. LOGOUT
       logout: async (redirect = true) => {
         set({ isLoading: true });
-        try { await authService.logout(() => get().token); } catch (e) {}
+        try { 
+          await authService.logout(); 
+        } catch (e) {
+          console.warn('[AuthStore] Logout API error:', e);
+        }
+        
         set({ user: null, token: null, error: null, tempRegister: null, isLoading: false });
         try {
           localStorage.removeItem('authToken');
           localStorage.removeItem('userInfo');
           sessionStorage.clear();
-        } catch (e) {}
+        } catch (e) {
+          console.warn('[AuthStore] Storage cleanup error:', e);
+        }
+        
         if (redirect && typeof window !== 'undefined') {
           window.location.href = '/login';
         }
       },
 
-      // 7. FORGOT PASSWORD
-      forgotPassword: async (email) => {
-        set({ isLoading: true, error: null });
-        const res = await authService.forgotPassword(email, () => get().token);
-        if (!res.success) {
-          set({ error: res.data?.message || 'Failed to send reset email', isLoading: false });
-        } else {
-          set({ isLoading: false });
-        }
-        return res;
-      },
+      // // 7. FORGOT PASSWORD
+      // forgotPassword: async (email) => {
+      //   set({ isLoading: true, error: null });
+      //   const res = await authService.forgotPassword(email);
+      //   if (!res.success) {
+      //     set({ error: res.data?.message || 'Failed to send reset email', isLoading: false });
+      //   } else {
+      //     set({ isLoading: false });
+      //   }
+      //   return res;
+      // },
 
-      // 8. RESET PASSWORD
-      resetPassword: async (data) => {
-        set({ isLoading: true, error: null });
-        const res = await authService.resetPassword(data, () => get().token);
-        if (!res.success) {
-          set({ error: res.data?.message || 'Password reset failed', isLoading: false });
-        } else {
-          set({ isLoading: false });
-        }
-        return res;
-      },
+      // // 8. RESET PASSWORD
+      // resetPassword: async (data) => {
+      //   set({ isLoading: true, error: null });
+      //   const res = await authService.resetPassword(data);
+      //   if (!res.success) {
+      //     set({ error: res.data?.message || 'Password reset failed', isLoading: false });
+      //   } else {
+      //     set({ isLoading: false });
+      //   }
+      //   return res;
+      // },
 
       /* -------------------- getters -------------------- */
       isAuthenticated: () => !!get().token && !!get().user,
@@ -240,15 +277,15 @@ export const useAuthStore = create(
           if (!token) return set({ isLoading: false });
 
           set({ token, isLoading: true });
-          const res = await authService.getUserInfo(() => token);
+          const res = await authService.getUserInfo();
 
           if (res.success) {
             set({ user: res.data.user, isLoading: false });
           } else {
+            // Clear invalid token
             set({ token: null, user: null, isLoading: false });
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('userInfo');
-            sessionStorage.clear();
+            get()._saveToken(null, false);
+            get()._saveUser(null);
           }
         } catch (err) {
           console.error('[AuthStore] init error', err);

@@ -10,23 +10,23 @@ const COL = {
 const log = (msg, style = COL.info, ...rest) =>
   console.log(`%c[AuthApi] ${msg}`, style, ...rest);
 
+/* ---------- store ---------- */
+import { useAuthStore } from '../store/authStore';
+
 /* ---------- core request ---------- */
 async function request(path, options = {}) {
   const url = `${API_BASE_URL}${path}`;
-  const token = options.getToken ? options.getToken() : null;
+  const token = options.getToken ? options.getToken() : useAuthStore.getState().token;
   const isForm = options.body instanceof FormData;
 
   const headers = {
     ...(isForm ? {} : { 'Content-Type': 'application/json', Accept: 'application/json' }),
     ...(options.headers || {}),
-    // ✅ FIXED: Only add Authorization if token exists
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
   const config = { method: options.method || 'GET', headers, ...options };
-  if (config.body && !isForm && typeof config.body === 'object') {
-    config.body = JSON.stringify(config.body);
-  }
+  if (config.body && !isForm && typeof config.body === 'object') config.body = JSON.stringify(config.body);
 
   log(`→ ${config.method} ${url}`, COL.info, config.body ? 'Has body' : 'No body');
 
@@ -38,165 +38,126 @@ async function request(path, options = {}) {
     return { status: 0, data: { message: 'Network error. Check connection.' }, error: true };
   }
 
-  // ✅ FIXED: Get response text first to see actual error
-  const responseText = await resp.text();
-  log(`← ${resp.status} ${resp.statusText}`, resp.ok ? COL.ok : COL.err, responseText);
-
-  // ✅ FIXED: Try to parse JSON, but return raw text if it fails
   let json = null;
   try {
-    json = responseText ? JSON.parse(responseText) : null;
+    const txt = await resp.text();
+    json = txt ? JSON.parse(txt) : null;
   } catch {
-    json = { message: responseText.substring(0, 200) || 'Server error' };
+    json = { message: 'Invalid server response (not JSON).' };
   }
+  
+  log(`← ${resp.status} ${resp.statusText}`, resp.ok ? COL.ok : COL.err, json);
 
-  if (!resp.ok) {
-    const status = resp.status;
-    // ✅ Use actual backend message if available
-    const message = json?.message || `Request failed (Status ${status})`;
-    
-    const errorMap = {
-      400: 'Invalid request data',
-      401: 'Unauthorized. Please log in',
-      409: 'Email already registered',
-      404: 'Resource not found',
-      500: 'Server error. Check backend logs',
-    };
-    
-    return {
-      status,
-      data: { ...json, message: errorMap[status] || message },
-      error: true,
-      unauthorized: status === 401,
+  // ==== HANDLE ERRORS GRACEFULLY ====
+  if (resp.status === 500) {
+    return { 
+      status: 500, 
+      data: { 
+        message: json?.message || 'Server error. Please try again or contact support.' 
+      }, 
+      error: true 
     };
   }
+  
+  if (resp.status === 401) {
+    return { status: 401, data: { ...json, message: json?.message || 'Unauthorized. Please log in.' }, error: true, unauthorized: true };
+  }
+  if (resp.status === 400) return { status: 400, data: { ...json, message: json?.message || 'Invalid request data.' }, error: true };
+  if (resp.status === 409) return { status: 409, data: { ...json, message: json?.message || 'This email is already registered.' }, error: true };
+  if (resp.status === 404) return { status: 404, data: { ...json, message: json?.message || 'Resource not found.' }, error: true };
+  if (!resp.ok) return { status: resp.status, data: { ...json, message: json?.message || `Request failed (${resp.status})` }, error: true };
 
   return { status: resp.status, data: json, success: true };
 }
 
 /* ---------- auth service ---------- */
 export const authService = {
-  register: async (userData, getToken) => {
+  register: async (userData) => {
     try {
-      return await request('/register/', { 
-        method: 'POST', 
-        body: userData,
-        getToken,
-      });
+      const res = await request('/register/', { method: 'POST', body: userData });
+      if (res.status === 409) res.data.message = 'This email is already registered. Please use a different email or try logging in.';
+      return res;
     } catch (err) {
       log('Registration error', COL.err, err);
-      return { status: 0, data: { message: 'Registration failed' }, error: true };
+      return { status: 0, data: { message: 'Registration failed. Please try again.' }, error: true };
     }
   },
 
-  login: async (credentials, getToken) => {
+  login: async ({ email, password }) => {
     try {
-      const normalized = {
-        email: credentials.email.toLowerCase().trim(),
-        password: credentials.password,
-      };
-      return await request('/login/', { 
-        method: 'POST', 
-        body: normalized,
-        getToken,
-      });
+      return await request('/login/', { method: 'POST', body: { email: email.toLowerCase().trim(), password } });
     } catch (err) {
       log('Login error', COL.err, err);
-      return { status: 0, data: { message: 'Login failed' }, error: true };
+      return { status: 0, data: { message: 'Login failed. Please try again.' }, error: true };
     }
   },
 
-  getUserInfo: async (getToken) => {
+  getUserInfo: async () => {
     try {
-      return await request('/user/info', { 
-        method: 'GET',
-        getToken,
-      });
+      return await request('/user/info', { method: 'GET' });
     } catch (err) {
       log('Get user info error', COL.err, err);
-      return { status: 0, data: { message: 'Failed to fetch user info' }, error: true };
+      return { status: 0, data: { message: 'Failed to fetch user information.' }, error: true };
     }
   },
 
-  // ✅ FIXED: Robust getOTP with validation
-  getOTP: async (userId, getToken) => {
-    if (!userId) {
-      log('× User ID missing for OTP', COL.err);
-      return { status: 400, data: { message: 'User ID is required' }, error: true };
-    }
+  // ==== CORRECT: GET /otp/ with user_id as query param ====
+  getOTP: async (userId) => {
+    if (!userId) return { status: 400, data: { message: 'User ID is required.' }, error: true };
     
     try {
-      log('📧 Sending OTP request for userId:', COL.info, userId);
-      return await request(`/otp/${userId}/`, { 
-        method: 'GET',
-        getToken, // null during registration (correct)
-      });
+      // Backend expects: GET /api/otp/?user_id=291
+      const res = await request(`/otp/?user_id=${userId}`, { method: 'GET' });
+      return res;
     } catch (err) {
       log('Get OTP error', COL.err, err);
-      return { status: 0, data: { message: 'Failed to send OTP' }, error: true };
+      return { status: 0, data: { message: 'Failed to send OTP. Try resend button.' }, error: true };
     }
   },
 
-  verifyOTP: async (identifier, otp, getToken) => {
-    if (!identifier || !otp) {
-      return { status: 400, data: { message: 'Email and OTP required' }, error: true };
-    }
+  verifyOTP: async (identifier, otp) => {
+    if (!identifier || !otp) return { status: 400, data: { message: 'Email and OTP are required.' }, error: true };
     
     const body = /@/.test(identifier)
       ? { email: identifier.toLowerCase().trim(), otp: otp.toString().trim() }
       : { user_id: identifier.toString(), otp: otp.toString().trim() };
     
     try {
-      return await request('/verify_otp', { 
-        method: 'POST', 
-        body,
-        getToken,
-      });
+      return await request('/verify_otp', { method: 'POST', body });
     } catch (err) {
       log('Verify OTP error', COL.err, err);
-      return { status: 0, data: { message: 'OTP verification failed' }, error: true };
+      return { status: 0, data: { message: 'OTP verification failed.' }, error: true };
     }
   },
 
-  resendOTP: async (userId, getToken) => authService.getOTP(userId, getToken),
+  resendOTP: (userId) => authService.getOTP(userId),
 
-  logout: async (getToken) => {
+  logout: async () => {
     try {
-      return await request('/logout/', { 
-        method: 'POST',
-        getToken,
-      });
+      return await request('/logout/', { method: 'POST' });
     } catch (err) {
       log('Logout API error', COL.warn, err);
-      return { status: 0, data: { message: 'Logged out locally' }, success: true };
+      return { status: 0, data: { message: 'Logged out locally.' }, success: true };
     }
   },
 
-  forgotPassword: async (email, getToken) => {
-    try {
-      return await request('/forgot-password/', { 
-        method: 'POST', 
-        body: { email: email.toLowerCase().trim() },
-        getToken,
-      });
-    } catch (err) {
-      log('Forgot password error', COL.err, err);
-      return { status: 0, data: { message: 'Failed to send reset email' }, error: true };
-    }
-  },
+  // forgotPassword: async (email) => {
+  //   try {
+  //     return await request('/forgot-password/', { method: 'POST', body: { email: email.toLowerCase().trim() } });
+  //   } catch (err) {
+  //     log('Forgot password error', COL.err, err);
+  //     return { status: 0, data: { message: 'Failed to send reset email.' }, error: true };
+  //   }
+  // },
 
-  resetPassword: async (data, getToken) => {
-    try {
-      return await request('/reset-password/', { 
-        method: 'POST', 
-        body: data,
-        getToken,
-      });
-    } catch (err) {
-      log('Reset password error', COL.err, err);
-      return { status: 0, data: { message: 'Password reset failed' }, error: true };
-    }
-  },
+  // resetPassword: async (data) => {
+  //   try {
+  //     return await request('/reset-password/', { method: 'POST', body: data });
+  //   } catch (err) {
+  //     log('Reset password error', COL.err, err);
+  //     return { status: 0, data: { message: 'Password reset failed.' }, error: true };
+  //   }
+  // },
 };
 
 export default { request, authService };
