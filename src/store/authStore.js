@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authService } from '../services/authApi';
 
-// ✅ Logger definition (kept, logic improved)
+// ✅ Logger definition
 const COL = {
   ok: 'color: #2ecc71; font-weight: bold',
   err: 'color: #e74c3c; font-weight: bold',
@@ -21,7 +21,7 @@ export const useAuthStore = create(
       token: null,
       error: null,
       isLoading: false,
-      tempRegister: null,
+      tempRegister: null, // { userId, email }
       rememberMe: true,
 
       /* -------------------- helpers -------------------- */
@@ -48,6 +48,7 @@ export const useAuthStore = create(
         }
       },
 
+      // ✅ NEW: Persist temp registration data
       _saveTempRegister(data) {
         try {
           if (data) {
@@ -89,7 +90,7 @@ export const useAuthStore = create(
 
       /* -------------------- auth flows -------------------- */
 
-      // ✅ FIXED: More robust register with better error handling
+      // ✅ FIXED: Robust register with proper OTP request
       register: async (userData) => {
         set({ isLoading: true, error: null });
         
@@ -135,7 +136,7 @@ export const useAuthStore = create(
         }
       },
 
-      // ✅ FIXED: Better OTP fetching with proper error handling
+      // ✅ FIXED: Better OTP fetching
       getOTP: async (userId) => {
         if (!userId) {
           const err = { status: 400, data: { message: 'User ID is required' }, error: true };
@@ -157,7 +158,7 @@ export const useAuthStore = create(
         return res;
       },
 
-      // ✅ FIXED: More robust OTP verification
+      // ✅ FIXED: Robust OTP verification
       verifyOTP: async (identifier, otp) => {
         set({ isLoading: true, error: null });
         
@@ -200,7 +201,7 @@ export const useAuthStore = create(
         }
       },
 
-      // ✅ FIXED: Better resend OTP handling
+      // ✅ FIXED: Better resend OTP
       resendOTP: async () => {
         set({ error: null });
         const userId = get().tempRegister?.userId;
@@ -219,7 +220,7 @@ export const useAuthStore = create(
         return res;
       },
 
-      // ✅ FIXED: Improved login flow
+      // ✅ FIXED: Improved login
       login: async (credentials, { remember = false } = {}) => {
         set({ isLoading: true, error: null });
         
@@ -260,7 +261,7 @@ export const useAuthStore = create(
         }
       },
 
-      // ✅ FIXED: Better logout with error handling
+      // ✅ FIXED: Better logout
       logout: async (redirect = true) => {
         set({ isLoading: true });
         try { 
@@ -289,10 +290,9 @@ export const useAuthStore = create(
       getUserId: () => get().user?.id,
       getToken: () => get().token,
 
-      // ✅ FIXED: Better initialization with tempRegister restore
+      // ✅ FIXED: Initialize with tempRegister restore
       initializeAuth: async () => {
         try {
-          // Restore temp registration data if exists
           const tempData = localStorage.getItem('tempRegister');
           if (tempData) {
             try {
@@ -313,7 +313,6 @@ export const useAuthStore = create(
           if (res.success) {
             set({ user: res.data.user, isLoading: false });
           } else {
-            // Clear invalid token
             set({ token: null, user: null, isLoading: false });
             get()._saveToken(null, false);
             get()._saveUser(null);

@@ -221,7 +221,7 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
         disabled={!canVerify}
         className={`mt-6 px-8 py-3 rounded-lg font-semibold transition-all text-white w-full flex items-center justify-center gap-2 ${
           canVerify 
-            ? 'bg-green-600  hover:bg-green-700 active:scale-[0.98]' 
+            ? 'bg-green-600 hover:bg-green-700 active:scale-[0.98]' 
             : 'bg-green-500 cursor-not-allowed'
         }`}
       >

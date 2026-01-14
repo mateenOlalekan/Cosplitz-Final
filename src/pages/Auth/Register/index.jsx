@@ -1,5 +1,5 @@
 // src/pages/Register/index.jsx
-import { useEffect, useState, useRef } from 'react'; // ✅ Added useRef
+import { useEffect, useState, useRef } from 'react';
 import { useAuthStore } from '../../../store/authStore';
 import loginlogo from "../../../assets/login.jpg";
 import logo from "../../../assets/logo.svg";
@@ -26,22 +26,22 @@ export default function Register() {
   } = useAuthStore();
 
   const [currentStep, setCurrentStep] = useState(1);
-  const isMounted = useRef(true); // ✅ NEW: Prevent memory leaks
+  const isMounted = useRef(true);
 
-  // ✅ FIXED: Step transition effects with safety checks
+  // ✅ FIXED: Safe step transitions
   useEffect(() => {
-    if (!isMounted.current) return;
-    
-    if (currentStep === 1 && tempRegister) {
-      setCurrentStep(2);
+    if (isMounted.current) {
+      if (currentStep === 1 && tempRegister) {
+        setCurrentStep(2);
+      }
     }
   }, [tempRegister, currentStep]);
 
   useEffect(() => {
-    if (!isMounted.current) return;
-    
-    if (currentStep === 2 && user) {
-      setCurrentStep(3);
+    if (isMounted.current) {
+      if (currentStep === 2 && user) {
+        setCurrentStep(3);
+      }
     }
   }, [user, currentStep]);
 
@@ -84,6 +84,7 @@ export default function Register() {
   };
 
   return (
+
     <div className="flex bg-[#F7F5F9] w-full min-h-screen justify-center overflow-hidden md:px-6 md:py-4">
       <div className="flex max-w-screen-2xl w-full min-h-full rounded-xl overflow-hidden">
         <div className="hidden lg:flex w-1/2 bg-[#F8EACD] rounded-xl p-6 items-center justify-center">

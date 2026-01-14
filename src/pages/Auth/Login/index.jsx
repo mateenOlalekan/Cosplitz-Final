@@ -1,5 +1,5 @@
 // src/pages/Login/index.jsx
-import { useCallback, useEffect, useState, useRef } from 'react'; // ✅ Added useRef
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff } from 'lucide-react';
@@ -19,7 +19,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({ email: '', password: '' });
-  const isMounted = useRef(true); // ✅ NEW: Prevent memory leaks
+  const isMounted = useRef(true);
 
   // ✅ FIXED: Better auth check with cleanup
   useEffect(() => {
@@ -40,7 +40,6 @@ export default function Login() {
     clearError();
     setFieldErrors({ email: '', password: '' });
 
-    // ✅ FIXED: Better validation
     const result = loginSchema.safeParse({ email, password });
     if (!result.success) {
       const errs = {};
@@ -69,6 +68,7 @@ export default function Login() {
     }`;
 
   return (
+
     <div className="flex bg-[#F7F5F9] w-full min-h-screen justify-center overflow-hidden md:px-6 md:py-4">
       <div className="flex max-w-screen-2xl w-full min-h-full rounded-xl overflow-hidden">
         <LeftPanel />
