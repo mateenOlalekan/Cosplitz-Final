@@ -1,6 +1,3 @@
-// src/services/authApi.js
-
-// ✅ FIXED: Removed trailing space from base URL
 const API_BASE_URL = 'https://cosplitz-backend.onrender.com/api';
 
 /* ---------- logger ---------- */
@@ -22,6 +19,7 @@ async function request(path, options = {}) {
   const headers = {
     ...(isForm ? {} : { 'Content-Type': 'application/json', Accept: 'application/json' }),
     ...(options.headers || {}),
+    // ✅ FIXED: Only add Authorization if token exists
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
@@ -40,19 +38,18 @@ async function request(path, options = {}) {
     return { status: 0, data: { message: 'Network error. Check connection.' }, error: true };
   }
 
-  // ✅ FIXED: Get response text first to see actual backend error
+  // ✅ FIXED: Get response text first to see actual error
   const responseText = await resp.text();
   log(`← ${resp.status} ${resp.statusText}`, resp.ok ? COL.ok : COL.err, responseText);
 
-  // ✅ FIXED: Try to parse JSON, but return raw text if it fails (for HTML error pages)
+  // ✅ FIXED: Try to parse JSON, but return raw text if it fails
   let json = null;
   try {
     json = responseText ? JSON.parse(responseText) : null;
   } catch {
-    json = { message: responseText || 'Server error. Please check backend logs.' };
+    json = { message: responseText.substring(0, 200) || 'Server error' };
   }
 
-  // ==== STANDARDIZED ERROR HANDLING ====
   if (!resp.ok) {
     const status = resp.status;
     // ✅ Use actual backend message if available
@@ -61,7 +58,7 @@ async function request(path, options = {}) {
     const errorMap = {
       400: 'Invalid request data',
       401: 'Unauthorized. Please log in',
-      409: 'This email is already registered',
+      409: 'Email already registered',
       404: 'Resource not found',
       500: 'Server error. Check backend logs',
     };
@@ -88,7 +85,7 @@ export const authService = {
       });
     } catch (err) {
       log('Registration error', COL.err, err);
-      return { status: 0, data: { message: 'Registration failed. Please try again.' }, error: true };
+      return { status: 0, data: { message: 'Registration failed' }, error: true };
     }
   },
 
@@ -105,7 +102,7 @@ export const authService = {
       });
     } catch (err) {
       log('Login error', COL.err, err);
-      return { status: 0, data: { message: 'Login failed. Please try again.' }, error: true };
+      return { status: 0, data: { message: 'Login failed' }, error: true };
     }
   },
 
@@ -117,31 +114,32 @@ export const authService = {
       });
     } catch (err) {
       log('Get user info error', COL.err, err);
-      return { status: 0, data: { message: 'Failed to fetch user information.' }, error: true };
+      return { status: 0, data: { message: 'Failed to fetch user info' }, error: true };
     }
   },
 
-  // ✅ FIXED: Proper error handling and logging
+  // ✅ FIXED: Robust getOTP with validation
   getOTP: async (userId, getToken) => {
     if (!userId) {
-      return { status: 400, data: { message: 'User ID is required.' }, error: true };
+      log('× User ID missing for OTP', COL.err);
+      return { status: 400, data: { message: 'User ID is required' }, error: true };
     }
     
     try {
-      // ✅ Your backend expects: /api/otp/{userId}/
+      log('📧 Sending OTP request for userId:', COL.info, userId);
       return await request(`/otp/${userId}/`, { 
         method: 'GET',
-        getToken, // Will be null during registration (correct)
+        getToken, // null during registration (correct)
       });
     } catch (err) {
       log('Get OTP error', COL.err, err);
-      return { status: 0, data: { message: 'Failed to send OTP. Try resend button.' }, error: true };
+      return { status: 0, data: { message: 'Failed to send OTP' }, error: true };
     }
   },
 
   verifyOTP: async (identifier, otp, getToken) => {
     if (!identifier || !otp) {
-      return { status: 400, data: { message: 'Email and OTP are required.' }, error: true };
+      return { status: 400, data: { message: 'Email and OTP required' }, error: true };
     }
     
     const body = /@/.test(identifier)
@@ -156,7 +154,7 @@ export const authService = {
       });
     } catch (err) {
       log('Verify OTP error', COL.err, err);
-      return { status: 0, data: { message: 'OTP verification failed.' }, error: true };
+      return { status: 0, data: { message: 'OTP verification failed' }, error: true };
     }
   },
 
@@ -170,7 +168,7 @@ export const authService = {
       });
     } catch (err) {
       log('Logout API error', COL.warn, err);
-      return { status: 0, data: { message: 'Logged out locally.' }, success: true };
+      return { status: 0, data: { message: 'Logged out locally' }, success: true };
     }
   },
 
@@ -183,7 +181,7 @@ export const authService = {
       });
     } catch (err) {
       log('Forgot password error', COL.err, err);
-      return { status: 0, data: { message: 'Failed to send reset email.' }, error: true };
+      return { status: 0, data: { message: 'Failed to send reset email' }, error: true };
     }
   },
 
@@ -196,7 +194,7 @@ export const authService = {
       });
     } catch (err) {
       log('Reset password error', COL.err, err);
-      return { status: 0, data: { message: 'Password reset failed.' }, error: true };
+      return { status: 0, data: { message: 'Password reset failed' }, error: true };
     }
   },
 };
