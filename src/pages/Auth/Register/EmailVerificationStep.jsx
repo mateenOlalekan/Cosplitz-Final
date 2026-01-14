@@ -10,30 +10,66 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
   const [resendLoading, setResendLoading] = useState(false);
   const [localError, setLocalError] = useState('');
   const inputRefs = useRef([]);
+  
+  // ✅ NEW: Track component mount state
+  const isMounted = useRef(true);
 
-  // Get data from store instead of props
+  // Get data from store
   const email = tempRegister?.email;
   const userId = tempRegister?.userId;
 
+  // ✅ FIXED: Timer effect with proper cleanup
   useEffect(() => {
+    isMounted.current = true;
+    
     if (timer <= 0) return;
-    const interval = setInterval(() => setTimer(t => t - 1), 1000);
-    return () => clearInterval(interval);
+    
+    const interval = setInterval(() => {
+      setTimer(t => {
+        if (t <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return t - 1;
+      });
+    }, 1000);
+
+    return () => {
+      clearInterval(interval);
+      isMounted.current = false;
+    };
   }, [timer]);
 
+  // ✅ FIXED: Better error handling
   useEffect(() => {
-    // Clear local error when store error changes
-    if (storeError) setLocalError(storeError);
+    if (storeError && isMounted.current) {
+      setLocalError(storeError);
+    }
   }, [storeError]);
+
+  // ✅ FIXED: Clear local error when user types
+  useEffect(() => {
+    if (otp.every(d => d !== '') && localError) {
+      setLocalError('');
+    }
+  }, [otp, localError]);
 
   const handleChange = (value, index) => {
     if (!/^[0-9]?$/.test(value)) return;
+    
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
     setLocalError('');
     
-    if (value && index < 5) inputRefs.current[index + 1]?.focus();
+    // ✅ FIXED: Auto-verify only when complete and not already loading
+    if (value && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+    
+    if (newOtp.every(d => d !== '') && !isLoading) {
+      handleVerifyClick(newOtp.join(''));
+    }
   };
 
   const handleKeyDown = (index, e) => {
@@ -45,19 +81,34 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
   const handlePaste = (e) => {
     e.preventDefault();
     const pasted = e.clipboardData.getData('text/plain').trim();
+    
     if (/^\d{6}$/.test(pasted)) {
-      setOtp(pasted.split(''));
+      const digits = pasted.split('');
+      setOtp(digits);
       setLocalError('');
+      
+      // ✅ FIXED: Auto-verify pasted OTP
+      if (!isLoading) {
+        handleVerifyClick(pasted);
+      }
     }
   };
 
-  const handleVerifyClick = () => {
-    const otpCode = otp.join('');
+  // ✅ FIXED: Extracted verification logic to reusable function
+  const handleVerifyClick = (code = null) => {
+    const otpCode = code || otp.join('');
+    
     if (otpCode.length !== 6) {
       setLocalError('Please enter the complete 6-digit code.');
       return;
     }
-    // Call the parent handler with OTP
+
+    if (!email && !userId) {
+      setLocalError('Missing user information. Please register again.');
+      return;
+    }
+
+    setLocalError('');
     onVerify(otpCode);
   };
 
@@ -74,25 +125,31 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
     
     try {
       await onResend();
-      setTimer(180);
-      setOtp(['', '', '', '', '', '']);
-      inputRefs.current[0]?.focus();
+      if (isMounted.current) {
+        setTimer(180);
+        setOtp(['', '', '', '', '', '']);
+        inputRefs.current[0]?.focus();
+      }
     } catch (err) {
-      setLocalError(err.message || 'Failed to resend OTP.');
+      if (isMounted.current) {
+        setLocalError(err.message || 'Failed to resend OTP.');
+      }
     } finally {
-      setResendLoading(false);
+      if (isMounted.current) {
+        setResendLoading(false);
+      }
     }
   };
 
   const formatTime = (seconds) =>
     `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
 
-  // Show verification button states
   const canVerify = otp.every(d => d !== '') && !isLoading;
   const verifyButtonText = isLoading ? 'Verifying...' : 'Verify Email';
 
   return (
-    <div className="flex flex-col items-center gap-5 py-5 relative w-full">
+
+    <div className="flex flex-col items-center gap-5 py-4 relative w-full">
       <button
         onClick={onBack}
         disabled={isLoading}
@@ -102,7 +159,7 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
         <ArrowLeft size={28} />
       </button>
 
-      <h2 className="text-xl font-bold text-gray-800 mt-5">Verify Your Email</h2>
+      <h2 className="text-xl font-bold text-gray-800 mt-4">Verify Your Email</h2>
       
       <p className="text-gray-500 text-sm text-center max-w-xs">
         Enter the code sent to{' '}
@@ -134,7 +191,6 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
         ))}
       </div>
 
-      {/* Error Display */}
       {(localError || storeError) && (
         <div className="flex items-center gap-2 text-red-600 text-sm mt-2">
           <AlertCircle size={16} />
@@ -142,7 +198,6 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
         </div>
       )}
 
-      {/* Timer / Resend */}
       <div className="text-center mt-4">
         {timer > 0 ? (
           <p className="text-sm text-gray-600">
@@ -160,22 +215,21 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
         )}
       </div>
 
-      {/* VERIFY BUTTON - NEW! */}
-<button
-  type="button"
-  onClick={handleVerifyClick}
-  disabled={!canVerify}
-  className={`mt-6 px-8 py-3 rounded-lg font-semibold transition-all text-white w-full flex items-center justify-center gap-2 ${
-    canVerify 
-      ? 'bg-green-600  hover:bg-green-700 active:scale-[0.98]' 
-      : 'bg-green-500 cursor-not-allowed'
-  }`}
->
-  {isLoading && (
-    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-  )}
-  {verifyButtonText}
-</button>
+      <button
+        type="button"
+        onClick={() => handleVerifyClick()}
+        disabled={!canVerify}
+        className={`mt-6 px-8 py-3 rounded-lg font-semibold transition-all text-white w-full flex items-center justify-center gap-2 ${
+          canVerify 
+            ? 'bg-green-600  hover:bg-green-700 active:scale-[0.98]' 
+            : 'bg-green-500 cursor-not-allowed'
+        }`}
+      >
+        {isLoading && (
+          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+        )}
+        {verifyButtonText}
+      </button>
     </div>
   );
 }

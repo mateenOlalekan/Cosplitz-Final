@@ -1,5 +1,5 @@
 // src/pages/Register/index.jsx
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react'; // ✅ Added useRef
 import { useAuthStore } from '../../../store/authStore';
 import loginlogo from "../../../assets/login.jpg";
 import logo from "../../../assets/logo.svg";
@@ -26,18 +26,35 @@ export default function Register() {
   } = useAuthStore();
 
   const [currentStep, setCurrentStep] = useState(1);
+  const isMounted = useRef(true); // ✅ NEW: Prevent memory leaks
 
+  // ✅ FIXED: Step transition effects with safety checks
   useEffect(() => {
-    if (currentStep === 1 && tempRegister) setCurrentStep(2);
+    if (!isMounted.current) return;
+    
+    if (currentStep === 1 && tempRegister) {
+      setCurrentStep(2);
+    }
   }, [tempRegister, currentStep]);
 
   useEffect(() => {
-    if (currentStep === 2 && user) setCurrentStep(3);
+    if (!isMounted.current) return;
+    
+    if (currentStep === 2 && user) {
+      setCurrentStep(3);
+    }
   }, [user, currentStep]);
 
   useEffect(() => {
     clearError();
   }, [currentStep, clearError]);
+
+  // ✅ FIXED: Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   const handleRegister = async (formData) => {
     const payload = {

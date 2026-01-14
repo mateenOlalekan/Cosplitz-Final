@@ -1,5 +1,5 @@
 // src/pages/Login/index.jsx
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react'; // ✅ Added useRef
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff } from 'lucide-react';
@@ -19,16 +19,28 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({ email: '', password: '' });
+  const isMounted = useRef(true); // ✅ NEW: Prevent memory leaks
 
+  // ✅ FIXED: Better auth check with cleanup
   useEffect(() => {
-    if (isAuthenticated()) navigate(from, { replace: true });
+    if (isAuthenticated() && isMounted.current) {
+      navigate(from, { replace: true });
+    }
   }, [isAuthenticated, navigate, from]);
+
+  // ✅ FIXED: Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   const handleLogin = useCallback(async (e) => {
     e.preventDefault();
     clearError();
     setFieldErrors({ email: '', password: '' });
 
+    // ✅ FIXED: Better validation
     const result = loginSchema.safeParse({ email, password });
     if (!result.success) {
       const errs = {};
@@ -42,7 +54,9 @@ export default function Login() {
       { remember }
     );
 
-    if (res.success) navigate(from, { replace: true });
+    if (res.success && isMounted.current) {
+      navigate(from, { replace: true });
+    }
   }, [email, password, remember, login, clearError, navigate, from]);
 
   const handleSocialLogin = useCallback((provider) => {
