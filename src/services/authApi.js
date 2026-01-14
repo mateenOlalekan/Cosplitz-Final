@@ -1,5 +1,9 @@
+// src/services/authApi.js
+
+// ✅ FIXED: Removed trailing space from base URL
 const API_BASE_URL = 'https://cosplitz-backend.onrender.com/api';
 
+/* ---------- logger ---------- */
 const COL = {
   ok: 'color: #2ecc71; font-weight: bold',
   err: 'color: #e74c3c; font-weight: bold',
@@ -9,6 +13,7 @@ const COL = {
 const log = (msg, style = COL.info, ...rest) =>
   console.log(`%c[AuthApi] ${msg}`, style, ...rest);
 
+/* ---------- core request ---------- */
 async function request(path, options = {}) {
   const url = `${API_BASE_URL}${path}`;
   const token = options.getToken ? options.getToken() : null;
@@ -35,16 +40,15 @@ async function request(path, options = {}) {
     return { status: 0, data: { message: 'Network error. Check connection.' }, error: true };
   }
 
-  // ✅ FIXED: Get response text first to see the actual error
+  // ✅ FIXED: Get response text first to see actual backend error
   const responseText = await resp.text();
   log(`← ${resp.status} ${resp.statusText}`, resp.ok ? COL.ok : COL.err, responseText);
 
-  // ✅ FIXED: Try to parse JSON, but return raw text if it fails
+  // ✅ FIXED: Try to parse JSON, but return raw text if it fails (for HTML error pages)
   let json = null;
   try {
     json = responseText ? JSON.parse(responseText) : null;
   } catch {
-    // If backend returns HTML error page, use the raw text as message
     json = { message: responseText || 'Server error. Please check backend logs.' };
   }
 
@@ -80,7 +84,7 @@ export const authService = {
       return await request('/register/', { 
         method: 'POST', 
         body: userData,
-        getToken, // Pass token getter
+        getToken,
       });
     } catch (err) {
       log('Registration error', COL.err, err);
@@ -117,6 +121,7 @@ export const authService = {
     }
   },
 
+  // ✅ FIXED: Proper error handling and logging
   getOTP: async (userId, getToken) => {
     if (!userId) {
       return { status: 400, data: { message: 'User ID is required.' }, error: true };
@@ -126,15 +131,13 @@ export const authService = {
       // ✅ Your backend expects: /api/otp/{userId}/
       return await request(`/otp/${userId}/`, { 
         method: 'GET',
-        getToken, // This will be null during registration (correct)
+        getToken, // Will be null during registration (correct)
       });
     } catch (err) {
       log('Get OTP error', COL.err, err);
       return { status: 0, data: { message: 'Failed to send OTP. Try resend button.' }, error: true };
     }
   },
-
-  resendOTP: async (userId, getToken) => authService.getOTP(userId, getToken),
 
   verifyOTP: async (identifier, otp, getToken) => {
     if (!identifier || !otp) {
@@ -157,7 +160,7 @@ export const authService = {
     }
   },
 
-
+  resendOTP: async (userId, getToken) => authService.getOTP(userId, getToken),
 
   logout: async (getToken) => {
     try {
