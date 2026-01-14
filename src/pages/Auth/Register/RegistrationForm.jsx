@@ -116,11 +116,7 @@ export default function RegistrationForm({
         Let's get started with real-time cost sharing.
       </p>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-3 text-center">
-          {error}
-        </div>
-      )}
+
 
       <div className="grid grid-cols-1 gap-2 mb-3">
         <motion.button

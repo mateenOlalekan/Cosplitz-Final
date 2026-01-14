@@ -115,17 +115,27 @@ export const authService = {
     }
   },
 
-  getOTP: async (userId, getToken) => {
-    if (!userId) return { status: 400, data: { message: 'User ID is required.' }, error: true };
+  // getOTP: async (userId, getToken) => {
+  //   if (!userId) return { status: 400, data: { message: 'User ID is required.' }, error: true };
     
+  //   try {
+  //     return await request(`/otp/${userId}`, { 
+  //       method: 'GET',
+  //       getToken,
+  //     });
+  //   } catch (err) {
+  //     log('Get OTP error', COL.err, err);
+  //     return { status: 0, data: { message: 'Failed to send OTP. Try resend button.' }, error: true };
+  //   }
+  // },
+
+    getOTP: async (userId) => {
+    if (!userId) return { status: 400, data: { message: 'User ID is required.' }, error: true };
     try {
-      return await request(`/otp/${userId}`, { 
-        method: 'GET',
-        getToken,
-      });
+      return await request(`/otp/${userId}/`, { method: 'GET' });
     } catch (err) {
       log('Get OTP error', COL.err, err);
-      return { status: 0, data: { message: 'Failed to send OTP. Try resend button.' }, error: true };
+      return { status: 0, data: { message: 'Failed to send OTP.' }, error: true };
     }
   },
 
