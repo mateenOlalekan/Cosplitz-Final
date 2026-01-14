@@ -161,18 +161,21 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
       </div>
 
       {/* VERIFY BUTTON - NEW! */}
-      <button
-        type="button"
-        onClick={handleVerifyClick}
-        disabled={!canVerify}
-        className={`mt-6 px-8 py-3 rounded-lg font-semibold transition-all ${
-          canVerify 
-            ? 'bg-green-600 text-white hover:bg-green-700 active:scale-[0.98]' 
-            : 'bg-greeen-500 text-gray-500 cursor-not-allowed'
-        }`}
-      >
-        {verifyButtonText}
-      </button>
+<button
+  type="button"
+  onClick={handleVerifyClick}
+  disabled={!canVerify}
+  className={`mt-6 px-8 py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 ${
+    canVerify 
+      ? 'bg-green-600 text-white hover:bg-green-700 active:scale-[0.98]' 
+      : 'bg-green-500 text-gray-500 cursor-not-allowed'
+  }`}
+>
+  {isLoading && (
+    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+  )}
+  {verifyButtonText}
+</button>
     </div>
   );
 }
