@@ -1,6 +1,5 @@
 const API_BASE_URL = 'https://cosplitz-backend.onrender.com/api';
 
-/* ---------- logger ---------- */
 const COL = {
   ok: 'color: #2ecc71; font-weight: bold',
   err: 'color: #e74c3c; font-weight: bold',
@@ -10,10 +9,9 @@ const COL = {
 const log = (msg, style = COL.info, ...rest) =>
   console.log(`%c[AuthApi] ${msg}`, style, ...rest);
 
-/* ---------- core request ---------- */
 async function request(path, options = {}) {
   const url = `${API_BASE_URL}${path}`;
-  const token = options.getToken ? options.getToken() : null; // Get token from callback
+  const token = options.getToken ? options.getToken() : null;
   const isForm = options.body instanceof FormData;
 
   const headers = {
@@ -37,32 +35,36 @@ async function request(path, options = {}) {
     return { status: 0, data: { message: 'Network error. Check connection.' }, error: true };
   }
 
+  // ✅ FIXED: Get response text first to see the actual error
+  const responseText = await resp.text();
+  log(`← ${resp.status} ${resp.statusText}`, resp.ok ? COL.ok : COL.err, responseText);
+
+  // ✅ FIXED: Try to parse JSON, but return raw text if it fails
   let json = null;
   try {
-    const txt = await resp.text();
-    json = txt ? JSON.parse(txt) : null;
+    json = responseText ? JSON.parse(responseText) : null;
   } catch {
-    json = { message: 'Invalid server response (not JSON).' };
+    // If backend returns HTML error page, use the raw text as message
+    json = { message: responseText || 'Server error. Please check backend logs.' };
   }
-  
-  log(`← ${resp.status} ${resp.statusText}`, resp.ok ? COL.ok : COL.err, json);
 
   // ==== STANDARDIZED ERROR HANDLING ====
   if (!resp.ok) {
     const status = resp.status;
-    const message = json?.message || 'Request failed';
+    // ✅ Use actual backend message if available
+    const message = json?.message || `Request failed (Status ${status})`;
     
     const errorMap = {
       400: 'Invalid request data',
       401: 'Unauthorized. Please log in',
       409: 'This email is already registered',
       404: 'Resource not found',
-      500: 'Server error. Please try again',
+      500: 'Server error. Check backend logs',
     };
     
     return {
       status,
-      data: { ...json, message },
+      data: { ...json, message: errorMap[status] || message },
       error: true,
       unauthorized: status === 401,
     };
@@ -115,29 +117,24 @@ export const authService = {
     }
   },
 
-  // getOTP: async (userId, getToken) => {
-  //   if (!userId) return { status: 400, data: { message: 'User ID is required.' }, error: true };
+  getOTP: async (userId, getToken) => {
+    if (!userId) {
+      return { status: 400, data: { message: 'User ID is required.' }, error: true };
+    }
     
-  //   try {
-  //     return await request(`/otp/${userId}`, { 
-  //       method: 'GET',
-  //       getToken,
-  //     });
-  //   } catch (err) {
-  //     log('Get OTP error', COL.err, err);
-  //     return { status: 0, data: { message: 'Failed to send OTP. Try resend button.' }, error: true };
-  //   }
-  // },
-
-    getOTP: async (userId) => {
-    if (!userId) return { status: 400, data: { message: 'User ID is required.' }, error: true };
     try {
-      return await request(`/otp/${userId}/`, { method: 'GET' });
+      // ✅ Your backend expects: /api/otp/{userId}/
+      return await request(`/otp/${userId}/`, { 
+        method: 'GET',
+        getToken, // This will be null during registration (correct)
+      });
     } catch (err) {
       log('Get OTP error', COL.err, err);
-      return { status: 0, data: { message: 'Failed to send OTP.' }, error: true };
+      return { status: 0, data: { message: 'Failed to send OTP. Try resend button.' }, error: true };
     }
   },
+
+  resendOTP: async (userId, getToken) => authService.getOTP(userId, getToken),
 
   verifyOTP: async (identifier, otp, getToken) => {
     if (!identifier || !otp) {
@@ -160,7 +157,7 @@ export const authService = {
     }
   },
 
-  resendOTP: async (userId, getToken) => authService.getOTP(userId, getToken),
+
 
   logout: async (getToken) => {
     try {
