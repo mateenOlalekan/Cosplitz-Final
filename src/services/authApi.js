@@ -132,22 +132,26 @@ getOTP: async (userId) => {
   } catch (err) {
     return { status: 0, data: { message: 'Failed to send OTP.' }, error: true };
   }
+}, 
+
+verifyOTP: async (userId, otp) => {
+  if (!userId || !otp) {
+    return {
+      status: 400,
+      data: { message: 'User ID and OTP are required.' },
+      error: true,
+    };
+  }
+
+  return await request('/verify_otp', {
+    method: 'POST',
+    body: {
+      user_id: Number(userId),
+      otp: String(otp).trim(),
+    },
+  });
 },
 
-  verifyOTP: async (identifier, otp) => {
-    if (!identifier || !otp) return { status: 400, data: { message: 'Email and OTP are required.' }, error: true };
-    
-    const body = /@/.test(identifier)
-      ? { email: identifier.toLowerCase().trim(), otp: otp.toString().trim() }
-      : { user_id: identifier.toString(), otp: otp.toString().trim() };
-    
-    try {
-      return await request('/verify_otp', { method: 'POST', body });
-    } catch (err) {
-      log('Verify OTP error', COL.err, err);
-      return { status: 0, data: { message: 'OTP verification failed.' }, error: true };
-    }
-  },
 
   resendOTP: (userId) => authService.getOTP(userId),
 
