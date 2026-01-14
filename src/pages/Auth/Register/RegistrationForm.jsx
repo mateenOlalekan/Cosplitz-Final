@@ -1,3 +1,4 @@
+// src/pages/Register/RegistrationForm.jsx
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -9,13 +10,20 @@ import PasswordValidation from './PasswordValidation';
 import { getAllCountries } from '../../../services/countryService';
 
 export default function RegistrationForm({
-  formData,
-  handleInputChange,
-  handleFormSubmit,
-  handleSocialRegister,
+  onSubmit,
+  onSocialRegister,
   loading,
   error,
 }) {
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    nationality: '',
+    password: '',
+    agreeToTerms: false,
+  });
+  
   const [showPassword, setShowPassword] = useState(false);
   const [countries, setCountries] = useState([]);
   const [filtered, setFiltered] = useState([]);
@@ -54,14 +62,14 @@ export default function RegistrationForm({
   };
 
   const handleChange = (field, value) => {
-    handleInputChange((prev) => ({ ...prev, [field]: value }));
+    setFormData(prev => ({ ...prev, [field]: value }));
     const errorMsg = validateField(field, value);
-    setFieldErrors((prev) => ({ ...prev, [field]: errorMsg }));
+    setFieldErrors(prev => ({ ...prev, [field]: errorMsg }));
   };
 
   const handleBlur = (field) => {
     const errorMsg = validateField(field, formData[field]);
-    setFieldErrors((prev) => ({ ...prev, [field]: errorMsg }));
+    setFieldErrors(prev => ({ ...prev, [field]: errorMsg }));
   };
 
   const handleNationalityChange = (value) => {
@@ -71,7 +79,7 @@ export default function RegistrationForm({
       setOpen(true);
       return;
     }
-    setFiltered(countries.filter((c) => c.name.toLowerCase().includes(value.toLowerCase())));
+    setFiltered(countries.filter(c => c.name.toLowerCase().includes(value.toLowerCase())));
     setOpen(true);
   };
 
@@ -80,18 +88,18 @@ export default function RegistrationForm({
     setOpen(false);
   };
 
-  const onSubmit = (e) => {
+  const onSubmitForm = (e) => {
     e.preventDefault();
     const result = registrationSchema.safeParse(formData);
     if (!result.success) {
       const errors = {};
-      result.error.issues.forEach((issue) => {
+      result.error.issues.forEach(issue => {
         errors[issue.path[0]] = issue.message;
       });
       setFieldErrors(errors);
       return;
     }
-    handleFormSubmit(formData);
+    onSubmit(formData);
   };
 
   const inputClass = (hasError) =>
@@ -119,7 +127,7 @@ export default function RegistrationForm({
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           type="button"
-          onClick={() => handleSocialRegister('google')}
+          onClick={() => onSocialRegister('google')}
           className="flex items-center justify-center gap-3 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
         >
           <FcGoogle size={20} />
@@ -129,7 +137,7 @@ export default function RegistrationForm({
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           type="button"
-          onClick={() => handleSocialRegister('apple')}
+          onClick={() => onSocialRegister('apple')}
           className="flex items-center justify-center gap-3 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
         >
           <PiAppleLogoBold size={20} />
@@ -143,7 +151,7 @@ export default function RegistrationForm({
         <div className="flex-grow border-t border-gray-300" />
       </div>
 
-      <form onSubmit={onSubmit} className="space-y-3">
+      <form onSubmit={onSubmitForm} className="space-y-3">
         <div>
           <label className="text-sm font-medium text-gray-700 mb-1 block">First Name *</label>
           <input

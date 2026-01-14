@@ -7,12 +7,12 @@ export const useAuthStore = create(
   persist(
     (set, get) => ({
       /* -------------------- state -------------------- */
-      user         : null,
-      token        : null,
-      error        : null,
-      isLoading    : false,
-      tempRegister : null, // { userId, email, firstName, lastName }
-      rememberMe   : true,
+      user: null,
+      token: null,
+      error: null,
+      isLoading: false,
+      tempRegister: null, // { userId, email }
+      rememberMe: true,
 
       /* -------------------- helpers -------------------- */
       _saveToken(token, persist) {
@@ -63,7 +63,7 @@ export const useAuthStore = create(
 
       /* -------------------- auth flows -------------------- */
 
-      // 1. REGISTER + AUTO-SEND OTP
+      // 1. REGISTER + AUTO-SEND OTP (NO TOKEN NEEDED)
       register: async (userData) => {
         set({ isLoading: true, error: null });
         const res = await authService.register(userData, () => get().token);
@@ -72,20 +72,18 @@ export const useAuthStore = create(
           const pendingUser = res.data.user || userData;
           const userId = pendingUser.id || pendingUser.user_id;
 
-          // Auto-request OTP after successful registration
-          const otpRes = await authService.getOTP(userId, () => get().token);
+          // FIXED: Auto-request OTP without token
+          const otpRes = await authService.getOTP(userId, () => null);
           if (!otpRes.success) {
             set({ error: otpRes.data?.message || 'Failed to send OTP', isLoading: false, tempRegister: null });
             return { success: false, error: otpRes.data?.message };
           }
 
-          // Store pending data for verification step
+          // Store minimal pending data
           set({ 
             tempRegister: { 
               userId, 
-              email: pendingUser.email, 
-              firstName: userData.first_name,
-              lastName: userData.last_name,
+              email: userData.email 
             }, 
             isLoading: false 
           });
@@ -114,7 +112,7 @@ export const useAuthStore = create(
         return res;
       },
 
-      // 3. VERIFY OTP + AUTO-LOGIN
+      // 3. VERIFY OTP - FIXED: Handle direct response
       verifyOTP: async (identifier, otp) => {
         set({ isLoading: true, error: null });
         const userId = get().tempRegister?.userId || identifier;
@@ -122,28 +120,23 @@ export const useAuthStore = create(
         const res = await authService.verifyOTP(userId, otp, () => get().token);
 
         if (res.success) {
-          // Auto-login after verification
-          const loginRes = await authService.login(
-            { email: get().tempRegister.email, password: '' },
-            () => get().token
-          );
-
-          if (loginRes.success) {
-            const { user, token } = loginRes.data;
-            get().completeRegistration(user, token);
-            return { success: true, data: { user, token } };
-          } else {
-            // Fallback: clear temp state if auto-login fails
-            set({ tempRegister: null, isLoading: false });
-            return { success: true, message: 'Verified! Please log in manually.' };
+          // Backend returns { user, token } after verification
+          const { user, token } = res.data;
+          
+          if (!user || !token) {
+            set({ error: 'Invalid server response', isLoading: false, tempRegister: null });
+            return { success: false, error: 'Invalid response' };
           }
+
+          get().completeRegistration(user, token);
+          return { success: true, data: { user, token } };
         } else {
           set({ error: res.data?.message || 'OTP verification failed', isLoading: false });
           return res;
         }
       },
 
-      // 4. RESEND OTP (wraps getOTP)
+      // 4. RESEND OTP
       resendOTP: async () => {
         set({ error: null });
         const userId = get().tempRegister?.userId;
@@ -164,7 +157,6 @@ export const useAuthStore = create(
       login: async (credentials, { remember = false } = {}) => {
         set({ isLoading: true, error: null });
         
-        // Step 1: Login to get token
         const loginRes = await authService.login(credentials, () => get().token);
         
         if (!loginRes.success) {
@@ -174,7 +166,7 @@ export const useAuthStore = create(
 
         const token = loginRes.data.token;
         
-        // Step 2: Fetch full user info if not provided
+        // Fetch full user info if not provided
         let user = loginRes.data.user;
         if (!user) {
           const userRes = await authService.getUserInfo(() => token);
@@ -185,7 +177,7 @@ export const useAuthStore = create(
           user = userRes.data.user;
         }
 
-        // Step 3: Save everything
+        // Save everything
         set({ 
           user, 
           token, 
@@ -239,15 +231,14 @@ export const useAuthStore = create(
 
       /* -------------------- getters -------------------- */
       isAuthenticated: () => !!get().token && !!get().user,
-      isAdmin         : () => ['admin', true].includes(get().user?.role || get().user?.is_admin),
-      getUserId       : () => get().user?.id,
-      getToken        : () => get().token,
+      isAdmin: () => ['admin', true].includes(get().user?.role || get().user?.is_admin),
+      getUserId: () => get().user?.id,
+      getToken: () => get().token,
 
       /* -------------------- re-hydrate auth -------------------- */
       initializeAuth: async () => {
         try {
           const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-          const userRaw = localStorage.getItem('userInfo');
           if (!token) return set({ isLoading: false });
 
           set({ token, isLoading: true });
@@ -256,7 +247,6 @@ export const useAuthStore = create(
           if (res.success) {
             set({ user: res.data.user, isLoading: false });
           } else {
-            // Invalid token
             set({ token: null, user: null, isLoading: false });
             localStorage.removeItem('authToken');
             localStorage.removeItem('userInfo');
@@ -275,7 +265,7 @@ export const useAuthStore = create(
   ),
 );
 
-// Auto-initialize on module load (browser only)
+// Auto-initialize on module load
 if (typeof window !== 'undefined') {
   useAuthStore.getState().initializeAuth();
 }

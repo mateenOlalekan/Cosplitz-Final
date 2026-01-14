@@ -1,5 +1,5 @@
 import "./App.css";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Suspense, lazy } from "react";
 import { useAuthStore } from "./store/authStore";
 import AuthGuard from "./components/Layout/AuthGuard";
@@ -17,8 +17,8 @@ const LoadingScreen = lazy(() => import("./pages/Public/LoadingScreen"));
 const KYCFlow = lazy(() => import("./components/Identification/KYCFlow"));
 
 /* ---------- dashboard shells ---------- */
-// const DashboardLayout = lazy(() => import("./components/Layout/DashoardLayout"));
-// const SettingsLayout = lazy(() => import("./components/Layout/DashboardSettingLayout"));
+const DashboardLayout = lazy(() => import("./components/Layout/DashoardLayout"));
+const DashboardSettingLayout = lazy(() => import("./components/Layout/DashboardSettingLayout"));
 
 /* ---------- dashboard pages ---------- */
 const MainOverview = lazy(() => import("./pages/Dashboard/Main"));
@@ -27,11 +27,11 @@ const Analytics = lazy(() => import("./pages/Dashboard/Analytics"));
 const Payment = lazy(() => import("./pages/Dashboard/Payment"));
 const Wallet = lazy(() => import("./pages/Dashboard/Wallet"));
 const Notification = lazy(() => import("./pages/Dashboard/Notification"));
-// const MyProfile = lazy(() => import("./pages/Dashboard/Settings/MyProfile"));
-// const NotificationSettings = lazy(() => import("./pages/Dashboard/Settings/Notifications"));
-// const Verification = lazy(() => import("./pages/Dashboard/Settings/Verification"));
-// const Support = lazy(() => import("./pages/Dashboard/Settings/Support"));
-// const ResetPassword = lazy(() => import("./pages/Dashboard/Settings/ResetPassword"));
+const MyProfile = lazy(() => import("./pages/Dashboard/Settings/MyProfile"));
+const NotificationSettings = lazy(() => import("./pages/Dashboard/Settings/Notifications"));
+const Verification = lazy(() => import("./pages/Dashboard/Settings/Verification"));
+const Support = lazy(() => import("./pages/Dashboard/Settings/Support"));
+const ResetPassword = lazy(() => import("./pages/Dashboard/Settings/ResetPassword"));
 
 /* ---------- 404 ---------- */
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -39,7 +39,8 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 /* ---------- public-only wrapper ---------- */
 function PublicOnly({ children }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated());
-  return isAuthenticated ? <Navigate to="/dashboard" replace /> : children;
+  const location = useLocation();
+  return isAuthenticated ? <Navigate to="/dashboard" replace state={{ from: location }} /> : children;
 }
 
 export default function App() {
@@ -50,13 +51,13 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<PublicOnly><Login /></PublicOnly>} />
         <Route path="/register" element={<PublicOnly><Register /></PublicOnly>} />
-        <Route path="" element={<PreOnboard/>}/>
         <Route path="/forgot-password" element={<ForgetPassword />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/password-reset-success" element={<PasswordResetSuccess />} />
 
         {/* PROTECTED ROUTES */}
         <Route element={<AuthGuard />}>
+          {/* Main Dashboard with Layout */}
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<MainOverview />} />
             <Route path="messages" element={<Messages />} />
@@ -64,20 +65,21 @@ export default function App() {
             <Route path="payment" element={<Payment />} />
             <Route path="wallet" element={<Wallet />} />
             <Route path="notification" element={<Notification />} />
-            <Route path="kyc-verification" element={<div>KYC</div>} />
             <Route path="kyc-flow" element={<KYCFlow />} />
             <Route path="post-onboarding" element={<PostOnboard />} />
-            {/* <Route path="settings" element={<SettingsLayout />}>
+            
+            {/* Settings Nested Route - NEW LAYOUT */}
+            <Route path="settings" element={<DashboardSettingLayout />}>
               <Route index element={<MyProfile />} />
               <Route path="profile" element={<MyProfile />} />
               <Route path="notifications" element={<NotificationSettings />} />
               <Route path="verification" element={<Verification />} />
               <Route path="reset-password" element={<ResetPassword />} />
               <Route path="support" element={<Support />} />
-            </Route> */}
+            </Route>
           </Route>
 
-          {/* ADMIN ROUTES */}
+          {/* Admin Routes (separate layout) */}
           <Route path="/admin" element={<DashboardLayout />}>
             <Route index element={<div>Admin Overview</div>} />
             <Route path="allsplitz" element={<div>All Splits</div>} />

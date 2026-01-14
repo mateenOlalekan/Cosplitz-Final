@@ -1,66 +1,86 @@
-// import { useState, useEffect } from "react";
-// import { Outlet } from "react-router-dom";
-// import Sidebar from ".";
-// import LogoutModal from "../Settings/LogoutModal";
-// import DeleteAccountModal from "../Settings/DeleteAccount";
-// import { useAuthStore } from "../../store/authStore";
-
-// export default function DashboardSettingLayout() {
-//   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
-//   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-
-//   // Lock body scroll when modal open
-//   useEffect(() => {
-//     document.body.style.overflow = isLogoutModalOpen || isDeleteModalOpen ? "hidden" : "";
-//     return () => (document.body.style.overflow = "");
-//   }, [isLogoutModalOpen, isDeleteModalOpen]);
-
-//   // Close sidebar when navigating to settings (mobile)
-//   const handleSidebarToggle = () => {
-//     if (window.innerWidth < 1024) {
-//       // This would be handled by parent, but we keep it for safety
-//     }
-//   };
-
-//   return (
-//     <>
-//       <div className="flex h-full p-2 gap-3 overflow-hidden">
-//         <Sidebar 
-//           onSidebarToggle={handleSidebarToggle}
-//           sidebarOpen={false} // These props will be managed by parent in real use
-//           isMobile={false}
-//           setSidebarOpen={() => {}}
-//         />
-//         <main className="flex-1 bg-white rounded-lg overflow-hidden flex flex-col">
-//           <div className="flex-1 overflow-y-auto bg-white p-2 rounded-lg">
-//             <div className="bg-[#F7F5F9] p-3 rounded-lg">
-//               <Outlet />
-//             </div>
-//           </div>
-//         </main>
-//       </div>
-
-//       <LogoutModal 
-//         open={isLogoutModalOpen} 
-//         onClose={() => setIsLogoutModalOpen(false)} 
-//         onConfirm={() => useAuthStore.getState().logout()} 
-//       />
-//       <DeleteAccountModal 
-//         open={isDeleteModalOpen} 
-//         onClose={() => setIsDeleteModalOpen(false)} 
-//         onConfirm={() => useAuthStore.getState().logout()} 
-//       />
-//     </>
-//   );
-// }
-
-import { useState, useEffect, useCallback, useRef } from "react";
+// src/components/Settings/DashboardSettingLayout.jsx
+import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
+import DashboardSidebar from "../../pages/Dashboard/Settings/Sidebar";
+import LogoutModal from "../Settings/LogoutModal";
+import DeleteAccountModal from "../Settings/DeleteAccount";
 
-export default function(){
-  return(
-    <div>
-      <Outlet/>
+
+export default function DashboardSettingLayout() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  
+  useEffect(() => {
+    document.body.style.overflow = (showLogoutModal || showDeleteModal) ? "hidden" : "";
+    return () => document.body.style.overflow = "";
+  }, [showLogoutModal, showDeleteModal]);
+
+  const closeSidebar = () => setSidebarOpen(false);
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-gray-50">
+      <DashboardSidebar isOpen={sidebarOpen} onClose={closeSidebar} />
+      <div className="flex-1 flex flex-col overflow-hidden">
+
+        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+          <div className="max-w-4xl mx-auto">
+            {/* Settings-specific header */}
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+              <p className="text-gray-600">Manage your account preferences</p>
+            </div>
+
+            {/* Settings navigation tabs (optional) */}
+            <div className="border-b border-gray-200 mb-6">
+              <nav className="flex gap-6">
+                <Link 
+                  to="/dashboard/settings/profile"
+                  className="py-2 text-sm font-medium border-b-2 border-transparent hover:border-green-500"
+                >
+                  Profile
+                </Link>
+                <Link 
+                  to="/dashboard/settings/password"
+                  className="py-2 text-sm font-medium border-b-2 border-transparent hover:border-green-500"
+                >
+                  Password
+                </Link>
+                <Link 
+                  to="/dashboard/settings/privacy"
+                  className="py-2 text-sm font-medium border-b-2 border-transparent hover:border-green-500"
+                >
+                  Privacy
+                </Link>
+              </nav>
+            </div>
+
+            {/* Nested settings routes render here */}
+            <Outlet context={{ 
+              setShowLogoutModal, 
+              setShowDeleteModal 
+            }} />
+          </div>
+        </main>
+      </div>
+
+      {/* Modals */}
+      <LogoutModal 
+        open={showLogoutModal} 
+        onClose={() => setShowLogoutModal(false)} 
+        onConfirm={() => {
+          useAuthStore.getState().logout();
+        }} 
+      />
+      <DeleteAccountModal 
+        open={showDeleteModal} 
+        onClose={() => setShowDeleteModal(false)} 
+        onConfirm={() => {
+          // Add delete account API call here
+          useAuthStore.getState().logout();
+        }} 
+      />
     </div>
-  )
+  );
 }
