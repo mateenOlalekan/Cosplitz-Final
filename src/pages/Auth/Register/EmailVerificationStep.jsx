@@ -92,7 +92,7 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
   const verifyButtonText = isLoading ? 'Verifying...' : 'Verify Email';
 
   return (
-    <div className="flex flex-col items-center gap-5 py-8 relative w-full">
+    <div className="flex flex-col items-center gap-5 py-5 relative w-full">
       <button
         onClick={onBack}
         disabled={isLoading}
@@ -102,7 +102,7 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
         <ArrowLeft size={28} />
       </button>
 
-      <h2 className="text-xl font-bold text-gray-800 mt-8">Verify Your Email</h2>
+      <h2 className="text-xl font-bold text-gray-800 mt-5">Verify Your Email</h2>
       
       <p className="text-gray-500 text-sm text-center max-w-xs">
         Enter the code sent to{' '}
@@ -165,10 +165,10 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
   type="button"
   onClick={handleVerifyClick}
   disabled={!canVerify}
-  className={`mt-6 px-8 py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 ${
+  className={`mt-6 px-8 py-3 rounded-lg font-semibold transition-all text-white w-full flex items-center justify-center gap-2 ${
     canVerify 
-      ? 'bg-green-600 text-white hover:bg-green-700 active:scale-[0.98]' 
-      : 'bg-green-500 text-gray-500 cursor-not-allowed'
+      ? 'bg-green-600  hover:bg-green-700 active:scale-[0.98]' 
+      : 'bg-green-500 cursor-not-allowed'
   }`}
 >
   {isLoading && (
