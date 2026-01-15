@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://cosplitz-backend.onrender.com/api'; // ✅ Removed trailing space
+const API_BASE_URL = 'https://cosplitz-backend.onrender.com/api';
 
 /* ---------- logger ---------- */
 const COL = {
@@ -10,25 +10,42 @@ const COL = {
 const log = (msg, style = COL.info, ...rest) =>
   console.log(`%c[AuthApi] ${msg}`, style, ...rest);
 
-/* ---------- store ---------- */
-import { useAuthStore } from '../store/authStore';
+
 
 /* ---------- core request ---------- */
 async function request(path, options = {}) {
+  // build url
   const url = `${API_BASE_URL}${path}`;
-  const token = options.getToken ? options.getToken() : useAuthStore.getState().token;
+
+  // read token from storage to avoid circular store import
+  let token = null;
+  try {
+    token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+  } catch (e) {
+    token = null;
+  }
+
   const isForm = options.body instanceof FormData;
 
   const headers = {
-    ...(isForm ? {} : { 'Content-Type': 'application/json', Accept: 'application/json' }),
-    ...(options.headers || {}),
+    ...(isForm ? {} : { 'Content-Type': 'application/json' }),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
-  const config = { method: options.method || 'GET', headers, ...options };
-  if (config.body && !isForm && typeof config.body === 'object') config.body = JSON.stringify(config.body);
+  const method = (options.method || 'GET').toUpperCase();
 
-  log(`→ ${config.method} ${url}`, COL.info, config.body ? 'Has body' : 'No body');
+  let body;
+  if (options.body) {
+    body = isForm ? options.body : JSON.stringify(options.body);
+  }
+
+  const config = {
+    method,
+    headers,
+    body,
+  };
+
+  log(`→ ${config.method} ${url}`, COL.info, body ? 'Has body' : 'No body');
 
   let resp;
   try {
@@ -38,43 +55,43 @@ async function request(path, options = {}) {
     return { status: 0, data: { message: 'Network error. Check connection.' }, error: true };
   }
 
-  // ✅ FIXED: Get raw text first for debugging
+  // Get raw text first for debugging
   const responseText = await resp.text();
-  
-  // ✅ FIXED: Show raw response in logs for debugging
-  const isJson = responseText && responseText.trim().startsWith('{');
-  log(`← ${resp.status} ${resp.statusText}`, resp.ok ? COL.ok : COL.err, 
+
+  // Show raw response in logs for debugging
+  const trimmed = responseText ? responseText.trim() : '';
+  const isJson = trimmed.startsWith('{') || trimmed.startsWith('[');
+  log(`← ${resp.status} ${resp.statusText}`, resp.ok ? COL.ok : COL.err,
     isJson ? responseText : `Non-JSON response: ${responseText.substring(0, 100)}...`);
 
   let json = null;
   try {
     json = responseText ? JSON.parse(responseText) : null;
   } catch (parseError) {
-    // ✅ FIXED: Return actual response text in error
     console.error('❌ JSON Parse Error:', parseError);
     return {
       status: resp.status,
-      data: { 
+      data: {
         message: `Server error (${resp.status}). Response was not JSON.`,
-        debug: responseText.substring(0, 300),
-        originalMessage: 'Invalid server response (not JSON).'
+        debug: responseText?.substring(0, 300),
+        originalMessage: 'Invalid server response (not JSON).',
       },
       error: true,
-      responseText: responseText
+      responseText: responseText,
     };
   }
 
-  // ==== HANDLE ERRORS GRACEFULLY ====
+  // HANDLE ERRORS
   if (resp.status === 500) {
-    return { 
-      status: 500, 
-      data: { 
-        message: json?.message || 'Server error. Please try again or contact support.' 
-      }, 
-      error: true 
+    return {
+      status: 500,
+      data: {
+        message: json?.message || 'Server error. Please try again or contact support.',
+      },
+      error: true,
     };
   }
-  
+
   if (resp.status === 401) {
     return { status: 401, data: { ...json, message: json?.message || 'Unauthorized. Please log in.' }, error: true, unauthorized: true };
   }
@@ -155,6 +172,24 @@ verifyOTP: async (userId, otp) => {
 
   resendOTP: (userId) => authService.getOTP(userId),
 
+  forgotPassword: async (email) => {
+    try {
+      return await request('/forgot-password/', { method: 'POST', body: { email: email.toLowerCase().trim() } });
+    } catch (err) {
+      log('Forgot password error', COL.err, err);
+      return { status: 0, data: { message: 'Failed to send reset email.' }, error: true };
+    }
+  },
+
+  resetPassword: async (data) => {
+    try {
+      return await request('/reset-password/', { method: 'POST', body: data });
+    } catch (err) {
+      log('Reset password error', COL.err, err);
+      return { status: 0, data: { message: 'Password reset failed.' }, error: true };
+    }
+  },
+
   logout: async () => {
     try {
       return await request('/logout/', { method: 'POST' });
@@ -166,21 +201,4 @@ verifyOTP: async (userId, otp) => {
 };
 
 export default { request, authService };
-// forgotPassword: async (email) => {
-  //   try {
-  //     return await request('/forgot-password/', { method: 'POST', body: { email: email.toLowerCase().trim() } });
-  //   } catch (err) {
-  //     log('Forgot password error', COL.err, err);
-  //     return { status: 0, data: { message: 'Failed to send reset email.' }, error: true };
-  //   }
-  // },
-
-  // resetPassword: async (data) => {
-  //   try {
-  //     return await request('/reset-password/', { method: 'POST', body: data });
-  //   } catch (err) {
-  //     log('Reset password error', COL.err, err);
-  //     return { status: 0, data: { message: 'Password reset failed.' }, error: true };
-  //   }
-  
 

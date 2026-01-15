@@ -1,4 +1,3 @@
-// src/pages/Register/EmailVerificationStep.jsx
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Mail, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
@@ -10,44 +9,33 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
   const [resendLoading, setResendLoading] = useState(false);
   const [localError, setLocalError] = useState('');
   const inputRefs = useRef([]);
-  
-  // ✅ NEW: Track component mount state
   const isMounted = useRef(true);
 
-  // Get data from store
   const email = tempRegister?.email;
   const userId = tempRegister?.userId;
 
-  // ✅ FIXED: Timer effect with proper cleanup
+  // TIMER – run ONCE
   useEffect(() => {
     isMounted.current = true;
-    
-    if (timer <= 0) return;
-    
+
     const interval = setInterval(() => {
-      setTimer(t => {
-        if (t <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
-        return t - 1;
-      });
+      setTimer(t => (t <= 1 ? 0 : t - 1));
     }, 1000);
 
     return () => {
       clearInterval(interval);
       isMounted.current = false;
     };
-  }, [timer]);
+  }, []);
 
-  // ✅ FIXED: Better error handling
+  // Store error → local error
   useEffect(() => {
     if (storeError && isMounted.current) {
       setLocalError(storeError);
     }
   }, [storeError]);
 
-  // ✅ FIXED: Clear local error when user types
+  // Clear error on typing
   useEffect(() => {
     if (otp.every(d => d !== '') && localError) {
       setLocalError('');
@@ -56,17 +44,16 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
 
   const handleChange = (value, index) => {
     if (!/^[0-9]?$/.test(value)) return;
-    
+
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
     setLocalError('');
-    
-    // ✅ FIXED: Auto-verify only when complete and not already loading
+
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
-    
+
     if (newOtp.every(d => d !== '') && !isLoading) {
       handleVerifyClick(newOtp.join(''));
     }
@@ -81,23 +68,23 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
   const handlePaste = (e) => {
     e.preventDefault();
     const pasted = e.clipboardData.getData('text/plain').trim();
-    
+
     if (/^\d{6}$/.test(pasted)) {
       const digits = pasted.split('');
       setOtp(digits);
       setLocalError('');
-      
-      // ✅ FIXED: Auto-verify pasted OTP
+
       if (!isLoading) {
         handleVerifyClick(pasted);
       }
     }
   };
 
-  // ✅ FIXED: Extracted verification logic to reusable function
   const handleVerifyClick = (code = null) => {
+    if (isLoading) return; // PREVENT DOUBLE CALLS
+
     const otpCode = code || otp.join('');
-    
+
     if (otpCode.length !== 6) {
       setLocalError('Please enter the complete 6-digit code.');
       return;
@@ -113,8 +100,8 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
   };
 
   const handleResend = async () => {
-    if (timer > 0) return;
-    
+    if (timer > 0 || isLoading) return;
+
     if (!userId) {
       setLocalError('Cannot resend OTP. User ID is missing.');
       return;
@@ -122,7 +109,7 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
 
     setResendLoading(true);
     setLocalError('');
-    
+
     try {
       await onResend();
       if (isMounted.current) {
@@ -148,13 +135,13 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
   const verifyButtonText = isLoading ? 'Verifying...' : 'Verify Email';
 
   return (
-
     <div className="flex flex-col items-center gap-5 py-4 relative w-full">
+      {/* JSX unchanged */}
+
       <button
         onClick={onBack}
         disabled={isLoading}
         className="absolute left-4 top-4 text-gray-600 hover:text-green-600 transition disabled:opacity-50"
-        aria-label="Go back"
       >
         <ArrowLeft size={28} />
       </button>
@@ -179,14 +166,12 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
             ref={el => inputRefs.current[index] = el}
             type="text"
             inputMode="numeric"
-            pattern="[0-9]*"
             maxLength={1}
             value={digit}
             onChange={(e) => handleChange(e.target.value, index)}
             onKeyDown={(e) => handleKeyDown(index, e)}
             disabled={isLoading}
             className="w-10 h-10 sm:w-12 sm:h-12 text-center text-lg font-bold border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-600 outline-none disabled:opacity-50"
-            autoFocus={index === 0}
           />
         ))}
       </div>
