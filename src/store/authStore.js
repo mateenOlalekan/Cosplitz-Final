@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authService } from '../services/authApi';
 
-// ✅ Logger definition
+
 const COL = {
   ok: 'color: #2ecc71; font-weight: bold',
   err: 'color: #e74c3c; font-weight: bold',
@@ -20,7 +20,7 @@ export const useAuthStore = create(
       token: null,
       error: null,
       isLoading: false,
-      tempRegister: null, // { userId, email, firstName, lastName }
+      tempRegister: null, 
       rememberMe: true,
 
       /* -------------------- helpers -------------------- */
@@ -86,6 +86,13 @@ export const useAuthStore = create(
       clearError: () => set({ error: null }),
       setLoading: (loading) => set({ isLoading: loading }),
 
+      /* ✅ NEW: Clear incomplete registration data */
+      clearIncompleteRegistration: () => {
+        set({ tempRegister: null, error: null });
+        get()._saveTempRegister(null);
+        log('🧹 Cleared incomplete registration data', COL.warn);
+      },
+
       /* -------------------- auth flows -------------------- */
 
       register: async (userData) => {
@@ -93,6 +100,8 @@ export const useAuthStore = create(
         
         try {
           log('📝 Starting registration...', COL.info);
+          get().clearIncompleteRegistration();
+          
           const res = await authService.register(userData);
 
           if (res.success) {
@@ -107,7 +116,6 @@ export const useAuthStore = create(
               return { success: false, error: 'Invalid response from server' };
             }
 
-            // Store verification data BEFORE OTP request
             get().setPendingVerification({ userId, email, firstName, lastName });
 
             // Request OTP
@@ -158,7 +166,6 @@ export const useAuthStore = create(
 
       verifyOTP: async (identifier, otp) => {
         set({ isLoading: true, error: null });
-        
         const userId = get().tempRegister?.userId || identifier;
         const email = get().tempRegister?.email;
         const verifyIdentifier = userId || identifier || email;

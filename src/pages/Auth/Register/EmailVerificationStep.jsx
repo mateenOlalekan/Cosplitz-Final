@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Mail, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
+
 export default function EmailVerificationStep({ onVerify, onResend, onBack, isLoading }) {
-  const { tempRegister, error: storeError } = useAuthStore();
+  const { tempRegister, error: storeError, clearIncompleteRegistration } = useAuthStore();
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [timer, setTimer] = useState(180);
   const [resendLoading, setResendLoading] = useState(false);
@@ -15,6 +16,14 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
   const userId = tempRegister?.userId;
   const firstName = tempRegister?.firstName;
   const lastName = tempRegister?.lastName;
+
+  // ✅ Check if we have valid temp registration data
+  useEffect(() => {
+    if (!tempRegister?.userId && isMounted.current) {
+      console.warn('No valid temp registration data found, redirecting back');
+      onBack();
+    }
+  }, [tempRegister, onBack]);
 
   // Enhanced timer with better cleanup
   useEffect(() => {
@@ -148,6 +157,13 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
     }
   };
 
+  // ✅ Enhanced back button handler
+  const handleBackClick = () => {
+    // Clear incomplete registration when going back
+    clearIncompleteRegistration();
+    onBack();
+  };
+
   const formatTime = (seconds) =>
     `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
 
@@ -157,7 +173,7 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
   return (
     <div className="flex flex-col items-center gap-5 py-4 relative w-full">
       <button
-        onClick={onBack}
+        onClick={handleBackClick}
         disabled={isLoading || verificationLoading}
         className="absolute left-4 top-4 text-gray-600 hover:text-green-600 transition disabled:opacity-50"
       >

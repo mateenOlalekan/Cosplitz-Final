@@ -23,30 +23,40 @@ export default function Register() {
     error, 
     isLoading,
     clearError,
+    clearIncompleteRegistration,
   } = useAuthStore();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [verificationError, setVerificationError] = useState('');
+  const [hasClearedState, setHasClearedState] = useState(false);
   const isMounted = useRef(true);
 
-  // Enhanced step transition logic
+  // ✅ Clear incomplete registration on component mount
   useEffect(() => {
-    if (isMounted.current) {
-      if (currentStep === 1 && tempRegister?.userId) {
+    if (!hasClearedState) {
+      clearIncompleteRegistration();
+      setHasClearedState(true);
+    }
+  }, [hasClearedState, clearIncompleteRegistration]);
+
+  // Enhanced step transition logic - only transition if we have fresh data
+  useEffect(() => {
+    if (isMounted.current && tempRegister?.userId && hasClearedState) {
+      if (currentStep === 1) {
         setCurrentStep(2);
         clearError();
       }
     }
-  }, [tempRegister, currentStep, clearError]);
+  }, [tempRegister, currentStep, clearError, hasClearedState]);
 
   useEffect(() => {
-    if (isMounted.current) {
-      if (currentStep === 2 && user) {
+    if (isMounted.current && user && hasClearedState) {
+      if (currentStep === 2) {
         setCurrentStep(3);
         clearError();
       }
     }
-  }, [user, currentStep, clearError]);
+  }, [user, currentStep, clearError, hasClearedState]);
 
   // Clear errors on step change
   useEffect(() => {
@@ -59,7 +69,7 @@ export default function Register() {
     return () => {
       isMounted.current = false;
     };
-n  }, []);
+  }, []);
 
   const handleRegister = async (formData) => {
     const payload = {
@@ -67,7 +77,6 @@ n  }, []);
       last_name: formData.lastName.trim(),
       email: formData.email.toLowerCase().trim(),
       password: formData.password,
-      username: formData.email.split('@')[0],
       nationality: formData.nationality.trim(),
     };
 
@@ -122,7 +131,6 @@ n  }, []);
   };
 
   return (
-
     <div className="flex bg-[#F7F5F9] w-full min-h-screen justify-center overflow-hidden md:px-6 md:py-4">
       <div className="flex max-w-screen-2xl w-full min-h-full rounded-xl overflow-hidden">
         <div className="hidden lg:flex w-1/2 bg-[#F8EACD] rounded-xl p-6 items-center justify-center">
@@ -149,7 +157,8 @@ n  }, []);
                   <div key={s.id} className="flex items-center">
                     <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 text-xs font-semibold ${
                       currentStep >= s.id ? 'bg-green-600 border-green-600 text-white' : 'bg-white border-gray-300 text-gray-400'
-                    }`}>
+                    }`}
+                    >
                       {s.id}
                     </div>
                     {i < steps.length - 1 && (

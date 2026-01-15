@@ -15,24 +15,21 @@ async function request(path, options = {}) {
 
 
 let token = null;
-
 try {
-  token =
-    localStorage.getItem('authToken') ?? sessionStorage.getItem('authToken');
-} catch (error) {
-  try {
-    localStorage.removeItem('authToken');
-    sessionStorage.removeItem('authToken');
-  } catch (_) {}
-  token = null;
-}
+  token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+} catch (_) {}
+
+
 
   const isForm = options.body instanceof FormData;
 
-  const headers = {
-    ...(isForm ? {} : { 'Content-Type': 'application/json' }),
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
+const headers = {
+  ...(isForm ? {} : { 'Content-Type': 'application/json' }),
+  ...(options.auth !== false && token
+    ? { Authorization: `Bearer ${token}` }
+    : {}),
+};
+
 
   const method = (options.method || 'GET').toUpperCase();
 
@@ -41,11 +38,7 @@ try {
     body = isForm ? options.body : JSON.stringify(options.body);
   }
 
-  const config = {
-    method,
-    headers,
-    body,
-  };
+  const config = { method,headers,body,};
 
   log(`→ ${config.method} ${url}`, COL.info, body ? 'Has body' : 'No body');
 
