@@ -1,25 +1,29 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Mail, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
-
 export default function EmailVerificationStep({ onVerify, onResend, onBack, isLoading }) {
   const { tempRegister, error: storeError } = useAuthStore();
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [timer, setTimer] = useState(180);
   const [resendLoading, setResendLoading] = useState(false);
   const [localError, setLocalError] = useState('');
+  const [verificationLoading, setVerificationLoading] = useState(false);
   const inputRefs = useRef([]);
   const isMounted = useRef(true);
 
   const email = tempRegister?.email;
   const userId = tempRegister?.userId;
+  const firstName = tempRegister?.firstName;
+  const lastName = tempRegister?.lastName;
 
-  // TIMER – run ONCE
+  // Enhanced timer with better cleanup
   useEffect(() => {
     isMounted.current = true;
 
     const interval = setInterval(() => {
-      setTimer(t => (t <= 1 ? 0 : t - 1));
+      if (isMounted.current) {
+        setTimer(t => (t <= 1 ? 0 : t - 1));
+      }
     }, 1000);
 
     return () => {
@@ -28,10 +32,11 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
     };
   }, []);
 
-  // Store error → local error
+  // Store error → local error with better handling
   useEffect(() => {
     if (storeError && isMounted.current) {
       setLocalError(storeError);
+      setVerificationLoading(false);
     }
   }, [storeError]);
 
@@ -54,7 +59,8 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
       inputRefs.current[index + 1]?.focus();
     }
 
-    if (newOtp.every(d => d !== '') && !isLoading) {
+    // Auto-verify when complete
+    if (newOtp.every(d => d !== '') && !isLoading && !verificationLoading) {
       handleVerifyClick(newOtp.join(''));
     }
   };
@@ -74,14 +80,14 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
       setOtp(digits);
       setLocalError('');
 
-      if (!isLoading) {
+      if (!isLoading && !verificationLoading) {
         handleVerifyClick(pasted);
       }
     }
   };
 
-  const handleVerifyClick = (code = null) => {
-    if (isLoading) return; // PREVENT DOUBLE CALLS
+  const handleVerifyClick = async (code = null) => {
+    if (isLoading || verificationLoading) return;
 
     const otpCode = code || otp.join('');
 
@@ -96,11 +102,25 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
     }
 
     setLocalError('');
-    onVerify(otpCode);
+    setVerificationLoading(true);
+
+    try {
+      const result = await onVerify(otpCode);
+      if (isMounted.current) {
+        setVerificationLoading(false);
+      }
+      return result;
+    } catch (err) {
+      if (isMounted.current) {
+        setVerificationLoading(false);
+        setLocalError('Verification failed. Please try again.');
+      }
+      return false;
+    }
   };
 
   const handleResend = async () => {
-    if (timer > 0 || isLoading) return;
+    if (timer > 0 || isLoading || resendLoading) return;
 
     if (!userId) {
       setLocalError('Cannot resend OTP. User ID is missing.');
@@ -131,16 +151,14 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
   const formatTime = (seconds) =>
     `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
 
-  const canVerify = otp.every(d => d !== '') && !isLoading;
-  const verifyButtonText = isLoading ? 'Verifying...' : 'Verify Email';
+  const canVerify = otp.every(d => d !== '') && !isLoading && !verificationLoading;
+  const verifyButtonText = verificationLoading ? 'Verifying...' : 'Verify Email';
 
   return (
     <div className="flex flex-col items-center gap-5 py-4 relative w-full">
-      {/* JSX unchanged */}
-
       <button
         onClick={onBack}
-        disabled={isLoading}
+        disabled={isLoading || verificationLoading}
         className="absolute left-4 top-4 text-gray-600 hover:text-green-600 transition disabled:opacity-50"
       >
         <ArrowLeft size={28} />
@@ -170,8 +188,8 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
             value={digit}
             onChange={(e) => handleChange(e.target.value, index)}
             onKeyDown={(e) => handleKeyDown(index, e)}
-            disabled={isLoading}
-            className="w-10 h-10 sm:w-12 sm:h-12 text-center text-lg font-bold border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-600 outline-none disabled:opacity-50"
+            disabled={isLoading || verificationLoading}
+            className="w-10 h-10 sm:w-12 sm:h-12 text-center text-lg font-bold border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-600 outline-none disabled:opacity-50 transition-all"
           />
         ))}
       </div>
@@ -192,8 +210,8 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
           <button
             type="button"
             onClick={handleResend}
-            disabled={resendLoading || isLoading}
-            className="text-green-600 hover:text-green-700 font-medium text-sm disabled:opacity-50"
+            disabled={resendLoading || isLoading || verificationLoading}
+            className="text-green-600 hover:text-green-700 font-medium text-sm disabled:opacity-50 transition-colors"
           >
             {resendLoading ? 'Resending...' : 'Resend Code'}
           </button>
@@ -210,7 +228,7 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
             : 'bg-green-500 cursor-not-allowed'
         }`}
       >
-        {isLoading && (
+        {verificationLoading && (
           <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
         )}
         {verifyButtonText}

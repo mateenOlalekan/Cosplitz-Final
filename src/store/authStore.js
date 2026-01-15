@@ -1,4 +1,3 @@
-// src/store/authStore.js
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authService } from '../services/authApi';
@@ -21,7 +20,7 @@ export const useAuthStore = create(
       token: null,
       error: null,
       isLoading: false,
-      tempRegister: null, // { userId, email }
+      tempRegister: null, // { userId, email, firstName, lastName }
       rememberMe: true,
 
       /* -------------------- helpers -------------------- */
@@ -48,7 +47,6 @@ export const useAuthStore = create(
         }
       },
 
-      // ✅ NEW: Persist temp registration data
       _saveTempRegister(data) {
         try {
           if (data) {
@@ -90,7 +88,6 @@ export const useAuthStore = create(
 
       /* -------------------- auth flows -------------------- */
 
-      // ✅ FIXED: Robust register with proper OTP request
       register: async (userData) => {
         set({ isLoading: true, error: null });
         
@@ -101,6 +98,8 @@ export const useAuthStore = create(
           if (res.success) {
             const userId = res.data?.user?.id || res.data?.user_id || res.data?.user?.user_id;
             const email = res.data?.user?.email || userData.email;
+            const firstName = res.data?.user?.first_name || userData.first_name;
+            const lastName = res.data?.user?.last_name || userData.last_name;
 
             if (!userId) {
               log('❌ Registration response missing userId:', COL.err, res);
@@ -109,7 +108,7 @@ export const useAuthStore = create(
             }
 
             // Store verification data BEFORE OTP request
-            get().setPendingVerification({ userId, email });
+            get().setPendingVerification({ userId, email, firstName, lastName });
 
             // Request OTP
             log('📧 Requesting OTP for userId:', COL.info, userId);
@@ -123,7 +122,7 @@ export const useAuthStore = create(
 
             log('✅ OTP sent successfully', COL.ok);
             set({ isLoading: false });
-            return { success: true, data: { userId } };
+            return { success: true, data: { userId, email, firstName, lastName } };
           } else {
             log('❌ Registration failed:', COL.err, res);
             set({ error: res.data?.message || 'Registration failed', isLoading: false });
@@ -136,7 +135,6 @@ export const useAuthStore = create(
         }
       },
 
-      // ✅ FIXED: Better OTP fetching
       getOTP: async (userId) => {
         if (!userId) {
           const err = { status: 400, data: { message: 'User ID is required' }, error: true };
@@ -158,7 +156,6 @@ export const useAuthStore = create(
         return res;
       },
 
-      // ✅ FIXED: Robust OTP verification
       verifyOTP: async (identifier, otp) => {
         set({ isLoading: true, error: null });
         
@@ -201,7 +198,6 @@ export const useAuthStore = create(
         }
       },
 
-      // ✅ FIXED: Better resend OTP
       resendOTP: async () => {
         set({ error: null });
         const userId = get().tempRegister?.userId;
@@ -220,7 +216,6 @@ export const useAuthStore = create(
         return res;
       },
 
-      // ✅ FIXED: Improved login
       login: async (credentials, { remember = false } = {}) => {
         set({ isLoading: true, error: null });
         
@@ -261,7 +256,6 @@ export const useAuthStore = create(
         }
       },
 
-      // ✅ FIXED: Better logout
       logout: async (redirect = true) => {
         set({ isLoading: true });
         try { 
@@ -290,7 +284,6 @@ export const useAuthStore = create(
       getUserId: () => get().user?.id,
       getToken: () => get().token,
 
-      // ✅ FIXED: Initialize with tempRegister restore
       initializeAuth: async () => {
         try {
           const tempData = localStorage.getItem('tempRegister');

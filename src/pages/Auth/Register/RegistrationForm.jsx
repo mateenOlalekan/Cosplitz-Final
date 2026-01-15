@@ -29,6 +29,8 @@ export default function RegistrationForm({
   const [filtered, setFiltered] = useState([]);
   const [open, setOpen] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [submitError, setSubmitError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const nationalityRef = useRef(null);
   const dropdownRef = useRef(null);
@@ -52,6 +54,11 @@ export default function RegistrationForm({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Update submit error when prop changes
+  useEffect(() => {
+    setSubmitError(error);
+  }, [error]);
+
   const validateField = (field, value) => {
     try {
       registrationSchema.shape[field].parse(value);
@@ -65,6 +72,7 @@ export default function RegistrationForm({
     setFormData(prev => ({ ...prev, [field]: value }));
     const errorMsg = validateField(field, value);
     setFieldErrors(prev => ({ ...prev, [field]: errorMsg }));
+    setSubmitError(''); // Clear submit error on input change
   };
 
   const handleBlur = (field) => {
@@ -88,8 +96,11 @@ export default function RegistrationForm({
     setOpen(false);
   };
 
-  const onSubmitForm = (e) => {
+  const onSubmitForm = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    setSubmitError('');
+
     const result = registrationSchema.safeParse(formData);
     if (!result.success) {
       const errors = {};
@@ -97,15 +108,33 @@ export default function RegistrationForm({
         errors[issue.path[0]] = issue.message;
       });
       setFieldErrors(errors);
+      setIsSubmitting(false);
       return;
     }
-    onSubmit(formData);
+
+    try {
+      const result = await onSubmit(formData);
+      if (!result.success) {
+        setSubmitError(result.error || 'Registration failed');
+      }
+    } catch (err) {
+      setSubmitError('Registration failed. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const inputClass = (hasError) =>
     `w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors ${
       hasError ? 'border-red-300' : 'border-gray-300 focus:border-green-500'
     }`;
+
+  const isFormValid = !Object.values(fieldErrors).some(error => error) && 
+                     formData.agreeToTerms && 
+                     formData.firstName && 
+                     formData.lastName && 
+                     formData.email && 
+                     formData.password;
 
   return (
     <div>
@@ -115,8 +144,6 @@ export default function RegistrationForm({
       <p className="text-gray-500 text-center text-sm mt-1 mb-4">
         Let's get started with real-time cost sharing.
       </p>
-
-
 
       <div className="grid grid-cols-1 gap-2 mb-3">
         <motion.button
@@ -146,6 +173,12 @@ export default function RegistrationForm({
         <span className="mx-2 text-gray-500 text-sm">Or</span>
         <div className="flex-grow border-t border-gray-300" />
       </div>
+
+      {submitError && (
+        <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-4 text-center">
+          {submitError}
+        </div>
+      )}
 
       <form onSubmit={onSubmitForm} className="space-y-3">
         <div>
@@ -270,10 +303,12 @@ export default function RegistrationForm({
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           type="submit"
-          disabled={loading}
-          className={`w-full bg-green-600 text-white py-3 rounded-lg font-semibold transition-all duration-200 ${loading ? 'opacity-60 cursor-not-allowed' : 'hover:bg-green-700'}`}
+          disabled={loading || isSubmitting || !isFormValid}
+          className={`w-full bg-green-600 text-white py-3 rounded-lg font-semibold transition-all duration-200 ${
+            loading || isSubmitting || !isFormValid ? 'opacity-60 cursor-not-allowed' : 'hover:bg-green-700'
+          }`}
         >
-          {loading ? (
+          {loading || isSubmitting ? (
             <span className="flex items-center justify-center gap-2">
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               Creating Account...

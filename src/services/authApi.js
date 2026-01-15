@@ -10,20 +10,22 @@ const COL = {
 const log = (msg, style = COL.info, ...rest) =>
   console.log(`%c[AuthApi] ${msg}`, style, ...rest);
 
-
-
-/* ---------- core request ---------- */
 async function request(path, options = {}) {
-  // build url
   const url = `${API_BASE_URL}${path}`;
 
-  // read token from storage to avoid circular store import
-  let token = null;
+
+let token = null;
+
+try {
+  token =
+    localStorage.getItem('authToken') ?? sessionStorage.getItem('authToken');
+} catch (error) {
   try {
-    token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-  } catch (e) {
-    token = null;
-  }
+    localStorage.removeItem('authToken');
+    sessionStorage.removeItem('authToken');
+  } catch (_) {}
+  token = null;
+}
 
   const isForm = options.body instanceof FormData;
 
@@ -54,11 +56,7 @@ async function request(path, options = {}) {
     log('× NETWORK FAIL', COL.err, netErr);
     return { status: 0, data: { message: 'Network error. Check connection.' }, error: true };
   }
-
-  // Get raw text first for debugging
   const responseText = await resp.text();
-
-  // Show raw response in logs for debugging
   const trimmed = responseText ? responseText.trim() : '';
   const isJson = trimmed.startsWith('{') || trimmed.startsWith('[');
   log(`← ${resp.status} ${resp.statusText}`, resp.ok ? COL.ok : COL.err,
@@ -81,10 +79,8 @@ async function request(path, options = {}) {
     };
   }
 
-  // HANDLE ERRORS
   if (resp.status === 500) {
-    return {
-      status: 500,
+    return {status: 500,
       data: {
         message: json?.message || 'Server error. Please try again or contact support.',
       },
@@ -92,9 +88,7 @@ async function request(path, options = {}) {
     };
   }
 
-  if (resp.status === 401) {
-    return { status: 401, data: { ...json, message: json?.message || 'Unauthorized. Please log in.' }, error: true, unauthorized: true };
-  }
+  if (resp.status === 401) {return { status: 401, data: { ...json, message: json?.message || 'Unauthorized. Please log in.' }, error: true, unauthorized: true };}
   if (resp.status === 400) return { status: 400, data: { ...json, message: json?.message || 'Invalid request data.' }, error: true };
   if (resp.status === 409) return { status: 409, data: { ...json, message: json?.message || 'This email is already registered.' }, error: true };
   if (resp.status === 404) return { status: 404, data: { ...json, message: json?.message || 'API endpoint not found (404).' }, error: true };
@@ -134,41 +128,38 @@ export const authService = {
     }
   },
 
-getOTP: async (userId) => {
-  if (!userId) return { status: 400, data: { message: 'User ID is required.' }, error: true };
-  
-  try {
-    const res = await request(`/otp/${userId}/`, { method: 'GET' });
+  getOTP: async (userId) => {
+    if (!userId) return { status: 400, data: { message: 'User ID is required.' }, error: true };
     
-    // ✅ TEMP: Show OTP in console for testing
-    if (res.success && res.data?.otp) {
-      console.log('🔢 OTP CODE (DEV):', res.data.otp);
+    try {
+      const res = await request(`/otp/${userId}/`, { method: 'GET' });
+      if (res.success && res.data?.otp) {
+        console.log('🔢 OTP CODE (DEV):', res.data.otp);
+      }
+      
+      return res;
+    } catch (err) {
+      return { status: 0, data: { message: 'Failed to send OTP.' }, error: true };
     }
-    
-    return res;
-  } catch (err) {
-    return { status: 0, data: { message: 'Failed to send OTP.' }, error: true };
-  }
-}, 
+  },
 
-verifyOTP: async (userId, otp) => {
-  if (!userId || !otp) {
-    return {
-      status: 400,
-      data: { message: 'User ID and OTP are required.' },
-      error: true,
-    };
-  }
+  verifyOTP: async (userId, otp) => {
+    if (!userId || !otp) {
+      return {
+        status: 400,
+        data: { message: 'User ID and OTP are required.' },
+        error: true,
+      };
+    }
 
-  return await request('/verify_otp', {
-    method: 'POST',
-    body: {
-      user_id: Number(userId),
-      otp: String(otp).trim(),
-    },
-  });
-},
-
+    return await request('/verify_otp', {
+      method: 'POST',
+      body: {
+        user_id: Number(userId),
+        otp: String(otp).trim(),
+      },
+    });
+  },
 
   resendOTP: (userId) => authService.getOTP(userId),
 
@@ -201,4 +192,3 @@ verifyOTP: async (userId, otp) => {
 };
 
 export default { request, authService };
-

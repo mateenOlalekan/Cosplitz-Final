@@ -26,35 +26,40 @@ export default function Register() {
   } = useAuthStore();
 
   const [currentStep, setCurrentStep] = useState(1);
+  const [verificationError, setVerificationError] = useState('');
   const isMounted = useRef(true);
 
-  // ✅ FIXED: Safe step transitions
+  // Enhanced step transition logic
   useEffect(() => {
     if (isMounted.current) {
-      if (currentStep === 1 && tempRegister) {
+      if (currentStep === 1 && tempRegister?.userId) {
         setCurrentStep(2);
+        clearError();
       }
     }
-  }, [tempRegister, currentStep]);
+  }, [tempRegister, currentStep, clearError]);
 
   useEffect(() => {
     if (isMounted.current) {
       if (currentStep === 2 && user) {
         setCurrentStep(3);
+        clearError();
       }
     }
-  }, [user, currentStep]);
+  }, [user, currentStep, clearError]);
 
+  // Clear errors on step change
   useEffect(() => {
     clearError();
+    setVerificationError('');
   }, [currentStep, clearError]);
 
-  // ✅ FIXED: Cleanup on unmount
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       isMounted.current = false;
     };
-  }, []);
+n  }, []);
 
   const handleRegister = async (formData) => {
     const payload = {
@@ -66,21 +71,54 @@ export default function Register() {
       nationality: formData.nationality.trim(),
     };
 
-    const res = await register(payload);
-    return res.success;
+    try {
+      const res = await register(payload);
+      
+      if (res.success) {
+        return { success: true };
+      } else {
+        return { success: false, error: res.error || 'Registration failed' };
+      }
+    } catch (err) {
+      return { success: false, error: 'Registration failed' };
+    }
   };
 
   const handleVerifyOTP = async (otp) => {
-    const res = await verifyOTP(null, otp);
-    return res.success;
+    setVerificationError('');
+    
+    try {
+      const res = await verifyOTP(null, otp);
+      
+      if (res.success) {
+        return { success: true };
+      } else {
+        setVerificationError(res.error || 'OTP verification failed');
+        return { success: false, error: res.error || 'OTP verification failed' };
+      }
+    } catch (err) {
+      setVerificationError('Verification failed. Please try again.');
+      return { success: false, error: 'Verification failed' };
+    }
   };
 
   const handleResendOTP = async () => {
-    await resendOTP();
+    try {
+      await resendOTP();
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: 'Failed to resend OTP' };
+    }
   };
 
   const handleSocialRegister = (provider) => {
     alert(`${provider} registration is coming soon!`);
+  };
+
+  const handleBackToRegistration = () => {
+    setCurrentStep(1);
+    clearError();
+    setVerificationError('');
   };
 
   return (
@@ -127,9 +165,9 @@ export default function Register() {
               </p>
             </div>
 
-            {error && (
+            {(error || verificationError) && (
               <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-4 text-center">
-                {error}
+                {error || verificationError}
               </div>
             )}
 
@@ -146,7 +184,7 @@ export default function Register() {
               <EmailVerificationStep
                 onVerify={handleVerifyOTP}
                 onResend={handleResendOTP}
-                onBack={() => setCurrentStep(1)}
+                onBack={handleBackToRegistration}
                 isLoading={isLoading}
               />
             )}
