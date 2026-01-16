@@ -160,7 +160,7 @@ verifyOTP: async (userId, otp) => {
   
   console.log('[DEBUG] verifyOTP payload:', payload);
   
-  const res = await request('/verify_otp', {
+  const res = await request('/verify_otp/', {
     method: 'POST',
     body: payload,
     auth: false

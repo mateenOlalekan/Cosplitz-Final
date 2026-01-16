@@ -226,6 +226,7 @@ export const useAuthStore = create(
           return { success: false, error: 'OTP verification failed' };
         }
       },
+      
       resendOTP: async () => {
         console.log('[DEBUG] resendOTP called');
         set({ error: null });
