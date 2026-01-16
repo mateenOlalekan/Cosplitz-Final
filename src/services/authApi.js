@@ -10,7 +10,6 @@ const COL = {
 const log = (msg, style = COL.info, ...rest) =>
   console.log(`%c[AuthApi] ${msg}`, style, ...rest);
 
-/* ---------- core request ---------- */
 async function request(path, options = {}) {
   const url = `${API_BASE_URL}${path}`;
   let token = null;
@@ -28,166 +27,177 @@ async function request(path, options = {}) {
   };
 
   const method = (options.method || 'GET').toUpperCase();
+
   let body;
   if (options.body) {
     body = isForm ? options.body : JSON.stringify(options.body);
+    console.log('[DEBUG] Request Body:', body);
   }
-
   const config = { method, headers, body };
-  log(`→ ${config.method} ${url}`, COL.info, body ? 'Has body' : 'No body');
-
   let resp;
-  try {
-    resp = await fetch(url, config);
+  try {resp = await fetch(url, config);
   } catch (netErr) {
-    log('× NETWORK FAIL', COL.err, netErr);
+    console.error('[DEBUG] Network error:', netErr);
     return { status: 0, data: { message: 'Network error. Check connection.' }, error: true };
   }
-
-  const responseText = await resp.text();
   
-  // DEBUG: Check if response is HTML error page
-  if (responseText.trim().startsWith('<!DOCTYPE') || responseText.includes('</html>')) {
-    log('× HTML ERROR PAGE RETURNED', COL.err, responseText.substring(0, 200));
+  const responseText = await resp.text();
+  if (responseText.trim().startsWith('<!DOCTYPE') || 
+      responseText.trim().startsWith('<html') ||
+      responseText.includes('</html>')) {
+    console.error('[DEBUG] Server returned HTML error page instead of JSON');
+    let errorMessage = `Server error (${resp.status})`;
+    
+    // Look for common error patterns in HTML
+    const errorMatch = responseText.match(/<pre[^>]*>([\s\S]*?)<\/pre>|Error:([^<]+)/i);
+    if (errorMatch) {
+      errorMessage += `: ${errorMatch[1] || errorMatch[2]}`;
+    } else if (responseText.includes('500 Internal Server Error')) {
+      errorMessage = 'Internal server error (500). Please try again later.';
+    }
     return {
       status: resp.status,
-      data: { message: `Server error (${resp.status}). Check backend logs.` },
+      data: {message: errorMessage,htmlResponse: true},
       error: true,
-      htmlResponse: true,
+      responseText: responseText,
     };
   }
-
+  
+  // Try to parse as JSON
   let json = null;
   try {
     json = responseText ? JSON.parse(responseText) : null;
   } catch (parseError) {
-    console.error('❌ JSON Parse Error:', parseError);
+    console.error('[DEBUG] JSON Parse Error:', parseError);
     return {
       status: resp.status,
-      data: { message: `Server error (${resp.status}). Invalid JSON response.`, debug: responseText?.substring(0, 300) },
+      data: {
+        message: `Server returned invalid response (${resp.status})`,
+        debug: responseText?.substring(0, 300),
+      },
       error: true,
+      responseText: responseText,
     };
   }
 
-  if (resp.status === 500) {
-    return { status: 500, data: { message: json?.message || 'Server error. Try again or contact support.' }, error: true };
-  }
-  if (resp.status === 401) {
-    return { status: 401, data: { ...json, message: json?.message || 'Unauthorized. Please log in.' }, error: true, unauthorized: true };
-  }
+  // Handle specific status codes
+  if (resp.status === 500) {return {status: 500,data: {message: json?.message || 'Internal server error. Please try again or contact support.',},error: true, };}
+  if (resp.status === 401) {return {status: 401,data: { ...json, message: json?.message || 'Unauthorized. Please log in.' },error: true,unauthorized: true };}  
   if (resp.status === 400) return { status: 400, data: { ...json, message: json?.message || 'Invalid request data.' }, error: true };
-  if (resp.status === 409) return { status: 409, data: { ...json, message: json?.message || 'Email already registered.' }, error: true };
-  if (resp.status === 404) return { status: 404, data: { ...json, message: json?.message || 'API endpoint not found.' }, error: true };
+  if (resp.status === 409) return { status: 409, data: { ...json, message: json?.message || 'This email is already registered.' }, error: true };
+  if (resp.status === 404) return { status: 404, data: { ...json, message: json?.message || 'API endpoint not found (404).' }, error: true };  
   if (!resp.ok) return { status: resp.status, data: { ...json, message: json?.message || `Request failed (${resp.status})` }, error: true };
-
   return { status: resp.status, data: json, success: true };
 }
-
 /* ---------- auth service ---------- */
 export const authService = {
   register: async (userData) => {
-    log('📝 Registering user...', COL.info);
+    console.log('[DEBUG] Register payload:', userData);
     try {
       const res = await request('/register/', { method: 'POST', body: userData });
+      console.log('[DEBUG] Register response:', res);
       if (res.status === 409) {
-        res.data.message = 'Email already registered. Try logging in.';
+        res.data.message = 'This email is already registered. Please use a different email or try logging in.';
       }
       return res;
     } catch (err) {
-      log('× Registration error', COL.err, err);
-      return { status: 0, data: { message: 'Registration failed. Try again.' }, error: true };
+      log('Registration error', COL.err, err);
+      return { status: 0, data: { message: 'Registration failed. Please try again.' }, error: true };
     }
   },
 
   login: async ({ email, password }) => {
-    log('🔐 Logging in...', COL.info, { email });
+    console.log('[DEBUG] Login payload:', { email, password: '***' });
     try {
       return await request('/login/', { method: 'POST', body: { email: email.toLowerCase().trim(), password } });
     } catch (err) {
-      log('× Login error', COL.err, err);
-      return { status: 0, data: { message: 'Login failed. Try again.' }, error: true };
+      log('Login error', COL.err, err);
+      return { status: 0, data: { message: 'Login failed. Please try again.' }, error: true };
     }
   },
 
   getUserInfo: async () => {
-    log('👤 Fetching user info...', COL.info);
     try {
       return await request('/user/info', { method: 'GET' });
     } catch (err) {
-      log('× Get user info error', COL.err, err);
-      return { status: 0, data: { message: 'Failed to fetch user info.' }, error: true };
+      log('Get user info error', COL.err, err);
+      return { status: 0, data: { message: 'Failed to fetch user information.' }, error: true };
     }
   },
 
-  // ✅ FIXED: No userId in path
-  getOTP: async () => {
-    log('📧 Requesting OTP...', COL.info);
+  getOTP: async (userId) => {
+    console.log('[DEBUG] getOTP called with userId:', userId);
+    if (!userId) return { status: 400, data: { message: 'User ID is required.' }, error: true };
+    
     try {
-      const res = await request('/otp/', { method: 'GET', auth: false });
-      
-      // Show OTP in console for dev
+      const res = await request(`/otp/${userId}/`, {method: 'GET',auth: false  });
+      console.log('[DEBUG] getOTP response:', res);
       if (res.success && res.data?.otp) {
         console.log('🔢 OTP CODE (DEV):', res.data.otp);
       }
       return res;
     } catch (err) {
-      log('× OTP request error', COL.err, err);
-      return { status: 0, data: { message: 'Failed to request OTP.' }, error: true };
+      console.log('[DEBUG] getOTP error:', err);
+      return { status: 0, data: { message: 'Failed to send OTP.' }, error: true };
     }
   },
 
-  // ✅ FIXED: Send email instead of user_id
-  verifyOTP: async (otp) => {
-    if (!otp) {
-      return { status: 400, data: { message: 'OTP is required.' }, error: true };
-    }
+verifyOTP: async (userId, otp) => {
+  console.log('[DEBUG] verifyOTP called with:', { userId, otp });
+  
+  if (!userId || !otp) {
+    return {
+      status: 400,
+      data: { message: 'User ID and OTP are required.' },
+      error: true,
+    };
+  }
 
-    const temp = JSON.parse(localStorage.getItem('tempRegister') || '{}');
-    if (!temp.email) {
-      return { status: 400, data: { message: 'No registration data found.' }, error: true };
-    }
+  const payload = {
+    user_id: Number(userId),
+    otp: String(otp).trim(),
+  };
+  
+  console.log('[DEBUG] verifyOTP payload:', payload);
+  
+  const res = await request('/verify_otp', {
+    method: 'POST',
+    body: payload,
+    auth: false
+  });
+  
+  console.log('[DEBUG] verifyOTP response:', res);
+  return res;
+},
 
-    log('🔢 Verifying OTP...', COL.info);
-    try {
-      return await request('/verify_otp', {
-        method: 'POST',
-        body: { email: temp.email, otp: String(otp).trim() },
-        auth: false,
-      });
-    } catch (err) {
-      log('× Verify OTP error', COL.err, err);
-      return { status: 0, data: { message: 'OTP verification failed.' }, error: true };
-    }
+  resendOTP: (userId) => {
+    console.log('[DEBUG] resendOTP called with userId:', userId);
+    return authService.getOTP(userId);
   },
-
-  resendOTP: () => authService.getOTP(),
 
   forgotPassword: async (email) => {
-    log('🔑 Forgot password...', COL.info);
     try {
       return await request('/forgot-password/', { method: 'POST', body: { email: email.toLowerCase().trim() } });
     } catch (err) {
-      log('× Forgot password error', COL.err, err);
+      log('Forgot password error', COL.err, err);
       return { status: 0, data: { message: 'Failed to send reset email.' }, error: true };
     }
   },
 
   resetPassword: async (data) => {
-    log('🔄 Resetting password...', COL.info);
     try {
       return await request('/reset-password/', { method: 'POST', body: data });
     } catch (err) {
-      log('× Reset password error', COL.err, err);
+      log('Reset password error', COL.err, err);
       return { status: 0, data: { message: 'Password reset failed.' }, error: true };
     }
   },
 
   logout: async () => {
-    log('🚪 Logging out...', COL.info);
     try {
       return await request('/logout/', { method: 'POST' });
     } catch (err) {
-      log('× Logout error', COL.warn, err);
+      log('Logout API error', COL.warn, err);
       return { status: 0, data: { message: 'Logged out locally.' }, success: true };
     }
   },

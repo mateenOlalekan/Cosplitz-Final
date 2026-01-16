@@ -13,24 +13,22 @@ export default function Login() {
   const location = useLocation();
   const from = location.state?.from?.pathname || '/dashboard';
   const { login, isLoading, error, setError, clearError, isAuthenticated } = useAuthStore();
-  
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({ email: '', password: '' });
-  const [submitError, setSubmitError] = useState('');
   const isMounted = useRef(true);
 
-  // Redirect if already authenticated
+  // ✅ FIXED: Better auth check with cleanup
   useEffect(() => {
     if (isAuthenticated() && isMounted.current) {
-      console.log('[DEBUG] Already authenticated, redirecting to dashboard');
       navigate(from, { replace: true });
     }
   }, [isAuthenticated, navigate, from]);
 
-  // Cleanup on unmount
+  // ✅ FIXED: Cleanup on unmount
   useEffect(() => {
     return () => {
       isMounted.current = false;
@@ -39,40 +37,29 @@ export default function Login() {
 
   const handleLogin = useCallback(async (e) => {
     e.preventDefault();
-    console.log('[DEBUG] Login form submitted');
-    
     clearError();
-    setSubmitError('');
     setFieldErrors({ email: '', password: '' });
 
-    // Validate form data
     const result = loginSchema.safeParse({ email, password });
     if (!result.success) {
-      console.log('[DEBUG] Login validation failed:', result.error.issues);
       const errs = {};
       result.error.errors.forEach(err => errs[err.path[0]] = err.message);
       setFieldErrors(errs);
       return;
     }
 
-    console.log('[DEBUG] Attempting login for:', email);
     const res = await login(
       { email: email.trim().toLowerCase(), password },
       { remember }
     );
 
     if (res.success && isMounted.current) {
-      console.log('[DEBUG] Login successful, redirecting to:', from);
       navigate(from, { replace: true });
-    } else {
-      console.log('[DEBUG] Login failed:', res.error || res.data?.message);
-      setSubmitError(res.error || res.data?.message || 'Login failed');
     }
   }, [email, password, remember, login, clearError, navigate, from]);
 
   const handleSocialLogin = useCallback((provider) => {
-    console.log('[DEBUG] Social login clicked:', provider);
-    setError(`${provider} login is coming soon!`);
+    setError(`${provider} login coming soon!`);
   }, [setError]);
 
   const inputClass = (hasError) =>
@@ -81,21 +68,21 @@ export default function Login() {
     }`;
 
   return (
-    <div className="flex bg-[#F7F5F9] w-full h-screen justify-center overflow-hidden md:px-6 md:py-4">
+
+    <div className="flex bg-[#F7F5F9] w-full min-h-screen justify-center overflow-hidden md:px-6 md:py-4">
       <div className="flex max-w-screen-2xl w-full min-h-full rounded-xl overflow-hidden">
         <LeftPanel />
         <div className="flex flex-1 flex-col items-center p-3 overflow-y-auto">
           <div className="w-full mb-4 flex justify-center md:justify-start">
             <img src={logo} alt="Logo" className="h-10 md:h-12" />
           </div>
-          
           <div className="w-full max-w-2xl p-5 rounded-xl shadow-none md:shadow-md border-none md:border border-gray-100 bg-white space-y-6">
             <h1 className="text-2xl sm:text-3xl text-center font-bold text-gray-900">Welcome Back</h1>
             <p className="text-gray-500 text-center text-sm mt-1 mb-4">Sign in to continue sharing expenses.</p>
 
-            {(error || submitError) && (
-              <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg text-center">
-                {error || submitError}
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-3 text-center">
+                {error}
               </div>
             )}
 
