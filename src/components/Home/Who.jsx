@@ -10,7 +10,7 @@ import image4 from "../../assets/Frame 34.svg";
 export default function WhoSection() {
   const navigate = useNavigate();
   const getOnboard=()=>{
-    navigate("/onboard")
+    navigate("/pre-onboard")
   }
   useEffect(() => {
     AOS.init({

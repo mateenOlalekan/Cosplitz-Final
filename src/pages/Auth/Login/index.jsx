@@ -69,7 +69,7 @@ export default function Login() {
 
   return (
 
-    <div className="flex bg-[#F7F5F9] w-full min-h-screen justify-center overflow-hidden md:px-6 md:py-4">
+    <div className="flex bg-[#F7F5F9] w-full h-screen justify-center overflow-hidden md:px-6 md:py-4">
       <div className="flex max-w-screen-2xl w-full min-h-full rounded-xl overflow-hidden">
         <LeftPanel />
         <div className="flex flex-1 flex-col items-center p-3 overflow-y-auto">
