@@ -6,12 +6,19 @@ import { useAuthStore } from "../../store/authStore";
 
 
 export default function DashboardHeader({ onMenuClick }) {
-  const navigate = useNavigate();
   const { user, logout } = useAuthStore();
 
   return (
-    <header className="sticky top-0 bg-white border-b border-gray-200 z-30 px-4 py-3">
+    <header className=" bg-white border-b border-gray-200 z-30 px-4">
+
       <div className="flex items-center justify-between">
+        {/* Left side: Mobile menu button + Logo */}
+        <img src={logo} className="w-20 h-20"/>
+
+        {/* Right side: User actions */}
+        <Menu onClick={onMenuClick}/>
+      </div>
+      <div className="flex items-center justify-between py-3">
         {/* Left side: Mobile menu button + Logo */}
           <div className=" flex items-center gap-1 text-gray-600">
             <MapPin size={16} />
@@ -21,9 +28,6 @@ export default function DashboardHeader({ onMenuClick }) {
 
         {/* Right side: User actions */}
         <div className="flex items-center gap-4">
-          {/* Location */}
-
-
           {/* Welcome message */}
           <div className="hidden md:block text-sm text-gray-600">
             Welcome, <span className="font-medium">{user?.first_name || "User"}</span>

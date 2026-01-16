@@ -22,11 +22,10 @@ export default function DashboardSidebar({ isOpen, onClose }) {
     <aside 
       className={`
         fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 
-        transform ${isOpen ? 'translate-x-0' : '-translate-x-full'} 
+        transform ${isOpen ? 'translate-x-0 duration-4000' : '-translate-x-full'} 
         lg:translate-x-0 transition-transform duration-300
         flex flex-col h-full
-      `}
-    >
+      `}>
       {/* Close button (mobile only) */}
 
 
@@ -50,7 +49,7 @@ export default function DashboardSidebar({ isOpen, onClose }) {
               className={({ isActive }) => `
                 flex items-center justify-between px-4 py-3 rounded-lg transition-colors
                 ${isActive 
-                  ? 'bg-green-600 text-white' 
+                  ? 'bg-[#1F8225] text-white' 
                   : 'text-gray-700 hover:bg-gray-50'
                 }
               `}
@@ -69,12 +68,12 @@ export default function DashboardSidebar({ isOpen, onClose }) {
         </div>
 
         {/* Community standing card */}
-        <div className="mt-6 p-4 bg-green-600 rounded-xl text-white">
+        <div className="mt-6 p-4 bg-[#1F8225] rounded-xl text-white">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-semibold">Community Standing</h3>
             <div className="flex gap-1">
               {[1,2,3,4].map(i => (
-                <span key={i} className={`w-2 h-2 rounded-full ${i <= 3 ? "bg-white" : "bg-white/40"}`} />
+                <span key={i} className={`w-2 h-2 rounded-full ${i <= 3 ? "bg-white" : "bg-white/80"}`} />
               ))}
             </div>
           </div>

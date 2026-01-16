@@ -12,24 +12,24 @@ const log = (msg, style = COL.info, ...rest) =>
 
 async function request(path, options = {}) {
   const url = `${API_BASE_URL}${path}`;
+  
+  console.log(`[DEBUG] Request URL: ${url}`);
+  console.log(`[DEBUG] Options:`, options);
 
-
-let token = null;
-try {
-  token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-} catch (_) {}
-
-
+  let token = null;
+  try {
+    token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    console.log(`[DEBUG] Token available: ${!!token}`);
+  } catch (_) {}
 
   const isForm = options.body instanceof FormData;
 
-const headers = {
-  ...(isForm ? {} : { 'Content-Type': 'application/json' }),
-  ...(options.auth !== false && token
-    ? { Authorization: `Bearer ${token}` }
-    : {}),
-};
-
+  const headers = {
+    ...(isForm ? {} : { 'Content-Type': 'application/json' }),
+    ...(options.auth !== false && token
+      ? { Authorization: `Bearer ${token}` }
+      : {}),
+  };
 
   const method = (options.method || 'GET').toUpperCase();
 
@@ -38,7 +38,7 @@ const headers = {
     body = isForm ? options.body : JSON.stringify(options.body);
   }
 
-  const config = { method,headers,body,};
+  const config = { method, headers, body };
 
   log(`→ ${config.method} ${url}`, COL.info, body ? 'Has body' : 'No body');
 
@@ -49,9 +49,14 @@ const headers = {
     log('× NETWORK FAIL', COL.err, netErr);
     return { status: 0, data: { message: 'Network error. Check connection.' }, error: true };
   }
+  
   const responseText = await resp.text();
   const trimmed = responseText ? responseText.trim() : '';
   const isJson = trimmed.startsWith('{') || trimmed.startsWith('[');
+  
+  console.log(`[DEBUG] Response Status: ${resp.status} ${resp.statusText}`);
+  console.log(`[DEBUG] Response Body:`, responseText);
+  
   log(`← ${resp.status} ${resp.statusText}`, resp.ok ? COL.ok : COL.err,
     isJson ? responseText : `Non-JSON response: ${responseText.substring(0, 100)}...`);
 
@@ -73,7 +78,8 @@ const headers = {
   }
 
   if (resp.status === 500) {
-    return {status: 500,
+    return {
+      status: 500,
       data: {
         message: json?.message || 'Server error. Please try again or contact support.',
       },
@@ -81,7 +87,8 @@ const headers = {
     };
   }
 
-  if (resp.status === 401) {return { status: 401, data: { ...json, message: json?.message || 'Unauthorized. Please log in.' }, error: true, unauthorized: true };}
+  if (resp.status === 401) {return { status: 401, data: { ...json, message: json?.message || 'Unauthorized. Please log in.' }, error: true, unauthorized: true };
+  }
   if (resp.status === 400) return { status: 400, data: { ...json, message: json?.message || 'Invalid request data.' }, error: true };
   if (resp.status === 409) return { status: 409, data: { ...json, message: json?.message || 'This email is already registered.' }, error: true };
   if (resp.status === 404) return { status: 404, data: { ...json, message: json?.message || 'API endpoint not found (404).' }, error: true };
@@ -93,9 +100,13 @@ const headers = {
 /* ---------- auth service ---------- */
 export const authService = {
   register: async (userData) => {
+    console.log('[DEBUG] Register payload:', userData);
     try {
       const res = await request('/register/', { method: 'POST', body: userData });
-      if (res.status === 409) res.data.message = 'This email is already registered. Please use a different email or try logging in.';
+      console.log('[DEBUG] Register response:', res);
+      if (res.status === 409) {
+        res.data.message = 'This email is already registered. Please use a different email or try logging in.';
+      }
       return res;
     } catch (err) {
       log('Registration error', COL.err, err);
@@ -104,6 +115,7 @@ export const authService = {
   },
 
   login: async ({ email, password }) => {
+    console.log('[DEBUG] Login payload:', { email, password: '***' });
     try {
       return await request('/login/', { method: 'POST', body: { email: email.toLowerCase().trim(), password } });
     } catch (err) {
@@ -122,39 +134,59 @@ export const authService = {
   },
 
   getOTP: async (userId) => {
+    console.log('[DEBUG] getOTP called with userId:', userId);
     if (!userId) return { status: 400, data: { message: 'User ID is required.' }, error: true };
     
     try {
-      const res = await request(`/otp/${userId}/`, { method: 'GET' });
+      const res = await request(`/otp/${userId}/`, { 
+        method: 'GET',
+        auth: false  // Important: No token needed for registration OTP
+      });
+      console.log('[DEBUG] getOTP response:', res);
+      
       if (res.success && res.data?.otp) {
         console.log('🔢 OTP CODE (DEV):', res.data.otp);
       }
       
       return res;
     } catch (err) {
+      console.log('[DEBUG] getOTP error:', err);
       return { status: 0, data: { message: 'Failed to send OTP.' }, error: true };
     }
   },
 
-  verifyOTP: async (userId, otp) => {
-    if (!userId || !otp) {
+  verifyOTP: async (email, otp) => {
+    console.log('[DEBUG] verifyOTP called with:', { email, otp });
+    
+    if (!email || !otp) {
       return {
         status: 400,
-        data: { message: 'User ID and OTP are required.' },
+        data: { message: 'Email and OTP are required.' },
         error: true,
       };
     }
 
-    return await request('/verify_otp', {
+    const payload = {
+      email: String(email).trim(),
+      otp: String(otp).trim(),
+    };
+    
+    console.log('[DEBUG] verifyOTP payload:', payload);
+    
+    const res = await request('/verify_otp', {
       method: 'POST',
-      body: {
-        user_id: Number(userId),
-        otp: String(otp).trim(),
-      },
+      body: payload,
+      auth: false
     });
+    
+    console.log('[DEBUG] verifyOTP response:', res);
+    return res;
   },
 
-  resendOTP: (userId) => authService.getOTP(userId),
+  resendOTP: (userId) => {
+    console.log('[DEBUG] resendOTP called with userId:', userId);
+    return authService.getOTP(userId);
+  },
 
   forgotPassword: async (email) => {
     try {
