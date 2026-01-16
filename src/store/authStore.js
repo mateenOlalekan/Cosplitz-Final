@@ -94,6 +94,7 @@ export const useAuthStore = create(
       },
 
       /* -------------------- auth flows -------------------- */
+
       register: async (userData) => {
         console.log('[DEBUG] Register function called with:', userData);
         set({ isLoading: true, error: null });
@@ -106,12 +107,13 @@ export const useAuthStore = create(
           console.log('[DEBUG] Register API response:', res);
 
           if (res.success) {
-            const userId = res.data?.id;
+           const userId = res.data?.user?.id || res.data?.user_id || res.data?.user?.user_id;
             const email = res.data?.email || userData.email;
             const firstName = res.data?.first_name || userData.first_name;
             const lastName = res.data?.last_name || userData.last_name;
 
-            console.log('[DEBUG] Extracted registration data:', { userId,email,firstName,lastName, fullResponseData: res.data });
+            console.log('[DEBUG] Extracted registration data:', { userId,email,firstName,lastName });
+            console.log("My lucky strike")
 
             if (!userId) {
               log('❌ Registration response missing userId. Full response:', COL.err, res);
