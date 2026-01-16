@@ -96,7 +96,7 @@ export const useAuthStore = create(
       /* -------------------- auth flows -------------------- */
 
       register: async (userData) => {
-        console.log('[DEBUG] Register function called with:', userData);
+
         set({ isLoading: true, error: null });
         
         try {

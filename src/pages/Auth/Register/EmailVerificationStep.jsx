@@ -185,8 +185,8 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
   const verifyButtonText = verificationLoading ? 'Verifying...' : 'Verify Email';
 
   return (
-    <div className="flex flex-col items-center gap-5 py-4 relative w-full"> 
-      <div className='flex flex-col justify-center items-center max-w-lg'>
+    <div className="flex flex-col items-center gap-5 py-4 relative w-full h-screen"> 
+      <div className='flex flex-col justify-center items-center max-w-xl gap-10'>
         <button
           onClick={handleBackClick}
           disabled={isLoading || verificationLoading}
