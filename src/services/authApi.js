@@ -12,14 +12,9 @@ const log = (msg, style = COL.info, ...rest) =>
 
 async function request(path, options = {}) {
   const url = `${API_BASE_URL}${path}`;
-  
-  console.log(`[DEBUG] Request URL: ${url}`);
-  console.log(`[DEBUG] Options:`, options);
-
   let token = null;
   try {
     token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-    console.log(`[DEBUG] Token available: ${!!token}`);
   } catch (_) {}
 
   const isForm = options.body instanceof FormData;
@@ -36,62 +31,91 @@ async function request(path, options = {}) {
   let body;
   if (options.body) {
     body = isForm ? options.body : JSON.stringify(options.body);
+    console.log('[DEBUG] Request Body:', body);
   }
 
   const config = { method, headers, body };
-
-  log(`→ ${config.method} ${url}`, COL.info, body ? 'Has body' : 'No body');
 
   let resp;
   try {
     resp = await fetch(url, config);
   } catch (netErr) {
-    log('× NETWORK FAIL', COL.err, netErr);
+    console.error('[DEBUG] Network error:', netErr);
     return { status: 0, data: { message: 'Network error. Check connection.' }, error: true };
   }
   
   const responseText = await resp.text();
-  const trimmed = responseText ? responseText.trim() : '';
-  const isJson = trimmed.startsWith('{') || trimmed.startsWith('[');
-  
   console.log(`[DEBUG] Response Status: ${resp.status} ${resp.statusText}`);
-  console.log(`[DEBUG] Response Body:`, responseText);
+  console.log(`[DEBUG] Response Headers:`, [...resp.headers.entries()]);
+  console.log(`[DEBUG] Response Text (first 500 chars):`, responseText.substring(0, 500));
   
-  log(`← ${resp.status} ${resp.statusText}`, resp.ok ? COL.ok : COL.err,
-    isJson ? responseText : `Non-JSON response: ${responseText.substring(0, 100)}...`);
-
+  // Check if response is HTML (error page)
+  if (responseText.trim().startsWith('<!DOCTYPE') || 
+      responseText.trim().startsWith('<html') ||
+      responseText.includes('</html>')) {
+    console.error('[DEBUG] Server returned HTML error page instead of JSON');
+    let errorMessage = `Server error (${resp.status})`;
+    
+    // Look for common error patterns in HTML
+    const errorMatch = responseText.match(/<pre[^>]*>([\s\S]*?)<\/pre>|Error:([^<]+)/i);
+    if (errorMatch) {
+      errorMessage += `: ${errorMatch[1] || errorMatch[2]}`;
+    } else if (responseText.includes('500 Internal Server Error')) {
+      errorMessage = 'Internal server error (500). Please try again later.';
+    }
+    
+    return {
+      status: resp.status,
+      data: { 
+        message: errorMessage,
+        htmlResponse: true 
+      },
+      error: true,
+      responseText: responseText,
+    };
+  }
+  
+  // Try to parse as JSON
   let json = null;
   try {
     json = responseText ? JSON.parse(responseText) : null;
   } catch (parseError) {
-    console.error('❌ JSON Parse Error:', parseError);
+    console.error('[DEBUG] JSON Parse Error:', parseError);
     return {
       status: resp.status,
       data: {
-        message: `Server error (${resp.status}). Response was not JSON.`,
+        message: `Server returned invalid response (${resp.status})`,
         debug: responseText?.substring(0, 300),
-        originalMessage: 'Invalid server response (not JSON).',
       },
       error: true,
       responseText: responseText,
     };
   }
 
+  // Handle specific status codes
   if (resp.status === 500) {
     return {
       status: 500,
       data: {
-        message: json?.message || 'Server error. Please try again or contact support.',
+        message: json?.message || 'Internal server error. Please try again or contact support.',
       },
       error: true,
     };
   }
 
-  if (resp.status === 401) {return { status: 401, data: { ...json, message: json?.message || 'Unauthorized. Please log in.' }, error: true, unauthorized: true };
+  if (resp.status === 401) {
+    return { 
+      status: 401, 
+      data: { ...json, message: json?.message || 'Unauthorized. Please log in.' }, 
+      error: true, 
+      unauthorized: true 
+    };
   }
+  
   if (resp.status === 400) return { status: 400, data: { ...json, message: json?.message || 'Invalid request data.' }, error: true };
   if (resp.status === 409) return { status: 409, data: { ...json, message: json?.message || 'This email is already registered.' }, error: true };
   if (resp.status === 404) return { status: 404, data: { ...json, message: json?.message || 'API endpoint not found (404).' }, error: true };
+  
   if (!resp.ok) return { status: resp.status, data: { ...json, message: json?.message || `Request failed (${resp.status})` }, error: true };
 
   return { status: resp.status, data: json, success: true };
