@@ -155,33 +155,33 @@ export const authService = {
     }
   },
 
-  verifyOTP: async (email, otp) => {
-    console.log('[DEBUG] verifyOTP called with:', { email, otp });
-    
-    if (!email || !otp) {
-      return {
-        status: 400,
-        data: { message: 'Email and OTP are required.' },
-        error: true,
-      };
-    }
-
-    const payload = {
-      email: String(email).trim(),
-      otp: String(otp).trim(),
+verifyOTP: async (userId, otp) => {
+  console.log('[DEBUG] verifyOTP called with:', { userId, otp });
+  
+  if (!userId || !otp) {
+    return {
+      status: 400,
+      data: { message: 'User ID and OTP are required.' },
+      error: true,
     };
-    
-    console.log('[DEBUG] verifyOTP payload:', payload);
-    
-    const res = await request('/verify_otp', {
-      method: 'POST',
-      body: payload,
-      auth: false
-    });
-    
-    console.log('[DEBUG] verifyOTP response:', res);
-    return res;
-  },
+  }
+
+  const payload = {
+    user_id: Number(userId),
+    otp: String(otp).trim(),
+  };
+  
+  console.log('[DEBUG] verifyOTP payload:', payload);
+  
+  const res = await request('/verify_otp', {
+    method: 'POST',
+    body: payload,
+    auth: false
+  });
+  
+  console.log('[DEBUG] verifyOTP response:', res);
+  return res;
+},
 
   resendOTP: (userId) => {
     console.log('[DEBUG] resendOTP called with userId:', userId);

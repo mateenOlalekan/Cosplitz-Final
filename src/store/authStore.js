@@ -173,27 +173,25 @@ export const useAuthStore = create(
         }
         return res;
       },
-
       verifyOTP: async (identifier, otp) => {
         console.log('[DEBUG] verifyOTP called with:', { identifier, otp });
         console.log('[DEBUG] Current tempRegister:', get().tempRegister);
         
         set({ isLoading: true, error: null });
         
-        // Get email from tempRegister
-        const email = get().tempRegister?.email;
+        const userId = get().tempRegister?.userId;
         
-        if (!email) {
-          log('❌ No email available for verification', COL.err);
-          set({ error: 'No email found. Please register again.', isLoading: false });
-          return { success: false, error: 'No email' };
+        if (!userId) {
+          log('❌ No user ID available for verification', COL.err);
+          set({ error: 'No user ID found. Please register again.', isLoading: false });
+          return { success: false, error: 'No user ID' };
         }
 
-        console.log('[DEBUG] Using email for verification:', email);
-        log('🔢 Verifying OTP for email:', COL.info, email);
+        console.log('[DEBUG] Using userId for verification:', userId);
+        log('🔢 Verifying OTP for userId:', COL.info, userId);
         
         try {
-          const res = await authService.verifyOTP(email, otp);
+          const res = await authService.verifyOTP(userId, otp);
           console.log('[DEBUG] verifyOTP API response:', res);
 
           if (res.success) {
@@ -209,6 +207,14 @@ export const useAuthStore = create(
             get().completeRegistration(user, token);
             return { success: true, data: { user, token } };
           } else {
+            // If we get a 500 error with HTML, show a better error message
+            if (res.status === 500 && res.responseText?.includes('<!DOCTYPE html>')) {
+              const errorMsg = 'Server error during OTP verification. Please try again or contact support.';
+              log('❌ Server returned HTML error page (500)', COL.err);
+              set({ error: errorMsg, isLoading: false });
+              return { success: false, error: errorMsg };
+            }
+            
             log('❌ OTP verification failed:', COL.err, res);
             set({ error: res.data?.message || 'OTP verification failed', isLoading: false });
             return res;
@@ -220,7 +226,6 @@ export const useAuthStore = create(
           return { success: false, error: 'OTP verification failed' };
         }
       },
-
       resendOTP: async () => {
         console.log('[DEBUG] resendOTP called');
         set({ error: null });

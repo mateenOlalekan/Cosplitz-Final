@@ -10,13 +10,24 @@ export default function DashboardHeader({ onMenuClick }) {
 
   return (
     <header className=" bg-white border-b border-gray-200 z-30 px-4">
+      <div className="flex items-center justify-between block md:hidden" 
+        role="banner"
+        aria-label="Application header"
+      >
+        <img 
+          src={logo} 
+          alt="Company Logo" 
+          className="w-20 h-20 object-contain select-none"
+          draggable="false"
+          onError={(e) => {
+            e.currentTarget.style.display = 'none';
+          }}
+        />
 
-      <div className="flex items-center justify-between">
-        {/* Left side: Mobile menu button + Logo */}
-        <img src={logo} className="w-20 h-20"/>
-
-        {/* Right side: User actions */}
-        <Menu onClick={onMenuClick}/>
+        {/* User menu: Wrapped in nav for semantics */}
+        <nav aria-label="User menu">
+          <Menu onClick={onMenuClick} />
+        </nav>
       </div>
       <div className="flex items-center justify-between py-3">
         {/* Left side: Mobile menu button + Logo */}
