@@ -33,23 +33,15 @@ async function request(path, options = {}) {
     body = isForm ? options.body : JSON.stringify(options.body);
     console.log('[DEBUG] Request Body:', body);
   }
-
   const config = { method, headers, body };
-
   let resp;
-  try {
-    resp = await fetch(url, config);
+  try {resp = await fetch(url, config);
   } catch (netErr) {
     console.error('[DEBUG] Network error:', netErr);
     return { status: 0, data: { message: 'Network error. Check connection.' }, error: true };
   }
   
   const responseText = await resp.text();
-  console.log(`[DEBUG] Response Status: ${resp.status} ${resp.statusText}`);
-  console.log(`[DEBUG] Response Headers:`, [...resp.headers.entries()]);
-  console.log(`[DEBUG] Response Text (first 500 chars):`, responseText.substring(0, 500));
-  
-  // Check if response is HTML (error page)
   if (responseText.trim().startsWith('<!DOCTYPE') || 
       responseText.trim().startsWith('<html') ||
       responseText.includes('</html>')) {
@@ -63,13 +55,9 @@ async function request(path, options = {}) {
     } else if (responseText.includes('500 Internal Server Error')) {
       errorMessage = 'Internal server error (500). Please try again later.';
     }
-    
     return {
       status: resp.status,
-      data: { 
-        message: errorMessage,
-        htmlResponse: true 
-      },
+      data: {message: errorMessage,htmlResponse: true},
       error: true,
       responseText: responseText,
     };
@@ -93,34 +81,14 @@ async function request(path, options = {}) {
   }
 
   // Handle specific status codes
-  if (resp.status === 500) {
-    return {
-      status: 500,
-      data: {
-        message: json?.message || 'Internal server error. Please try again or contact support.',
-      },
-      error: true,
-    };
-  }
-
-  if (resp.status === 401) {
-    return { 
-      status: 401, 
-      data: { ...json, message: json?.message || 'Unauthorized. Please log in.' }, 
-      error: true, 
-      unauthorized: true 
-    };
-  }
-  
+  if (resp.status === 500) {return {status: 500,data: {message: json?.message || 'Internal server error. Please try again or contact support.',},error: true, };}
+  if (resp.status === 401) {return {status: 401,data: { ...json, message: json?.message || 'Unauthorized. Please log in.' },error: true,unauthorized: true };}  
   if (resp.status === 400) return { status: 400, data: { ...json, message: json?.message || 'Invalid request data.' }, error: true };
   if (resp.status === 409) return { status: 409, data: { ...json, message: json?.message || 'This email is already registered.' }, error: true };
-  if (resp.status === 404) return { status: 404, data: { ...json, message: json?.message || 'API endpoint not found (404).' }, error: true };
-  
+  if (resp.status === 404) return { status: 404, data: { ...json, message: json?.message || 'API endpoint not found (404).' }, error: true };  
   if (!resp.ok) return { status: resp.status, data: { ...json, message: json?.message || `Request failed (${resp.status})` }, error: true };
-
   return { status: resp.status, data: json, success: true };
 }
-
 /* ---------- auth service ---------- */
 export const authService = {
   register: async (userData) => {
@@ -162,16 +130,11 @@ export const authService = {
     if (!userId) return { status: 400, data: { message: 'User ID is required.' }, error: true };
     
     try {
-      const res = await request(`/otp/${userId}/`, { 
-        method: 'GET',
-        auth: false  // Important: No token needed for registration OTP
-      });
+      const res = await request(`/otp/${userId}/`, {method: 'GET',auth: false  });
       console.log('[DEBUG] getOTP response:', res);
-      
       if (res.success && res.data?.otp) {
         console.log('🔢 OTP CODE (DEV):', res.data.otp);
       }
-      
       return res;
     } catch (err) {
       console.log('[DEBUG] getOTP error:', err);
