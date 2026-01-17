@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { authService } from '../services/authApi';
+import { authService } from '../services/authService';
 
+// ✅ Logger definition
 const COL = {
   ok: 'color: #2ecc71; font-weight: bold',
   err: 'color: #e74c3c; font-weight: bold',
@@ -16,11 +17,14 @@ export const useAuthStore = create(
     (set, get) => ({
       /* -------------------- state -------------------- */
       user: null,
-      token: null,
-      error: null,
+      authToken: null,
+      userId: null,
+      otpSent: false,
       isLoading: false,
-      tempRegister: null, 
+      error: null,
+      tempRegister: null, // { userId, email, firstName, lastName }
       rememberMe: true,
+      isVerified: false,
 
       /* -------------------- helpers -------------------- */
       _saveToken(token, persist) {
@@ -60,7 +64,7 @@ export const useAuthStore = create(
 
       /* -------------------- low-level setters -------------------- */
       setToken: (token, persist = true) => {
-        set({ token, rememberMe: persist });
+        set({ authToken: token, rememberMe: persist });
         get()._saveToken(token, persist);
       },
 
@@ -70,14 +74,21 @@ export const useAuthStore = create(
       },
 
       setPendingVerification: (data) => {
-        console.log('[DEBUG] Setting tempRegister:', data);
         set({ tempRegister: data });
         get()._saveTempRegister(data);
       },
 
       completeRegistration: (userData, token) => {
-        console.log('[DEBUG] Completing registration:', { userData, token });
-        set({ user: userData, token, tempRegister: null, error: null, rememberMe: true });
+        set({ 
+          user: userData, 
+          authToken: token, 
+          userId: userData.id,
+          tempRegister: null, 
+          error: null, 
+          rememberMe: true,
+          otpSent: false,
+          isVerified: true
+        });
         get()._saveToken(token, true);
         get()._saveUser(userData);
         get()._saveTempRegister(null);
@@ -87,44 +98,50 @@ export const useAuthStore = create(
       clearError: () => set({ error: null }),
       setLoading: (loading) => set({ isLoading: loading }),
 
+      /* ✅ Clear incomplete registration */
       clearIncompleteRegistration: () => {
-        set({ tempRegister: null, error: null });
+        set({ 
+          tempRegister: null, 
+          error: null, 
+          userId: null,
+          otpSent: false,
+          isVerified: false
+        });
         get()._saveTempRegister(null);
-        log(' Cleared incomplete registration data', COL.warn);
+        log('🧹 Cleared incomplete registration data', COL.warn);
       },
 
       /* -------------------- auth flows -------------------- */
+
       register: async (userData) => {
         set({ isLoading: true, error: null });
         
         try {
           log('📝 Starting registration...', COL.info);
+          
+          // ✅ Clear any existing incomplete registration first
           get().clearIncompleteRegistration();
           
           const res = await authService.register(userData);
-          console.log('[DEBUG] Register API response:', res);
 
           if (res.success) {
             const userId = res.data?.user?.id || res.data?.user_id || res.data?.user?.user_id;
-            const email = res.data?.email || userData.email;
-            const firstName = res.data?.first_name || userData.first_name;
-            const lastName = res.data?.last_name || userData.last_name;
+            const email = res.data?.user?.email || userData.email;
+            const firstName = res.data?.user?.first_name || userData.first_name;
+            const lastName = res.data?.user?.last_name || userData.last_name;
 
-            console.log('[DEBUG] Extracted registration data:', { userId, email, firstName, lastName });
-
-            if (!userId || !email) {
-              log('❌ Registration response missing required data', COL.err, res);
-              set({ error: 'Invalid registration response', isLoading: false });
+            if (!userId) {
+              log('❌ Registration response missing userId:', COL.err, res);
+              set({ error: 'Invalid registration response: missing user ID', isLoading: false });
               return { success: false, error: 'Invalid response from server' };
             }
 
-            const tempData = { userId, email, firstName, lastName };
-            get().setPendingVerification(tempData);
+            // Store verification data BEFORE OTP request
+            get().setPendingVerification({ userId, email, firstName, lastName });
 
-            // Request OTP using email
-            log('📧 Requesting OTP for email:', COL.info, email);
-            const otpRes = await authService.getOTP(email);
-            console.log('[DEBUG] OTP request response:', otpRes);
+            // Request OTP
+            log('📧 Requesting OTP for userId:', COL.info, userId);
+            const otpRes = await authService.getOTP(userId);
             
             if (!otpRes.success) {
               log('❌ OTP request failed:', COL.err, otpRes);
@@ -133,7 +150,7 @@ export const useAuthStore = create(
             }
 
             log('✅ OTP sent successfully', COL.ok);
-            set({ isLoading: false });
+            set({ isLoading: false, otpSent: true });
             return { success: true, data: { userId, email, firstName, lastName } };
           } else {
             log('❌ Registration failed:', COL.err, res);
@@ -141,58 +158,52 @@ export const useAuthStore = create(
             return res;
           }
         } catch (err) {
-          console.error('[DEBUG] Registration error:', err);
           log('❌ Registration error:', COL.err, err);
           set({ error: 'Registration failed', isLoading: false });
           return { success: false, error: 'Registration failed' };
         }
       },
 
-      // UPDATED: Get OTP using email
-      getOTP: async (email) => {
-        console.log('[DEBUG] Store getOTP called with email:', email);
-        if (!email) {
-          const err = { status: 400, data: { message: 'Email is required' }, error: true };
+      getOTP: async (userId) => {
+        if (!userId) {
+          const err = { status: 400, data: { message: 'User ID is required' }, error: true };
           set({ error: err.data.message });
           return err;
         }
         
         set({ isLoading: true, error: null });
-        log('📧 Fetching OTP for email:', COL.info, email);
+        log('📧 Fetching OTP for userId:', COL.info, userId);
         
-        const res = await authService.getOTP(email);
-        console.log('[DEBUG] Store getOTP response:', res);
+        const res = await authService.getOTP(userId);
         
         if (!res.success) {
           log('❌ OTP fetch failed:', COL.err, res);
           set({ error: res.data?.message || 'Failed to send OTP', isLoading: false });
         } else {
-          set({ isLoading: false });
+          set({ isLoading: false, otpSent: true });
         }
         return res;
       },
 
-      // UPDATED: Verify OTP using email from tempRegister
-      verifyOTP: async (otp) => {
-        console.log('[DEBUG] verifyOTP called with OTP:', otp);
-        console.log('[DEBUG] Current tempRegister:', get().tempRegister);
-        
+      verifyOTP: async (identifier, otp) => {
         set({ isLoading: true, error: null });
         
+        const userId = get().tempRegister?.userId || identifier;
         const email = get().tempRegister?.email;
-        
-        if (!email) {
-          log('❌ No email available for verification', COL.err);
-          set({ error: 'No email found. Please register again.', isLoading: false });
-          return { success: false, error: 'No email found' };
+        const verifyIdentifier = userId || identifier || email;
+
+        if (!verifyIdentifier) {
+          log('❌ No verification identifier available', COL.err);
+          set({ error: 'No verification identifier. Please register again.', isLoading: false });
+          return { success: false, error: 'No identifier' };
         }
 
-        console.log('[DEBUG] Using email for verification:', email);
-        log('🔢 Verifying OTP for email:', COL.info, email);
+        log('🔢 Verifying OTP for:', COL.info, { identifier: verifyIdentifier });
         
         try {
-          const res = await authService.verifyOTP(email, otp);
-          console.log('[DEBUG] verifyOTP API response:', res);
+          // Use the authService.verifyOTP with proper payload structure
+          const payload = identifier && otp ? { identifier, otp } : { otp: verifyIdentifier };
+          const res = await authService.verifyOTP(payload);
 
           if (res.success) {
             const { user, token } = res.data;
@@ -207,41 +218,29 @@ export const useAuthStore = create(
             get().completeRegistration(user, token);
             return { success: true, data: { user, token } };
           } else {
-            // If we get a 500 error with HTML, show a better error message
-            if (res.status === 500 && res.responseText?.includes('<!DOCTYPE html>')) {
-              const errorMsg = 'Server error during OTP verification. Please try again or contact support.';
-              log('❌ Server returned HTML error page (500)', COL.err);
-              set({ error: errorMsg, isLoading: false });
-              return { success: false, error: errorMsg };
-            }
-            
             log('❌ OTP verification failed:', COL.err, res);
             set({ error: res.data?.message || 'OTP verification failed', isLoading: false });
             return res;
           }
         } catch (err) {
-          console.error('[DEBUG] Verify OTP error:', err);
           log('❌ Verify OTP error:', COL.err, err);
           set({ error: 'OTP verification failed', isLoading: false });
           return { success: false, error: 'OTP verification failed' };
         }
       },
-      
-      // UPDATED: Resend OTP using email
+
       resendOTP: async () => {
-        console.log('[DEBUG] resendOTP called');
         set({ error: null });
-        const email = get().tempRegister?.email;
-        console.log('[DEBUG] tempRegister email:', email);
+        const userId = get().tempRegister?.userId;
         
-        if (!email) {
+        if (!userId) {
           const err = { status: 400, data: { message: 'No pending registration. Please register again.' }, error: true };
           set({ error: err.data.message });
           return err;
         }
         
-        log('🔄 Resending OTP for email:', COL.info, email);
-        const res = await authService.getOTP(email);
+        log('🔄 Resending OTP for userId:', COL.info, userId);
+        const res = await authService.getOTP(userId);
         if (!res.success) {
           set({ error: res.data?.message || 'Failed to resend OTP' });
         }
@@ -249,37 +248,36 @@ export const useAuthStore = create(
       },
 
       login: async (credentials, { remember = false } = {}) => {
-        console.log('[DEBUG] Login called with:', credentials);
         set({ isLoading: true, error: null });
         
         try {
           const loginRes = await authService.login(credentials);
-          console.log('[DEBUG] Login API response:', loginRes);
           
           if (!loginRes.success) {
             set({ error: loginRes.data?.message || 'Login failed', isLoading: false });
             return loginRes;
           }
 
-          const token = loginRes.data.token;
-          let user = loginRes.data.user;
+          const token = loginRes.data?.token;
+          const user = loginRes.data?.user;
 
-          if (!user) {
-            const userRes = await authService.getUserInfo();
-            if (!userRes.success) {
-              set({ error: userRes.data?.message || 'Failed to fetch user info', isLoading: false });
-              return userRes;
-            }
-            user = userRes.data.user;
+          if (!token) {
+            set({ error: 'No token received', isLoading: false });
+            return { success: false, error: 'No token received' };
           }
 
-          set({ user, token, isLoading: false, rememberMe: remember });
+          set({ 
+            user, 
+            authToken: token, 
+            userId: user?.id,
+            isLoading: false,
+            rememberMe: remember,
+          });
           get()._saveToken(token, remember);
           get()._saveUser(user);
 
           return { success: true, data: { user, token } };
         } catch (err) {
-          console.error('[DEBUG] Login error:', err);
           log('❌ Login error:', COL.err, err);
           set({ error: 'Login failed', isLoading: false });
           return { success: false, error: 'Login failed' };
@@ -294,7 +292,17 @@ export const useAuthStore = create(
           log('Logout API error', COL.warn, e);
         }
         
-        set({ user: null, token: null, error: null, tempRegister: null, isLoading: false });
+        set({ 
+          user: null, 
+          authToken: null, 
+          userId: null, 
+          error: null, 
+          tempRegister: null, 
+          isLoading: false,
+          otpSent: false,
+          isVerified: false
+        });
+        
         try {
           localStorage.removeItem('authToken');
           localStorage.removeItem('userInfo');
@@ -309,19 +317,17 @@ export const useAuthStore = create(
         }
       },
 
-      isAuthenticated: () => !!get().token && !!get().user,
+      isAuthenticated: () => !!get().authToken && !!get().user,
       isAdmin: () => ['admin', true].includes(get().user?.role || get().user?.is_admin),
-      getUserId: () => get().user?.id,
-      getToken: () => get().token,
+      getUserId: () => get().userId || get().user?.id,
+      getToken: () => get().authToken,
 
       initializeAuth: async () => {
-        console.log('[DEBUG] initializeAuth called');
         try {
           const tempData = localStorage.getItem('tempRegister');
           if (tempData) {
             try {
               const tempRegister = JSON.parse(tempData);
-              console.log('[DEBUG] Loaded tempRegister from storage:', tempRegister);
               set({ tempRegister });
             } catch (e) {
               console.warn('[AuthStore] Failed to parse tempRegister:', e);
@@ -330,36 +336,28 @@ export const useAuthStore = create(
           }
 
           const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-          console.log('[DEBUG] Token from storage:', token);
-          
-          if (!token) {
-            console.log('[DEBUG] No token found');
-            return set({ isLoading: false });
-          }
+          if (!token) return set({ isLoading: false });
 
-          set({ token, isLoading: true });
+          set({ authToken: token, isLoading: true });
           const res = await authService.getUserInfo();
 
           if (res.success) {
-            console.log('[DEBUG] User info loaded:', res.data.user);
-            set({ user: res.data.user, isLoading: false });
+            set({ user: res.data, isLoading: false });
           } else {
-            console.log('[DEBUG] Failed to load user info');
-            set({ token: null, user: null, isLoading: false });
+            set({ authToken: null, user: null, isLoading: false });
             get()._saveToken(null, false);
             get()._saveUser(null);
           }
         } catch (err) {
-          console.error('[DEBUG] Init error:', err);
           log('❌ Init error:', COL.err, err);
-          set({ token: null, user: null, isLoading: false });
+          set({ authToken: null, user: null, isLoading: false });
         }
       },
     }),
     {
       name: 'auth-storage',
       partialize: (s) => ({ 
-        token: s.token, 
+        authToken: s.authToken, 
         user: s.user, 
         rememberMe: s.rememberMe,
         tempRegister: s.tempRegister 

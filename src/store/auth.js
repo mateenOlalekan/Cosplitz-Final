@@ -1,15 +1,5 @@
 const API_BASE_URL = 'https://cosplitz-backend.onrender.com/api';
 
-
-const COL = {
-  ok: 'color: #2ecc71; font-weight: bold',
-  err: 'color: #e74c3c; font-weight: bold',
-  info: 'color: #3498db; font-weight: bold',
-  warn: 'color: #f39c12; font-weight: bold',
-};
-const log = (msg, style = COL.info, ...rest) =>
-  console.log(`%c[AuthService] ${msg}`, style, ...rest);
-
 /* ================= REQUEST HELPER ================= */
 async function request(path, { method = 'GET', body, auth = true } = {}) {
   const headers = {
@@ -17,7 +7,9 @@ async function request(path, { method = 'GET', body, auth = true } = {}) {
   };
 
   if (auth) {
-    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    const token =
+      localStorage.getItem('authToken') ||
+      sessionStorage.getItem('authToken');
 
     if (token) {
       headers.Authorization = `Bearer ${token}`;
@@ -28,14 +20,12 @@ async function request(path, { method = 'GET', body, auth = true } = {}) {
 
   /* ---------- NETWORK ERROR ---------- */
   try {
-    log(`📡 ${method} ${API_BASE_URL}${path}`, COL.info);
     response = await fetch(`${API_BASE_URL}${path}`, {
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch (error) {
-    log('❌ Network error:', COL.err, error);
     return {
       success: false,
       error: true,
@@ -48,9 +38,7 @@ async function request(path, { method = 'GET', body, auth = true } = {}) {
   let data = null;
   try {
     data = await response.json();
-    log(`📊 Response ${response.status}:`, COL.ok, data);
-  } catch (parseError) {
-    log('⚠️ Failed to parse response:', COL.warn, parseError);
+  } catch {
     data = null;
   }
 
@@ -81,7 +69,6 @@ async function request(path, { method = 'GET', body, auth = true } = {}) {
         message = `Request failed (${response.status})`;
     }
 
-    log(`❌ Request failed: ${message}`, COL.err);
     return {
       success: false,
       error: true,
@@ -91,13 +78,13 @@ async function request(path, { method = 'GET', body, auth = true } = {}) {
   }
 
   /* ---------- SUCCESS ---------- */
-  log(`✅ Request successful`, COL.ok);
   return {
     success: true,
     status: response.status,
     data,
   };
 }
+
 
 /* ================= AUTH SERVICE ================= */
 export const authService = {
@@ -133,33 +120,9 @@ export const authService = {
       body: payload,
       auth: false,
     }),
-
-  logout: () =>
-    request("/logout/", {
-      method: "POST",
-    }),
-
-  // Additional utility methods
-  resendOTP: (userId) =>
-    request(`/otp/${userId}/`, {
-      method: "GET",
-      auth: false,
-    }),
-
-  // // Password reset methods
-  // forgotPassword: (email) =>
-  //   request("/forgot-password/", {
-  //     method: "POST",
-  //     body: { email },
-  //     auth: false,
-  //   }),
-
-  // resetPassword: (token, newPassword) =>
-  //   request("/reset-password/", {
-  //     method: "POST",
-  //     body: { token, new_password: newPassword },
-  //     auth: false,
-  //   }),
 };
 
 export default authService;
+
+
+

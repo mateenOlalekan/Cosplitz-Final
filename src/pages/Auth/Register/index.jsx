@@ -1,4 +1,3 @@
-// src/pages/Register/index.jsx
 import { useEffect, useState, useRef } from 'react';
 import { useAuthStore } from '../../../store/authStore';
 import loginlogo from "../../../assets/login.jpg";
@@ -14,7 +13,18 @@ const steps = [
 ];
 
 export default function Register() {
-  const { register,verifyOTP,resendOTP,tempRegister,user,error,isLoading,clearError,clearIncompleteRegistration,  } = useAuthStore();
+  const { 
+    register, 
+    verifyOTP, 
+    resendOTP, 
+    tempRegister, 
+    user, 
+    error, 
+    isLoading,
+    clearError,
+    clearIncompleteRegistration,
+  } = useAuthStore();
+
   const [currentStep, setCurrentStep] = useState(1);
   const [verificationError, setVerificationError] = useState('');
   const [hasClearedState, setHasClearedState] = useState(false);
@@ -23,16 +33,17 @@ export default function Register() {
   // ✅ Clear incomplete registration on component mount
   useEffect(() => {
     if (!hasClearedState) {
-      console.log('[DEBUG] Clearing incomplete registration on mount');
+      console.log(' Clearing incomplete registration on mount');
       clearIncompleteRegistration();
       setHasClearedState(true);
     }
   }, [hasClearedState, clearIncompleteRegistration]);
 
+  // Enhanced step transition logic - only transition if we have fresh data
   useEffect(() => {
     if (isMounted.current && tempRegister?.userId && hasClearedState) {
       if (currentStep === 1) {
-        console.log('[DEBUG] Transitioning from step 1 to 2');
+        console.log(' Transitioning from step 1 to 2');
         setCurrentStep(2);
         clearError();
       }
@@ -40,10 +51,9 @@ export default function Register() {
   }, [tempRegister, currentStep, clearError, hasClearedState]);
 
   useEffect(() => {
-    console.log('[DEBUG] User check for step transition:', { user, currentStep });
     if (isMounted.current && user && hasClearedState) {
       if (currentStep === 2) {
-        console.log('[DEBUG] Transitioning from step 2 to 3');
+        console.log(' Transitioning from step 2 to 3');
         setCurrentStep(3);
         clearError();
       }
@@ -64,7 +74,7 @@ export default function Register() {
   }, []);
 
   const handleRegister = async (formData) => {
-    console.log('[DEBUG] handleRegister called with:', formData);
+    console.log(' handleRegister called with:', formData);
     const payload = {
       first_name: formData.firstName.trim(),
       last_name: formData.lastName.trim(),
@@ -73,56 +83,54 @@ export default function Register() {
       nationality: formData.nationality.trim(),
     };
 
-    console.log('[DEBUG] Register payload:', payload);
+    console.log(' Register payload:', payload);
 
     try {
       const res = await register(payload);
-      console.log('[DEBUG] Register store response:', res);
+      console.log(' Register store response:', res);
       
       if (res.success) {
         return { success: true };
       } else {
         const errorMsg = res.error || res.data?.message || 'Registration failed';
-        console.log('[DEBUG] Registration failed:', errorMsg);
+        console.log(' Registration failed:', errorMsg);
         return { success: false, error: errorMsg };
       }
     } catch (err) {
-      console.error('[DEBUG] Register error:', err);
+      console.error(' Register error:', err);
       return { success: false, error: 'Registration failed' };
     }
   };
 
   const handleVerifyOTP = async (otp) => {
-    console.log('[DEBUG] handleVerifyOTP called with OTP:', otp);
+    console.log('handleVerifyOTP called with OTP:', otp);
     setVerificationError('');
     
     try {
       const res = await verifyOTP(null, otp);
-      console.log('[DEBUG] verifyOTP store response:', res);
-      
       if (res.success) {
         return { success: true };
       } else {
         const errorMsg = res.error || res.data?.message || 'OTP verification failed';
-        console.log('[DEBUG] OTP verification failed:', errorMsg);
+        console.log(' OTP verification failed:', errorMsg);
         setVerificationError(errorMsg);
         return { success: false, error: errorMsg };
       }
     } catch (err) {
-      console.error('[DEBUG] Verify OTP error:', err);
+      console.error(' Verify OTP error:', err);
       setVerificationError('Verification failed. Please try again.');
       return { success: false, error: 'Verification failed' };
     }
   };
 
   const handleResendOTP = async () => {
-    console.log('[DEBUG] handleResendOTP called');
+    console.log(' handleResendOTP called');
     try {
       const res = await resendOTP();
-      console.log('[DEBUG] resendOTP store response:', res);
+      console.log(' resendOTP store response:', res);
       return { success: true };
     } catch (err) {
-      console.error('[DEBUG] Resend OTP error:', err);
+      console.error(' Resend OTP error:', err);
       return { success: false, error: 'Failed to resend OTP' };
     }
   };
@@ -132,14 +140,14 @@ export default function Register() {
   };
 
   const handleBackToRegistration = () => {
-    console.log('[DEBUG] handleBackToRegistration called');
+    console.log(' handleBackToRegistration called');
     setCurrentStep(1);
     clearError();
     setVerificationError('');
   };
 
   return (
-    <div className="flex bg-[#F7F5F9] w-full h-screen justify-center overflow-hidden md:px-6 md:py-4">
+    <div className="flex bg-[#F7F5F9] w-full min-h-screen justify-center overflow-hidden md:px-6 md:py-4">
       <div className="flex max-w-screen-2xl w-full min-h-full rounded-xl overflow-hidden">
         <div className="hidden lg:flex w-1/2 bg-[#F8EACD] rounded-xl p-6 items-center justify-center">
           <div className="w-full flex flex-col items-center">

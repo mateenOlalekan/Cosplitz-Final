@@ -6,13 +6,15 @@ import logo from '../../../assets/logo.svg';
 import LeftPanel from '../../../components/Home/LeftPanel';
 import { useAuthStore } from '../../../store/authStore';
 import { loginSchema } from "../../../schemas/authSchemas";
+import {COL} from "../../../utils/LoggerDefinition"
 
+
+const log = (msg, style = COL.info, ...rest) => console.log(`%c[Login] ${msg}`, style, ...rest);
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname || '/dashboard';
   const { login, isLoading, error, setError, clearError, isAuthenticated } = useAuthStore();
-
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -20,44 +22,56 @@ export default function Login() {
   const [fieldErrors, setFieldErrors] = useState({ email: '', password: '' });
   const isMounted = useRef(true);
 
-  // ✅ FIXED: Better auth check with cleanup
+  // ✅ Fixed: Better auth check with cleanup
   useEffect(() => {
+    log('🔍 Checking authentication status', COL.info);
     if (isAuthenticated() && isMounted.current) {
+      log('✅ User already authenticated, redirecting to dashboard', COL.ok);
       navigate(from, { replace: true });
     }
   }, [isAuthenticated, navigate, from]);
 
-  // ✅ FIXED: Cleanup on unmount
+  // ✅ Fixed: Cleanup on unmount
   useEffect(() => {
     return () => {
+      log('🧹 Cleaning up Login component', COL.warn);
       isMounted.current = false;
     };
   }, []);
 
   const handleLogin = useCallback(async (e) => {
     e.preventDefault();
+    log('📝 Login attempt initiated', COL.info);
+    
     clearError();
     setFieldErrors({ email: '', password: '' });
 
+    // ✅ Zod validation
     const result = loginSchema.safeParse({ email, password });
     if (!result.success) {
+      log('❌ Zod validation failed', COL.err, result.error);
       const errs = {};
       result.error.errors.forEach(err => errs[err.path[0]] = err.message);
       setFieldErrors(errs);
       return;
     }
 
+    log('📧 Attempting login with email:', COL.info, email);
     const res = await login(
       { email: email.trim().toLowerCase(), password },
       { remember }
     );
 
     if (res.success && isMounted.current) {
+      log('✅ Login successful, redirecting to:', COL.ok, from);
       navigate(from, { replace: true });
+    } else {
+      log('❌ Login failed:', COL.err, res.error || error);
     }
-  }, [email, password, remember, login, clearError, navigate, from]);
+  }, [email, password, remember, login, clearError, navigate, from, error]);
 
   const handleSocialLogin = useCallback((provider) => {
+    log(`🌐 Social login attempt: ${provider}`, COL.info);
     setError(`${provider} login coming soon!`);
   }, [setError]);
 
@@ -67,7 +81,6 @@ export default function Login() {
     }`;
 
   return (
-
     <div className="flex bg-[#F7F5F9] w-full h-screen justify-center overflow-hidden md:px-6 md:py-4">
       <div className="flex max-w-screen-2xl w-full min-h-full rounded-xl overflow-hidden">
         <LeftPanel />
@@ -169,12 +182,7 @@ export default function Login() {
 
               <div className="flex justify-between items-center">
                 <label className="flex gap-2 text-sm text-gray-600 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={remember}
-                    onChange={(e) => setRemember(e.target.checked)}
-                    className="rounded focus:ring-green-500"
-                  />
+                  <input    type="checkbox"  checked={remember}  onChange={(e) => setRemember(e.target.checked)}  className="rounded focus:ring-green-500" />
                   <span>Remember me</span>
                 </label>
                 <Link to="/forgot-password" className="text-sm text-green-600 hover:underline font-medium">
@@ -185,20 +193,10 @@ export default function Login() {
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                type="submit"
-                disabled={isLoading}
-                className={`w-full bg-green-600 text-white py-3 rounded-lg font-semibold transition-colors ${
-                  isLoading ? 'opacity-60 cursor-not-allowed' : 'hover:bg-green-700'
-                }`}
-              >
-                {isLoading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Signing In...
-                  </span>
-                ) : (
-                  'Sign In'
-                )}
+                type="submit" disabled={isLoading}  className={`w-full bg-green-600 text-white py-3 rounded-lg font-semibold transition-colors ${isLoading ? 'opacity-60 cursor-not-allowed' : 'hover:bg-green-700'}`}>
+                {isLoading ? ( <span className="flex items-center justify-center gap-2">  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Signing In...</span>
+                ) : ('Sign In')}
               </motion.button>
 
               <p className="text-center text-sm text-gray-600 mt-3">
