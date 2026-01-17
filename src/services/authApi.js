@@ -105,14 +105,14 @@ export const authService = {
     request("/register/", {
       method: "POST",
       body: payload,
-      auth: false,
+      auth: true,
     }),
 
   login: (payload) =>
     request("/login/", {
       method: "POST",
       body: payload,
-      auth: false,
+      auth: true,
     }),
 
   getUserInfo: () =>
@@ -124,14 +124,14 @@ export const authService = {
   getOTP: (userId) =>
     request(`/otp/${userId}/`, {
       method: "GET",
-      auth: false,
+      auth: true,
     }),
 
   verifyOTP: (payload) =>
     request("/verify_otp", {
       method: "POST",
       body: payload,
-      auth: false,
+      auth: true,
     }),
 
   logout: () =>
