@@ -34,18 +34,14 @@ async function request(path, options = {}) {
     console.log('[DEBUG] Request Body:', body);
   }
   const config = { method, headers, body };
-  
   let resp;
-  try {
-    resp = await fetch(url, config);
+  try {resp = await fetch(url, config);
   } catch (netErr) {
     console.error('[DEBUG] Network error:', netErr);
     return { status: 0, data: { message: 'Network error. Check connection.' }, error: true };
   }
   
   const responseText = await resp.text();
-  
-  // Handle HTML error pages
   if (responseText.trim().startsWith('<!DOCTYPE') || 
       responseText.trim().startsWith('<html') ||
       responseText.includes('</html>')) {
@@ -59,10 +55,9 @@ async function request(path, options = {}) {
     } else if (responseText.includes('500 Internal Server Error')) {
       errorMessage = 'Internal server error (500). Please try again later.';
     }
-    
     return {
       status: resp.status,
-      data: { message: errorMessage, htmlResponse: true },
+      data: {message: errorMessage,htmlResponse: true},
       error: true,
       responseText: responseText,
     };
@@ -86,55 +81,12 @@ async function request(path, options = {}) {
   }
 
   // Handle specific status codes
-  if (resp.status === 500) {
-    return {
-      status: 500,
-      data: { message: json?.message || 'Internal server error. Please try again or contact support.' },
-      error: true,
-    };
-  }
-  
-  if (resp.status === 401) {
-    return {
-      status: 401,
-      data: { ...json, message: json?.message || 'Unauthorized. Please log in.' },
-      error: true,
-      unauthorized: true
-    };
-  }  
-  
-  if (resp.status === 400) {
-    return { 
-      status: 400, 
-      data: { ...json, message: json?.message || 'Invalid request data.' }, 
-      error: true 
-    };
-  }
-  
-  if (resp.status === 409) {
-    return { 
-      status: 409, 
-      data: { ...json, message: json?.message || 'This email is already registered.' }, 
-      error: true 
-    };
-  }
-  
-  if (resp.status === 404) {
-    return { 
-      status: 404, 
-      data: { ...json, message: json?.message || 'API endpoint not found (404).' }, 
-      error: true 
-    };
-  }  
-  
-  if (!resp.ok) {
-    return { 
-      status: resp.status, 
-      data: { ...json, message: json?.message || `Request failed (${resp.status})` }, 
-      error: true 
-    };
-  }
-  
+  if (resp.status === 500) {return {status: 500,data: {message: json?.message || 'Internal server error. Please try again or contact support.',},error: true, };}
+  if (resp.status === 401) {return {status: 401,data: { ...json, message: json?.message || 'Unauthorized. Please log in.' },error: true,unauthorized: true };}  
+  if (resp.status === 400) return { status: 400, data: { ...json, message: json?.message || 'Invalid request data.' }, error: true };
+  if (resp.status === 409) return { status: 409, data: { ...json, message: json?.message || 'This email is already registered.' }, error: true };
+  if (resp.status === 404) return { status: 404, data: { ...json, message: json?.message || 'API endpoint not found (404).' }, error: true };  
+  if (!resp.ok) return { status: resp.status, data: { ...json, message: json?.message || `Request failed (${resp.status})` }, error: true };
   return { status: resp.status, data: json, success: true };
 }
 
@@ -143,26 +95,11 @@ export const authService = {
   register: async (userData) => {
     console.log('[DEBUG] Register payload:', userData);
     try {
-      // Map frontend field names to backend expected field names
-      const payload = {
-        email: userData.email?.toLowerCase().trim(),
-        password: userData.password,
-        first_name: userData.firstName,
-        last_name: userData.lastName,
-        nationality: userData.nationality || ''
-      };
-      
-      const res = await request('/register/', { 
-        method: 'POST', 
-        body: payload 
-      });
-      
+      const res = await request('/register/', { method: 'POST', body: userData });
       console.log('[DEBUG] Register response:', res);
-      
       if (res.status === 409) {
         res.data.message = 'This email is already registered. Please use a different email or try logging in.';
       }
-      
       return res;
     } catch (err) {
       log('Registration error', COL.err, err);
@@ -173,18 +110,7 @@ export const authService = {
   login: async ({ email, password }) => {
     console.log('[DEBUG] Login payload:', { email, password: '***' });
     try {
-      const payload = {
-        email: email.toLowerCase().trim(),
-        password: password
-      };
-      
-      const res = await request('/login/', { 
-        method: 'POST', 
-        body: payload 
-      });
-      
-      console.log('[DEBUG] Login response:', res);
-      return res;
+      return await request('/login/', { method: 'POST', body: { email: email.toLowerCase().trim(), password } });
     } catch (err) {
       log('Login error', COL.err, err);
       return { status: 0, data: { message: 'Login failed. Please try again.' }, error: true };
@@ -193,34 +119,27 @@ export const authService = {
 
   getUserInfo: async () => {
     try {
-      const res = await request('/user/info', { method: 'GET' });
-      console.log('[DEBUG] getUserInfo response:', res);
-      return res;
+      return await request('/user/info', { method: 'GET' });
     } catch (err) {
       log('Get user info error', COL.err, err);
       return { status: 0, data: { message: 'Failed to fetch user information.' }, error: true };
     }
   },
 
-  // FIXED: getOTP now uses GET request with user_id in URL path (as per backend)
-  getOTP: async (userId) => {
-    console.log('[DEBUG] getOTP called with userId:', userId);
-    if (!userId) return { status: 400, data: { message: 'User ID is required.' }, error: true };
+  // UPDATED: Get OTP using email as query parameter
+  getOTP: async (email) => {
+    console.log('[DEBUG] getOTP called with email:', email);
+    if (!email) return { status: 400, data: { message: 'Email is required.' }, error: true };
     
     try {
-      // Backend expects GET to /otp/{user_id}/ 
-      const res = await request(`/otp/${userId}/`, {
+      const res = await request(`/otp/?email=${encodeURIComponent(email.toLowerCase().trim())}`, {
         method: 'GET',
         auth: false
       });
-      
       console.log('[DEBUG] getOTP response:', res);
-      
-      // Backend returns { "message": "OTP sent" }
-      if (res.success) {
-        console.log('📧 OTP sent successfully for userId:', userId);
+      if (res.success && res.data?.otp) {
+        console.log('🔢 OTP CODE (DEV):', res.data.otp);
       }
-      
       return res;
     } catch (err) {
       console.log('[DEBUG] getOTP error:', err);
@@ -228,7 +147,7 @@ export const authService = {
     }
   },
 
-  // FIXED: verifyOTP now uses the correct payload structure
+  // UPDATED: Verify OTP with email in body
   verifyOTP: async (email, otp) => {
     console.log('[DEBUG] verifyOTP called with:', { email, otp });
     
@@ -247,32 +166,24 @@ export const authService = {
     
     console.log('[DEBUG] verifyOTP payload:', payload);
     
-    try {
-      const res = await request('/verify_otp/', {
-        method: 'POST',
-        body: payload,
-        auth: false
-      });
-      
-      console.log('[DEBUG] verifyOTP response:', res);
-      return res;
-    } catch (err) {
-      console.error('[DEBUG] verifyOTP error:', err);
-      return { status: 0, data: { message: 'OTP verification failed.' }, error: true };
-    }
+    const res = await request('/verify_otp/', {
+      method: 'POST',
+      body: payload,
+      auth: false
+    });
+    
+    console.log('[DEBUG] verifyOTP response:', res);
+    return res;
   },
 
-  resendOTP: (userId) => {
-    console.log('[DEBUG] resendOTP called with userId:', userId);
-    return authService.getOTP(userId);
+  resendOTP: (email) => {
+    console.log('[DEBUG] resendOTP called with email:', email);
+    return authService.getOTP(email);
   },
 
   forgotPassword: async (email) => {
     try {
-      return await request('/forgot-password/', { 
-        method: 'POST', 
-        body: { email: email.toLowerCase().trim() } 
-      });
+      return await request('/forgot-password/', { method: 'POST', body: { email: email.toLowerCase().trim() } });
     } catch (err) {
       log('Forgot password error', COL.err, err);
       return { status: 0, data: { message: 'Failed to send reset email.' }, error: true };
@@ -281,10 +192,7 @@ export const authService = {
 
   resetPassword: async (data) => {
     try {
-      return await request('/reset-password/', { 
-        method: 'POST', 
-        body: data 
-      });
+      return await request('/reset-password/', { method: 'POST', body: data });
     } catch (err) {
       log('Reset password error', COL.err, err);
       return { status: 0, data: { message: 'Password reset failed.' }, error: true };

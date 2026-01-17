@@ -11,14 +11,12 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
   const [verificationLoading, setVerificationLoading] = useState(false);
   const inputRefs = useRef([]);
   const isMounted = useRef(true);
-  
-  // Use both email and userId
   const email = tempRegister?.email;
   const userId = tempRegister?.userId;
 
   useEffect(() => {
     console.log('[DEBUG] useEffect - Checking tempRegister:', tempRegister);
-    if (!tempRegister?.userId && isMounted.current) {
+    if (!tempRegister?.email && isMounted.current) {
       console.warn('[DEBUG] No valid temp registration data found, redirecting back');
       setLocalError('No registration data found. Please register again.');
       onBack();
@@ -111,10 +109,9 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
       return;
     }
 
-    // Check for email (needed for verification)
     if (!email) {
-      console.error('[DEBUG] Missing email:', { email });
-      setLocalError('Missing user information. Please register again.');
+      console.error('[DEBUG] Missing email:', { email, userId });
+      setLocalError('Missing email information. Please register again.');
       return;
     }
 
@@ -146,10 +143,8 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
       console.log('[DEBUG] Cannot resend - timer:', timer, 'isLoading:', isLoading);
       return;
     }
-    
-    // Check for userId (needed for resend)
-    if (!userId) {
-      setLocalError('Cannot resend OTP. User ID is missing.');
+    if (!email) {
+      setLocalError('Cannot resend OTP. Email is missing.');
       return;
     }
 
@@ -190,7 +185,7 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
   const verifyButtonText = verificationLoading ? 'Verifying...' : 'Verify Email';
 
   return (
-    <div className="flex flex-col items-center gap-5 py-4 relative w-full "> 
+    <div className="flex flex-col items-center gap-5 py-4 relative w-full"> 
       <div className='flex flex-col justify-center items-center max-w-xl gap-4'>
         <button
           onClick={handleBackClick}
@@ -216,13 +211,13 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
         <div className="flex gap-2 mt-2" onPaste={handlePaste}>
           {otp.map((digit, index) => (
             <input
-              key={index} 
+              key={index}
               ref={el => inputRefs.current[index] = el}
-              type="text"  
-              inputMode="numeric"  
-              maxLength={1}  
+              type="text"
+              inputMode="numeric"
+              maxLength={1}
               value={digit}
-              onChange={(e) => handleChange(e.target.value, index)}   
+              onChange={(e) => handleChange(e.target.value, index)}
               onKeyDown={(e) => handleKeyDown(index, e)}
               disabled={isLoading || verificationLoading}
               className="w-10 h-10 sm:w-12 sm:h-12 text-center text-lg font-bold border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-600 outline-none disabled:opacity-50 transition-all"
@@ -243,22 +238,25 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
               Resend code in <span className="font-semibold">{formatTime(timer)}</span>
             </p>
           ) : (
-            <button  
-              type="button"  
-              onClick={handleResend}   
-              disabled={resendLoading || isLoading || verificationLoading}  
-              className="text-green-600 hover:text-green-700 font-medium text-sm disabled:opacity-50 transition-colors">
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={resendLoading || isLoading || verificationLoading}
+              className="text-green-600 hover:text-green-700 font-medium text-sm disabled:opacity-50 transition-colors"
+            >
               {resendLoading ? 'Resending...' : 'Resend Code'}
             </button>
           )}
         </div>
 
-        <button 
-          type="button" 
-          onClick={() => handleVerifyClick()}  
-          disabled={!canVerify}  
+        <button
+          type="button"
+          onClick={() => handleVerifyClick()}
+          disabled={!canVerify}
           className={`mt-6 px-8 py-3 rounded-lg font-semibold transition-all text-white w-full flex items-center justify-center gap-2 ${
-            canVerify ? 'bg-green-600 hover:bg-green-700 active:scale-[0.98]' : 'bg-green-500 cursor-not-allowed' }`}>
+            canVerify ? 'bg-green-600 hover:bg-green-700 active:scale-[0.98]' : 'bg-green-500 cursor-not-allowed'
+          }`}
+        >
           {verificationLoading && (
             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
           )}
