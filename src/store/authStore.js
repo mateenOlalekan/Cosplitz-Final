@@ -94,9 +94,7 @@ export const useAuthStore = create(
       },
 
       /* -------------------- auth flows -------------------- */
-
       register: async (userData) => {
-
         set({ isLoading: true, error: null });
         
         try {
@@ -107,13 +105,13 @@ export const useAuthStore = create(
           console.log('[DEBUG] Register API response:', res);
 
           if (res.success) {
-           const userId = res.data?.user?.id || res.data?.user_id || res.data?.user?.user_id;
-            const email = res.data?.email || userData.email;
-            const firstName = res.data?.first_name || userData.first_name;
-            const lastName = res.data?.last_name || userData.last_name;
+            // FIXED: Extract user ID and email from registration response
+            const userId = res.data?.user?.id;
+            const email = res.data?.user?.email || userData.email;
+            const firstName = res.data?.user?.first_name || userData.firstName;
+            const lastName = res.data?.user?.last_name || userData.lastName;
 
-            console.log('[DEBUG] Extracted registration data:', { userId,email,firstName,lastName });
-            console.log("My lucky strike")
+            console.log('[DEBUG] Extracted registration data:', { userId, email, firstName, lastName });
 
             if (!userId) {
               log('❌ Registration response missing userId. Full response:', COL.err, res);
@@ -124,7 +122,7 @@ export const useAuthStore = create(
             const tempData = { userId, email, firstName, lastName };
             get().setPendingVerification(tempData);
 
-            // Request OTP
+            // Request OTP using userId
             log('📧 Requesting OTP for userId:', COL.info, userId);
             const otpRes = await authService.getOTP(userId);
             console.log('[DEBUG] OTP request response:', otpRes);
@@ -151,6 +149,7 @@ export const useAuthStore = create(
         }
       },
 
+      // FIXED: getOTP now uses userId instead of email
       getOTP: async (userId) => {
         console.log('[DEBUG] Store getOTP called with userId:', userId);
         if (!userId) {
@@ -171,27 +170,30 @@ export const useAuthStore = create(
         } else {
           set({ isLoading: false });
         }
+        
         return res;
       },
+      
+      // FIXED: verifyOTP still uses email (as required by backend verify_otp endpoint)
       verifyOTP: async (identifier, otp) => {
         console.log('[DEBUG] verifyOTP called with:', { identifier, otp });
         console.log('[DEBUG] Current tempRegister:', get().tempRegister);
         
         set({ isLoading: true, error: null });
         
-        const userId = get().tempRegister?.userId;
+        const email = get().tempRegister?.email;
         
-        if (!userId) {
-          log('❌ No user ID available for verification', COL.err);
-          set({ error: 'No user ID found. Please register again.', isLoading: false });
-          return { success: false, error: 'No user ID' };
+        if (!email) {
+          log('❌ No email available for verification', COL.err);
+          set({ error: 'No email found. Please register again.', isLoading: false });
+          return { success: false, error: 'No email' };
         }
 
-        console.log('[DEBUG] Using userId for verification:', userId);
-        log('🔢 Verifying OTP for userId:', COL.info, userId);
+        console.log('[DEBUG] Using email for verification:', email);
+        log('🔢 Verifying OTP for email:', COL.info, email);
         
         try {
-          const res = await authService.verifyOTP(userId, otp);
+          const res = await authService.verifyOTP(email, otp);
           console.log('[DEBUG] verifyOTP API response:', res);
 
           if (res.success) {
@@ -227,6 +229,7 @@ export const useAuthStore = create(
         }
       },
       
+      // FIXED: resendOTP now uses userId from tempRegister
       resendOTP: async () => {
         console.log('[DEBUG] resendOTP called');
         set({ error: null });
@@ -263,16 +266,17 @@ export const useAuthStore = create(
           const token = loginRes.data.token;
           let user = loginRes.data.user;
 
+          // If user data is not in login response, fetch it
           if (!user) {
             const userRes = await authService.getUserInfo();
             if (!userRes.success) {
               set({ error: userRes.data?.message || 'Failed to fetch user info', isLoading: false });
               return userRes;
             }
-            user = userRes.data.user;
+            user = userRes.data;
           }
 
-          set({ user, token, isLoading: false,rememberMe: remember,});
+          set({ user, token, isLoading: false, rememberMe: remember });
           get()._saveToken(token, remember);
           get()._saveUser(user);
 
@@ -340,8 +344,8 @@ export const useAuthStore = create(
           const res = await authService.getUserInfo();
 
           if (res.success) {
-            console.log('[DEBUG] User info loaded:', res.data.user);
-            set({ user: res.data.user, isLoading: false });
+            console.log('[DEBUG] User info loaded:', res.data);
+            set({ user: res.data, isLoading: false });
           } else {
             console.log('[DEBUG] Failed to load user info');
             set({ token: null, user: null, isLoading: false });
