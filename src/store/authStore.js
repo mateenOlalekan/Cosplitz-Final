@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { authService } from '../services/authService';
+import { authService } from '../services/authApi';
 
 // ✅ Logger definition
 const COL = {
@@ -187,7 +187,6 @@ export const useAuthStore = create(
 
       verifyOTP: async (identifier, otp) => {
         set({ isLoading: true, error: null });
-        
         const userId = get().tempRegister?.userId || identifier;
         const email = get().tempRegister?.email;
         const verifyIdentifier = userId || identifier || email;
@@ -204,7 +203,7 @@ export const useAuthStore = create(
           // Use the authService.verifyOTP with proper payload structure
           const payload = identifier && otp ? { identifier, otp } : { otp: verifyIdentifier };
           const res = await authService.verifyOTP(payload);
-
+          console.log("message : ",res)
           if (res.success) {
             const { user, token } = res.data;
             
