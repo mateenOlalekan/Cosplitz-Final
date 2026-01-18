@@ -13,24 +13,12 @@ const steps = [
 ];
 
 export default function Register() {
-  const { 
-    register, 
-    verifyOTP, 
-    resendOTP, 
-    tempRegister, 
-    user, 
-    error, 
-    isLoading,
-    clearError,
-    clearIncompleteRegistration,
-  } = useAuthStore();
-
+  const {register,verifyOTP,resendOTP,tempRegister,user,error,isLoading,clearError,clearIncompleteRegistration,} = useAuthStore();
   const [currentStep, setCurrentStep] = useState(1);
   const [verificationError, setVerificationError] = useState('');
   const [hasClearedState, setHasClearedState] = useState(false);
   const isMounted = useRef(true);
 
-  // ✅ Clear incomplete registration on component mount
   useEffect(() => {
     if (!hasClearedState) {
       console.log(' Clearing incomplete registration on mount');
@@ -39,7 +27,6 @@ export default function Register() {
     }
   }, [hasClearedState, clearIncompleteRegistration]);
 
-  // Enhanced step transition logic - only transition if we have fresh data
   useEffect(() => {
     if (isMounted.current && tempRegister?.userId && hasClearedState) {
       if (currentStep === 1) {
@@ -102,26 +89,29 @@ export default function Register() {
     }
   };
 
-  const handleVerifyOTP = async (otp) => {
-    console.log('handleVerifyOTP called with OTP:', otp);
-    setVerificationError('');
-    
-    try {
-      const res = await verifyOTP(null, otp);
-      if (res.success) {
-        return { success: true };
-      } else {
-        const errorMsg = res.error || res.data?.message || 'OTP verification failed';
-        console.log(' OTP verification failed:', errorMsg);
-        setVerificationError(errorMsg);
-        return { success: false, error: errorMsg };
-      }
-    } catch (err) {
-      console.error(' Verify OTP error:', err);
-      setVerificationError('Verification failed. Please try again.');
-      return { success: false, error: 'Verification failed' };
+const handleVerifyOTP = async (otp) => {
+  console.log('handleVerifyOTP called with OTP:', otp);
+  setVerificationError('');
+
+  try {
+    // ✅ PASS OBJECT, NOT POSITIONAL ARGUMENTS
+    const res = await verifyOTP({ otp });
+    if (res.success) {
+      return { success: true };
     }
-  };
+    const errorMsg = res.error || res.data?.message || 'OTP verification failed';
+
+    console.log('OTP verification failed:', errorMsg);
+    setVerificationError(errorMsg);
+    return { success: false, error: errorMsg };
+
+  } catch (err) {
+    console.error('Verify OTP error:', err);
+    setVerificationError('Verification failed. Please try again.');
+    return { success: false, error: 'Verification failed' };
+  }
+};
+
 
   const handleResendOTP = async () => {
     console.log(' handleResendOTP called');
