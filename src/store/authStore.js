@@ -185,48 +185,63 @@ export const useAuthStore = create(
         return res;
       },
 
-      verifyOTP: async (identifier, otp) => {
-        set({ isLoading: true, error: null });
-        const userId = get().tempRegister?.userId || identifier;
-        const email = get().tempRegister?.email;
-        const verifyIdentifier = userId || identifier || email;
+verifyOTP: async (email, otp) => {
+  set({ isLoading: true, error: null });
 
-        if (!verifyIdentifier) {
-          log('❌ No verification identifier available', COL.err);
-          set({ error: 'No verification identifier. Please register again.', isLoading: false });
-          return { success: false, error: 'No identifier' };
-        }
+  // Get stored temp email if email param is empty
+  const storedEmail = get().tempRegister?.email;
+  const finalEmail = email || storedEmail;
 
-        log('🔢 Verifying OTP for:', COL.info, { identifier: verifyIdentifier });
-        
-        try {
-          // Use the authService.verifyOTP with proper payload structure
-          const payload = identifier && otp ? { identifier, otp } : { otp: verifyIdentifier };
-          const res = await authService.verifyOTP(payload);
-          console.log("message : ",res)
-          if (res.success) {
-            const { user, token } = res.data;
-            
-            if (!user || !token) {
-              log('❌ Missing user or token in response:', COL.err, res);
-              set({ error: 'Invalid server response: missing user or token', isLoading: false, tempRegister: null });
-              return { success: false, error: 'Invalid response' };
-            }
+  if (!finalEmail) {
+    log("❌ No email available for OTP verification", COL.err);
+    set({
+      error: "No email found. Please register again.",
+      isLoading: false,
+    });
+    return { success: false, error: "No email" };
+  }
 
-            log('✅ OTP verification successful', COL.ok);
-            get().completeRegistration(user, token);
-            return { success: true, data: { user, token } };
-          } else {
-            log('❌ OTP verification failed:', COL.err, res);
-            set({ error: res.data?.message || 'OTP verification failed', isLoading: false });
-            return res;
-          }
-        } catch (err) {
-          log('❌ Verify OTP error:', COL.err, err);
-          set({ error: 'OTP verification failed', isLoading: false });
-          return { success: false, error: 'OTP verification failed' };
-        }
-      },
+  log("🔢 Verifying OTP for:", COL.info, finalEmail);
+
+  try {
+    const payload = { email: finalEmail, otp };
+
+    const res = await authService.verifyOTP(payload);
+    console.log("Verify response:", res);
+
+    if (res.success) {
+      const { user, token } = res.data;
+
+      if (!user || !token) {
+        log("❌ Missing user or token in response", COL.err, res);
+        set({
+          error: "Invalid server response",
+          isLoading: false,
+          tempRegister: null,
+        });
+        return { success: false, error: "Invalid response" };
+      }
+
+      log("✅ OTP verification successful", COL.ok);
+      get().completeRegistration(user, token);
+
+      return { success: true, data: { user, token } };
+    }
+
+    // Server rejected verification
+    log("❌ OTP verification failed:", COL.err, res);
+    set({
+      error: res.data?.message || "OTP verification failed",
+      isLoading: false,
+    });
+
+    return res;
+  } catch (err) {
+    log("❌ Verify OTP error:", COL.err, err);
+    set({ error: "OTP verification failed", isLoading: false });
+    return { success: false, error: "OTP verification failed" };
+  }
+},
 
       resendOTP: async () => {
         set({ error: null });
