@@ -1,66 +1,80 @@
 const API_BASE_URL = 'https://cosplitz-backend.onrender.com/api';
 
-
+/* ================= LOGGER ================= */
 const COL = {
   ok: 'color: #2ecc71; font-weight: bold',
   err: 'color: #e74c3c; font-weight: bold',
   info: 'color: #3498db; font-weight: bold',
   warn: 'color: #f39c12; font-weight: bold',
 };
+
 const log = (msg, style = COL.info, ...rest) =>
   console.log(`%c[AuthService] ${msg}`, style, ...rest);
 
 /* ================= REQUEST HELPER ================= */
-async function request(path, { method = 'GET', body, auth = true } = {}) {
-  const headers = {
-    'Content-Type': 'application/json',
-  };
+async function request(
+  path,
+  { method = 'GET', body, auth = false } = {},
+) {
+  const headers = {};
 
+  // Only set JSON header if body exists
+  if (body) headers['Content-Type'] = 'application/json';
+
+  // Attach token if needed
   if (auth) {
-    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    try {
+      const token =
+        localStorage.getItem('authToken') ||
+        sessionStorage.getItem('authToken');
 
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+    } catch (e) {
+      log('⚠️ Token access error', COL.warn, e);
     }
   }
 
   let response;
 
-  /* ---------- NETWORK ERROR ---------- */
+  /* ---------- NETWORK ---------- */
   try {
     log(`📡 ${method} ${API_BASE_URL}${path}`, COL.info);
+
     response = await fetch(`${API_BASE_URL}${path}`, {
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,
     });
-  } catch (error) {
-    log('❌ Network error:', COL.err, error);
+  } catch (err) {
+    log('❌ Network error', COL.err, err);
     return {
       success: false,
-      error: true,
       status: 0,
+      error: true,
       data: { message: 'Network error. Please check your connection.' },
     };
   }
 
-  /* ---------- PARSE RESPONSE ---------- */
+  /* ---------- PARSE ---------- */
   let data = null;
   try {
+    // Some endpoints may return empty responses
     data = await response.json();
-    log(`📊 Response ${response.status}:`, COL.ok, data);
-  } catch (parseError) {
-    log('⚠️ Failed to parse response:', COL.warn, parseError);
+  } catch {
     data = null;
   }
 
-  /* ---------- STATUS CODE HANDLING ---------- */
+  log(`📊 ${response.status} response`, response.ok ? COL.ok : COL.warn, data);
+
+  /* ---------- ERROR HANDLING ---------- */
   if (!response.ok) {
-    let message = 'Request failed';
+    let message = data?.message || 'Request failed';
 
     switch (response.status) {
       case 400:
-        message = data?.message || 'Invalid request data';
+        message = data?.message || 'Invalid request';
         break;
       case 401:
         message = 'Unauthorized. Please login again.';
@@ -81,17 +95,16 @@ async function request(path, { method = 'GET', body, auth = true } = {}) {
         message = `Request failed (${response.status})`;
     }
 
-    log(`❌ Request failed: ${message}`, COL.err);
+    log(`❌ ${message}`, COL.err);
     return {
       success: false,
-      error: true,
       status: response.status,
+      error: true,
       data: { ...data, message },
     };
   }
 
   /* ---------- SUCCESS ---------- */
-  log(`✅ Request successful`, COL.ok);
   return {
     success: true,
     status: response.status,
@@ -101,65 +114,84 @@ async function request(path, { method = 'GET', body, auth = true } = {}) {
 
 /* ================= AUTH SERVICE ================= */
 export const authService = {
+  /* -------- REGISTER (NO AUTH) -------- */
   register: (payload) =>
-    request("/register/", {
-      method: "POST",
+    request('/register/', {
+      method: 'POST',
       body: payload,
-      auth: true,
-    }),
-
-  login: (payload) =>
-    request("/login/", {
-      method: "POST",
-      body: payload,
-      auth: true,
-    }),
-
-  getUserInfo: () =>
-    request("/user/info", {
-      method: "GET",
-    }),
-
-  // GET OTP using userId
-  getOTP: (userId) =>
-    request(`/otp/${userId}/`, {
-      method: "GET",
-      auth: true,
-    }),
-
-  verifyOTP: (payload) =>
-    request("/verify_otp", {
-      method: "POST",
-      body: payload,
-      auth: true,
-    }),
-
-  logout: () =>
-    request("/logout/", {
-      method: "POST",
-    }),
-
-  // Additional utility methods
-  resendOTP: (userId) =>
-    request(`/otp/${userId}/`, {
-      method: "GET",
       auth: false,
     }),
 
-  // // Password reset methods
-  // forgotPassword: (email) =>
-  //   request("/forgot-password/", {
-  //     method: "POST",
-  //     body: { email },
-  //     auth: false,
-  //   }),
+  /* -------- LOGIN (NO AUTH) -------- */
+  login: (payload) =>
+    request('/login/', {
+      method: 'POST',
+      body: payload,
+      auth: false,
+    }),
 
-  // resetPassword: (token, newPassword) =>
-  //   request("/reset-password/", {
-  //     method: "POST",
-  //     body: { token, new_password: newPassword },
-  //     auth: false,
-  //   }),
+  /* -------- USER INFO (AUTH) -------- */
+  getUserInfo: () =>
+    request('/user/info', {
+      method: 'GET',
+      auth: true,
+    }),
+
+  /* -------- GET OTP (AUTH, userId-based) -------- */
+  getOTP: (userId) =>
+    request(`/otp/${userId}/`, {
+      method: 'GET',
+      auth: true,
+    }),
+
+  /* -------- VERIFY OTP (NO TOKEN YET) -------- */
+  verifyOTP: async (payload) => {
+    const res = await request('/verify_otp', {
+      method: 'POST',
+      body: payload,
+      auth: false,
+    });
+
+    /**
+     * 🔥 NORMALIZATION (CRITICAL)
+     * Backend returns { token, user }
+     * Store expects success:true ONLY when both exist
+     */
+    if (
+      res.success &&
+      res.data?.token &&
+      res.data?.user
+    ) {
+      return {
+        success: true,
+        data: {
+          token: res.data.token,
+          user: res.data.user,
+        },
+      };
+    }
+
+    return {
+      success: false,
+      status: res.status,
+      error: true,
+      data: res.data || { message: 'OTP verification failed' },
+    };
+  },
+
+  /* -------- LOGOUT (AUTH) -------- */
+  logout: () =>
+    request('/logout/', {
+      method: 'POST',
+      auth: true,
+    }),
+
+  /* -------- RESEND OTP (OPTIONAL) -------- */
+  resendOTP: (userId) =>
+    request(`/otp/${userId}/`, {
+      method: 'GET',
+      auth: true,
+    }),
 };
 
 export default authService;
