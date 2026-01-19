@@ -1,23 +1,22 @@
 const API_BASE_URL = 'https://cosplitz-backend.onrender.com/api';
-import { COL } from "../utils/LoggerDefinition";
+import {COL} from "../utils/LoggerDefinition"
 
 const log = (msg, style = COL.info, ...rest) =>
   console.log(`%c[AuthService] ${msg}`, style, ...rest);
 
-async function request(
-  path,
-  { method = 'GET', body, auth = false } = {}
-) {
+/* ================= REQUEST HELPER ================= */
+async function request(path,{ method = 'GET', body, auth = false } = {},) {
   const headers = {};
   if (body) headers['Content-Type'] = 'application/json';
 
+  // Attach token if needed
   if (auth) {
     try {
-      const token =
-        localStorage.getItem('authToken') ||
-        sessionStorage.getItem('authToken');
+      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
 
-      if (token) headers.Authorization = `Bearer ${token}`;
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
     } catch (e) {
       log('⚠️ Token access error', COL.warn, e);
     }
@@ -94,31 +93,61 @@ async function request(
 /* ================= AUTH SERVICE ================= */
 export const authService = {
   register: (payload) =>
-    request('/register/', { method: 'POST', body: payload }),
-
-  login: (payload) =>
-    request('/login/', { method: 'POST', body: payload }),
-
-  getUserInfo: () =>
-    request('/user/info', { auth: true }),
-
-  // ✅ NO AUTH
-  getOTP: (userId) =>
-    request(`/otp/${userId}/`, { auth:true }),
-
-  // ✅ FIXED SLASH + NO AUTH
-  verifyOTP: (payload) =>
-    request('/verify_otp', {
+    request('/register/', {
       method: 'POST',
       body: payload,
+      auth: false,
+    }),
+
+  login: (payload) =>
+    request('/login/', {
+      method: 'POST',
+      body: payload,
+      auth: false,
+    }),
+
+  getUserInfo: () =>
+    request('/user/info', {
+      method: 'GET',
       auth: true,
     }),
 
+  getOTP: (userId) =>
+    request(`/otp/${userId}/`, {
+      method: 'GET',
+      auth: true,
+    }),
+
+  verifyOTP: async (payload) => {
+    const res = await request('/verify_otp', {
+      method: 'POST',
+      body: payload,
+      auth: false,
+    });
+    if (res.success && res.data?.token && res.data?.user) {
+      return {
+        success: true,
+        data: {token: res.data.token,user: res.data.user,},
+      };
+    }
+
+    return {
+      success: false,status: res.status,error: true, data: res.data || { message: 'OTP verification failed' },
+    };
+  },
+
+
   logout: () =>
-    request('/logout/', { method: 'POST', auth: true }),
+    request('/logout/', {
+      method: 'POST',
+      auth: true,
+    }),
 
   resendOTP: (userId) =>
-    request(`/otp/${userId}/`, { auth: true }),
+    request(`/otp/${userId}/`, {
+      method: 'GET',
+      auth: true,
+    }),
 };
 
 export default authService;
