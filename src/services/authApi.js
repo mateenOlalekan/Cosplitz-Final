@@ -100,7 +100,7 @@ export const authService = {
     request('/login/', { method: 'POST', body: payload }),
 
   getUserInfo: () =>
-    request('/user/info/', { auth: true }),
+    request('/user/info', { auth: true }),
 
   // ✅ NO AUTH
   getOTP: (userId) =>
@@ -108,7 +108,7 @@ export const authService = {
 
   // ✅ FIXED SLASH + NO AUTH
   verifyOTP: (payload) =>
-    request('/verify_otp/', {
+    request('/verify_otp', {
       method: 'POST',
       body: payload,
       auth: false,
