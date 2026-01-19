@@ -93,49 +93,54 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
     }
   };
 
-  const handleVerifyClick = async (code = null) => {
-    console.log('[DEBUG] handleVerifyClick called with code:', code);
+const handleVerifyClick = async (code = null) => {
+  console.log('[DEBUG] handleVerifyClick called with code:', code);
+  
+  if (isLoading || verificationLoading) {
+    console.log('[DEBUG] Already loading, skipping');
+    return;
+  }
+
+  const otpCode = code || otp.join('');
+  console.log('[DEBUG] OTP to verify:', otpCode);
+
+  if (otpCode.length !== 6) {
+    setLocalError('Please enter the complete 6-digit code.');
+    return;
+  }
+
+  if (!email) {
+    console.error('[DEBUG] Missing email:', { email, userId });
+    setLocalError('Missing email information. Please register again.');
+    return;
+  }
+
+  setLocalError('');
+  setVerificationLoading(true);
+  console.log('[DEBUG] Calling onVerify with OTP...');
+
+  try {
+    const result = await onVerify(otpCode);
+    console.log('[DEBUG] onVerify result:', result);
     
-    if (isLoading || verificationLoading) {
-      console.log('[DEBUG] Already loading, skipping');
-      return;
+    // ✅ FIX: Explicitly check success and handle navigation
+    if (result.success) {
+      console.log('[DEBUG] Verification successful, component will unmount soon');
     }
-
-    const otpCode = code || otp.join('');
-    console.log('[DEBUG] OTP to verify:', otpCode);
-
-    if (otpCode.length !== 6) {
-      setLocalError('Please enter the complete 6-digit code.');
-      return;
+    
+    if (isMounted.current) {
+      setVerificationLoading(false);
     }
-
-    if (!email) {
-      console.error('[DEBUG] Missing email:', { email, userId });
-      setLocalError('Missing email information. Please register again.');
-      return;
+    return result;
+  } catch (err) {
+    console.error('[DEBUG] Verify error:', err);
+    if (isMounted.current) {
+      setVerificationLoading(false);
+      setLocalError('Verification failed. Please try again.');
     }
-
-    setLocalError('');
-    setVerificationLoading(true);
-    console.log('[DEBUG] Calling onVerify with OTP...');
-
-    try {
-      const result = await onVerify(otpCode);
-      console.log('[DEBUG] onVerify result:', result);
-      
-      if (isMounted.current) {
-        setVerificationLoading(false);
-      }
-      return result;
-    } catch (err) {
-      console.error('[DEBUG] Verify error:', err);
-      if (isMounted.current) {
-        setVerificationLoading(false);
-        setLocalError('Verification failed. Please try again.');
-      }
-      return false;
-    }
-  };
+    return false;
+  }
+};
 
   const handleResend = async () => {
     console.log('[DEBUG] handleResend called');

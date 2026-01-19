@@ -27,25 +27,16 @@ export default function Register() {
     }
   }, [hasClearedState, clearIncompleteRegistration]);
 
-  useEffect(() => {
-    if (isMounted.current && tempRegister?.userId && hasClearedState) {
-      if (currentStep === 1) {
-        console.log(' Transitioning from step 1 to 2');
-        setCurrentStep(2);
-        clearError();
-      }
-    }
-  }, [tempRegister, currentStep, clearError, hasClearedState]);
 
-  useEffect(() => {
-    if (isMounted.current && user && hasClearedState) {
-      if (currentStep === 2) {
-        console.log(' Transitioning from step 2 to 3');
-        setCurrentStep(3);
-        clearError();
-      }
+useEffect(() => {
+  if (isMounted.current && user && hasClearedState) {
+    if (currentStep === 2) {
+      console.log('✅ User state updated, transitioning from step 2 to 3');
+      setCurrentStep(3);
+      clearError();
     }
-  }, [user, currentStep, clearError, hasClearedState]);
+  }
+}, [user, currentStep, clearError, hasClearedState]);
 
   // Clear errors on step change
   useEffect(() => {
@@ -94,24 +85,31 @@ const handleVerifyOTP = async (otp) => {
   setVerificationError('');
 
   try {
-    // ✅ PASS OBJECT, NOT POSITIONAL ARGUMENTS
-    const res = await verifyOTP({ otp });
+    const res = await verifyOTP({ 
+      email: tempRegister?.email, 
+      otp 
+    });
+    
     if (res.success) {
+      console.log('✅ OTP verified, waiting for user state update...');
+      // Small delay to ensure state updates
+      setTimeout(() => {
+        if (user) {
+          setCurrentStep(3);
+        }
+      }, 100);
       return { success: true };
     }
+    
     const errorMsg = res.error || res.data?.message || 'OTP verification failed';
-
-    console.log('OTP verification failed:', errorMsg);
     setVerificationError(errorMsg);
     return { success: false, error: errorMsg };
 
   } catch (err) {
-    console.error('Verify OTP error:', err);
     setVerificationError('Verification failed. Please try again.');
     return { success: false, error: 'Verification failed' };
   }
-};
-
+}
 
   const handleResendOTP = async () => {
     console.log(' handleResendOTP called');

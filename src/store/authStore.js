@@ -148,70 +148,72 @@ export const useAuthStore = create(
       },
 
       /* ✅ VERIFY OTP */
-      verifyOTP: async ({ email, otp }) => {
-        set({ isLoading: true, error: null });
+verifyOTP: async ({ email, otp }) => {
+  set({ isLoading: true, error: null });
 
-        const finalEmail = email || get().tempRegister?.email;
+  const finalEmail = email || get().tempRegister?.email;
 
-        if (!finalEmail) {
-          set({
-            error: 'No email found. Please register again.',
-            isLoading: false,
-          });
-          return { success: false };
-        }
+  if (!finalEmail) {
+    set({
+      error: 'No email found. Please register again.',
+      isLoading: false,
+    });
+    return { success: false };
+  }
 
-        try {
-          log('Verifying OTP...', COL.info);
+  try {
+    log(`🔐 Verifying OTP for ${finalEmail}...`, COL.info);
 
-          const res = await authService.verifyOTP({
-            email: finalEmail,
-            otp,
-          });
+    const res = await authService.verifyOTP({
+      email: finalEmail,
+      otp,
+    });
 
-          if (!res.success) {
-            set({
-              error: res.data?.message || 'OTP verification failed',
-              isLoading: false,
-            });
-            return res;
-          }
+    if (!res.success) {
+      set({
+        error: res.data?.message || 'OTP verification failed',
+        isLoading: false,
+      });
+      return res;
+    }
 
-          const { user, token } = res.data;
+    const { user, token } = res.data;
 
-          if (!user || !token) {
-            set({
-              error: 'Invalid OTP response',
-              isLoading: false,
-            });
-            return { success: false };
-          }
+    if (!user || !token) {
+      log('❌ Missing user or token in response', COL.err, res);
+      set({
+        error: 'Invalid OTP response',
+        isLoading: false,
+      });
+      return { success: false };
+    }
 
-          const persist = get().rememberMe;
+    const persist = get().rememberMe;
 
-          set({
-            user,
-            authToken: token,
-            userId: user.id,
-            tempRegister: null,
-            otpSent: false,
-            isVerified: true,
-            isLoading: false,
-          });
+    // ✅ FIX: Ensure atomic update
+    set({
+      user,
+      authToken: token,
+      userId: user.id,
+      tempRegister: null,
+      otpSent: false,
+      isVerified: true,
+      isLoading: false,
+    });
 
-          get()._saveToken(token, persist);
-          get()._saveUser(user);
-          get()._saveTempRegister(null);
+    get()._saveToken(token, persist);
+    get()._saveUser(user);
+    get()._saveTempRegister(null);
 
-          log('OTP verified & authenticated', COL.ok);
-          return { success: true, data: { user, token } };
+    log('✅ OTP verified & authenticated', COL.ok);
+    return { success: true, data: { user, token } };
 
-        } catch (e) {
-          log('Verify OTP error', COL.err, e);
-          set({ error: 'OTP verification failed', isLoading: false });
-          return { success: false };
-        }
-      },
+  } catch (e) {
+    log('❌ Verify OTP error', COL.err, e);
+    set({ error: 'OTP verification failed', isLoading: false });
+    return { success: false };
+  }
+},
 
       /* 🔄 RESEND OTP */
       resendOTP: async () => {
