@@ -15,9 +15,9 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
   const userId = tempRegister?.userId;
 
   useEffect(() => {
-    console.log('[DEBUG] useEffect - Checking tempRegister:', tempRegister);
+    console.log(' useEffect - Checking tempRegister:', tempRegister);
     if (!tempRegister?.email && isMounted.current) {
-      console.warn('[DEBUG] No valid temp registration data found, redirecting back');
+      console.warn(' No valid temp registration data found, redirecting back');
       setLocalError('No registration data found. Please register again.');
       onBack();
     }
@@ -38,7 +38,7 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
 
   // Store error → local error with better handling
   useEffect(() => {
-    console.log('[DEBUG] useEffect - storeError changed:', storeError);
+    console.log(' useEffect - storeError changed:', storeError);
     if (storeError && isMounted.current) {
       setLocalError(storeError);
       setVerificationLoading(false);
@@ -63,10 +63,8 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
-
-    // Auto-verify when complete
     if (newOtp.every(d => d !== '') && !isLoading && !verificationLoading) {
-      console.log('[DEBUG] Auto-verifying OTP:', newOtp.join(''));
+      console.log(' Auto-verifying OTP:', newOtp.join(''));
       handleVerifyClick(newOtp.join(''));
     }
   };
@@ -80,7 +78,7 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
   const handlePaste = (e) => {
     e.preventDefault();
     const pasted = e.clipboardData.getData('text/plain').trim();
-    console.log('[DEBUG] Pasted OTP:', pasted);
+    console.log(' Pasted OTP:', pasted);
 
     if (/^\d{6}$/.test(pasted)) {
       const digits = pasted.split('');
@@ -94,15 +92,15 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
   };
 
 const handleVerifyClick = async (code = null) => {
-  console.log('[DEBUG] handleVerifyClick called with code:', code);
+  console.log(' handleVerifyClick called with code:', code);
   
   if (isLoading || verificationLoading) {
-    console.log('[DEBUG] Already loading, skipping');
+    console.log(' Already loading, skipping');
     return;
   }
 
   const otpCode = code || otp.join('');
-  console.log('[DEBUG] OTP to verify:', otpCode);
+  console.log(' OTP to verify:', otpCode);
 
   if (otpCode.length !== 6) {
     setLocalError('Please enter the complete 6-digit code.');
@@ -110,22 +108,22 @@ const handleVerifyClick = async (code = null) => {
   }
 
   if (!email) {
-    console.error('[DEBUG] Missing email:', { email, userId });
+    console.error(' Missing email:', { email, userId });
     setLocalError('Missing email information. Please register again.');
     return;
   }
 
   setLocalError('');
   setVerificationLoading(true);
-  console.log('[DEBUG] Calling onVerify with OTP...');
+  console.log(' Calling onVerify with OTP...');
 
   try {
     const result = await onVerify(otpCode);
-    console.log('[DEBUG] onVerify result:', result);
+    console.log(' onVerify result:', result);
     
     // ✅ FIX: Explicitly check success and handle navigation
     if (result.success) {
-      console.log('[DEBUG] Verification successful, component will unmount soon');
+      console.log(' Verification successful, component will unmount soon');
     }
     
     if (isMounted.current) {
@@ -133,7 +131,7 @@ const handleVerifyClick = async (code = null) => {
     }
     return result;
   } catch (err) {
-    console.error('[DEBUG] Verify error:', err);
+    console.error(' Verify error:', err);
     if (isMounted.current) {
       setVerificationLoading(false);
       setLocalError('Verification failed. Please try again.');
@@ -143,9 +141,9 @@ const handleVerifyClick = async (code = null) => {
 };
 
   const handleResend = async () => {
-    console.log('[DEBUG] handleResend called');
+    console.log(' handleResend called');
     if (timer > 0 || isLoading || resendLoading) {
-      console.log('[DEBUG] Cannot resend - timer:', timer, 'isLoading:', isLoading);
+      console.log(' Cannot resend - timer:', timer, 'isLoading:', isLoading);
       return;
     }
     if (!email) {
@@ -155,11 +153,11 @@ const handleVerifyClick = async (code = null) => {
 
     setResendLoading(true);
     setLocalError('');
-    console.log('[DEBUG] Calling onResend...');
+    console.log(' Calling onResend...');
 
     try {
       const result = await onResend();
-      console.log('[DEBUG] onResend result:', result);
+      console.log(' onResend result:', result);
       
       if (isMounted.current) {
         setTimer(180);
@@ -167,7 +165,7 @@ const handleVerifyClick = async (code = null) => {
         inputRefs.current[0]?.focus();
       }
     } catch (err) {
-      console.error('[DEBUG] Resend error:', err);
+      console.error(' Resend error:', err);
       if (isMounted.current) {
         setLocalError(err.message || 'Failed to resend OTP.');
       }

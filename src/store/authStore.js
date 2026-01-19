@@ -1,14 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authService } from '../services/authApi';
-
-/* -------------------- logger -------------------- */
-const COL = {
-  ok: 'color: #2ecc71; font-weight: bold',
-  err: 'color: #e74c3c; font-weight: bold',
-  info: 'color: #3498db; font-weight: bold',
-  warn: 'color: #f39c12; font-weight: bold',
-};
+import {COL} from '../utils/LoggerDefinition';
 
 const log = (msg, style = COL.info, ...rest) =>
   console.log(`%c[AuthStore] ${msg}`, style, ...rest);
@@ -21,11 +14,9 @@ export const useAuthStore = create(
       user: null,
       authToken: null,
       userId: null,
-
       tempRegister: null, // { userId, email, firstName, lastName }
       otpSent: false,
       isVerified: false,
-
       rememberMe: true,
       isLoading: false,
       error: null,
