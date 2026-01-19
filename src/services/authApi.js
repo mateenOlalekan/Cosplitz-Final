@@ -103,7 +103,7 @@ export const authService = {
     request('/login/', {
       method: 'POST',
       body: payload,
-      auth: false,
+      auth: true,
     }),
 
   getUserInfo: () =>
@@ -122,7 +122,7 @@ export const authService = {
     const res = await request('/verify_otp', {
       method: 'POST',
       body: payload,
-      auth: false,
+      auth: true,
     });
     if (res.success && res.data?.token && res.data?.user) {
       return {
