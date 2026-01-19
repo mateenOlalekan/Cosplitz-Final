@@ -104,21 +104,21 @@ export const authService = {
 
   // ✅ NO AUTH
   getOTP: (userId) =>
-    request(`/otp/${userId}/`, { auth: false }),
+    request(`/otp/${userId}/`, { auth:true }),
 
   // ✅ FIXED SLASH + NO AUTH
   verifyOTP: (payload) =>
     request('/verify_otp', {
       method: 'POST',
       body: payload,
-      auth: false,
+      auth: true,
     }),
 
   logout: () =>
     request('/logout/', { method: 'POST', auth: true }),
 
   resendOTP: (userId) =>
-    request(`/otp/${userId}/`, { auth: false }),
+    request(`/otp/${userId}/`, { auth: true }),
 };
 
 export default authService;
