@@ -139,74 +139,45 @@ export const useAuthStore = create(
       },
 
       /* ✅ VERIFY OTP */
-verifyOTP: async ({ email, otp }) => {
-  set({ isLoading: true, error: null });
-
-  const finalEmail = email || get().tempRegister?.email;
-
-  if (!finalEmail) {
-    set({
-      error: 'No email found. Please register again.',
-      isLoading: false,
-    });
-    return { success: false };
-  }
-
-  try {
-    log(`🔐 Verifying OTP for ${finalEmail}...`, COL.info);
-
-    const res = await authService.verifyOTP({
-      email: finalEmail,
-      otp,
-    });
-
-    if (!res.success) {
-      set({
-        error: res.data?.message || 'OTP verification failed',
-        isLoading: false,
-      });
-      return res;
-    }
-
-    const { user, token } = res.data;
-
-    if (!user || !token) {
-      log('❌ Missing user or token in response', COL.err, res);
-      set({
-        error: 'Invalid OTP response',
-        isLoading: false,
-      });
-      return { success: false };
-    }
-
-    const persist = get().rememberMe;
-
-    // ✅ FIX: Ensure atomic update
-    set({
-      user,
-      authToken: token,
-      userId: user.id,
-      tempRegister: null,
-      otpSent: false,
-      isVerified: true,
-      isLoading: false,
-    });
-
-    get()._saveToken(token, persist);
-    get()._saveUser(user);
-    get()._saveTempRegister(null);
-
-    log('✅ OTP verified & authenticated', COL.ok);
-    return { success: true, data: { user, token } };
-
-  } catch (e) {
-    log('❌ Verify OTP error', COL.err, e);
-    set({ error: 'OTP verification failed', isLoading: false });
-    return { success: false };
-  }
-},
+      verifyOTP: async ({ email, otp }) => {
+        set({ isLoading: true, error: null });
+        const finalEmail = email || get().tempRegister?.email;
+        if (!finalEmail) {
+          const msg = 'No email found. Please register again.';
+          set({ error: msg, isLoading: false });
+          return { success: false, message: msg };
+        }
+        try {
+          const res = await authService.verifyOTP({
+            email: finalEmail,
+            otp,
+          });
+          if (!res.success) {
+            const msg = res.data?.message || 'OTP verification failed';
+            set({ error: msg, isLoading: false });
+            return { success: false, message: msg };
+          }
+          const { user, token } = res.data;
+          if (!user || !token) {
+            const msg = 'Invalid OTP response';
+            set({ error: msg, isLoading: false });
+            return { success: false, message: msg };
+          }
+          const persist = get().rememberMe;
+          set({user,authToken: token,userId: user.id,tempRegister: null, otpSent: false,isVerified: true,isLoading: false, });
+          get()._saveToken(token, persist);
+          get()._saveUser(user);
+          get()._saveTempRegister(null);
+          return { success: true, data: { user, token } };
+        } catch (e) {
+          const msg = 'OTP verification failed';
+          set({ error: msg, isLoading: false });
+          return { success: false, message: msg };
+        }
+      },
 
       /* 🔄 RESEND OTP */
+  
       resendOTP: async () => {
         const userId = get().tempRegister?.userId;
 

@@ -89,28 +89,18 @@ export default function Register() {
     }
   };
 
-const handleVerifyOTP = async (otp) => {
-  console.log('handleVerifyOTP called with OTP:', otp);
-  setVerificationError('');
+  const handleVerifyOTP = async (otp) => {
+    setVerificationError('');
 
-  try {
-    // ✅ PASS OBJECT, NOT POSITIONAL ARGUMENTS
     const res = await verifyOTP({ otp });
+
     if (res.success) {
       return { success: true };
     }
-    const errorMsg = res.error || res.data?.message || 'OTP verification failed';
 
-    console.log('OTP verification failed:', errorMsg);
-    setVerificationError(errorMsg);
-    return { success: false, error: errorMsg };
-
-  } catch (err) {
-    console.error('Verify OTP error:', err);
-    setVerificationError('Verification failed. Please try again.');
-    return { success: false, error: 'Verification failed' };
-  }
-};
+    setVerificationError(res.message);
+    return { success: false, error: res.message };
+  };
 
 
   const handleResendOTP = async () => {
@@ -137,7 +127,7 @@ const handleVerifyOTP = async (otp) => {
   };
 
   return (
-    <div className="flex bg-[#F7F5F9] w-full min-h-screen justify-center overflow-hidden md:px-6 md:py-4">
+    <div className="flex bg-[#F7F5F9] w-full h-screen justify-center overflow-hidden md:px-6 md:py-4">
       <div className="flex max-w-screen-2xl w-full min-h-full rounded-xl overflow-hidden">
         <div className="hidden lg:flex w-1/2 bg-[#F8EACD] rounded-xl p-6 items-center justify-center">
           <div className="w-full flex flex-col items-center">

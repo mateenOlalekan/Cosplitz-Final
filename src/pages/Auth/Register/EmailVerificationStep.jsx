@@ -92,53 +92,27 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
   };
 
 const handleVerifyClick = async (code = null) => {
-  console.log(' handleVerifyClick called with code:', code);
-  
-  if (isLoading || verificationLoading) {
-    console.log(' Already loading, skipping');
-    return;
-  }
+  if (isLoading || verificationLoading) return;
 
   const otpCode = code || otp.join('');
-  console.log(' OTP to verify:', otpCode);
 
   if (otpCode.length !== 6) {
     setLocalError('Please enter the complete 6-digit code.');
     return;
   }
 
-  if (!email) {
-    console.error(' Missing email:', { email, userId });
-    setLocalError('Missing email information. Please register again.');
-    return;
-  }
-
   setLocalError('');
   setVerificationLoading(true);
-  console.log(' Calling onVerify with OTP...');
 
-  try {
-    const result = await onVerify(otpCode);
-    console.log(' onVerify result:', result);
-    
-    // ✅ FIX: Explicitly check success and handle navigation
-    if (result.success) {
-      console.log(' Verification successful, component will unmount soon');
-    }
-    
-    if (isMounted.current) {
-      setVerificationLoading(false);
-    }
-    return result;
-  } catch (err) {
-    console.error(' Verify error:', err);
-    if (isMounted.current) {
-      setVerificationLoading(false);
-      setLocalError('Verification failed. Please try again.');
-    }
-    return false;
+  const result = await onVerify(otpCode);
+
+  if (isMounted.current) {
+    setVerificationLoading(false);
   }
+
+  return result;
 };
+
 
   const handleResend = async () => {
     console.log(' handleResend called');
@@ -181,9 +155,7 @@ const handleVerifyClick = async (code = null) => {
     onBack();
   };
 
-  const formatTime = (seconds) =>
-    `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
-
+  const formatTime = (seconds) =>`${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
   const canVerify = otp.every(d => d !== '') && !isLoading && !verificationLoading;
   const verifyButtonText = verificationLoading ? 'Verifying...' : 'Verify Email';
 

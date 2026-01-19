@@ -1,32 +1,18 @@
 const API_BASE_URL = 'https://cosplitz-backend.onrender.com/api';
-
-/* ================= LOGGER ================= */
-const COL = {
-  ok: 'color: #2ecc71; font-weight: bold',
-  err: 'color: #e74c3c; font-weight: bold',
-  info: 'color: #3498db; font-weight: bold',
-  warn: 'color: #f39c12; font-weight: bold',
-};
+import {COL} from "../utils/LoggerDefinition"
 
 const log = (msg, style = COL.info, ...rest) =>
   console.log(`%c[AuthService] ${msg}`, style, ...rest);
 
 /* ================= REQUEST HELPER ================= */
-async function request(
-  path,
-  { method = 'GET', body, auth = false } = {},
-) {
+async function request(path,{ method = 'GET', body, auth = false } = {},) {
   const headers = {};
-
-  // Only set JSON header if body exists
   if (body) headers['Content-Type'] = 'application/json';
 
   // Attach token if needed
   if (auth) {
     try {
-      const token =
-        localStorage.getItem('authToken') ||
-        sessionStorage.getItem('authToken');
+      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
 
       if (token) {
         headers.Authorization = `Bearer ${token}`;
@@ -41,26 +27,18 @@ async function request(
   /* ---------- NETWORK ---------- */
   try {
     log(`📡 ${method} ${API_BASE_URL}${path}`, COL.info);
-
     response = await fetch(`${API_BASE_URL}${path}`, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
+      method, headers, body: body ? JSON.stringify(body) : undefined,
     });
   } catch (err) {
     log('❌ Network error', COL.err, err);
-    return {
-      success: false,
-      status: 0,
-      error: true,
-      data: { message: 'Network error. Please check your connection.' },
+    return {success: false,status: 0,error: true,data: { message: 'Network error. Please check your connection.' },
     };
   }
 
   /* ---------- PARSE ---------- */
   let data = null;
   try {
-    // Some endpoints may return empty responses
     data = await response.json();
   } catch {
     data = null;
@@ -114,7 +92,6 @@ async function request(
 
 /* ================= AUTH SERVICE ================= */
 export const authService = {
-  /* -------- REGISTER (NO AUTH) -------- */
   register: (payload) =>
     request('/register/', {
       method: 'POST',
@@ -122,7 +99,6 @@ export const authService = {
       auth: false,
     }),
 
-  /* -------- LOGIN (NO AUTH) -------- */
   login: (payload) =>
     request('/login/', {
       method: 'POST',
@@ -130,63 +106,43 @@ export const authService = {
       auth: false,
     }),
 
-  /* -------- USER INFO (AUTH) -------- */
   getUserInfo: () =>
     request('/user/info', {
       method: 'GET',
       auth: true,
     }),
 
-  /* -------- GET OTP (AUTH, userId-based) -------- */
   getOTP: (userId) =>
     request(`/otp/${userId}/`, {
       method: 'GET',
       auth: true,
     }),
 
-  /* -------- VERIFY OTP (NO TOKEN YET) -------- */
   verifyOTP: async (payload) => {
     const res = await request('/verify_otp', {
       method: 'POST',
       body: payload,
       auth: false,
     });
-
-    /**
-     * 🔥 NORMALIZATION (CRITICAL)
-     * Backend returns { token, user }
-     * Store expects success:true ONLY when both exist
-     */
-    if (
-      res.success &&
-      res.data?.token &&
-      res.data?.user
-    ) {
+    if (res.success && res.data?.token && res.data?.user) {
       return {
         success: true,
-        data: {
-          token: res.data.token,
-          user: res.data.user,
-        },
+        data: {token: res.data.token,user: res.data.user,},
       };
     }
 
     return {
-      success: false,
-      status: res.status,
-      error: true,
-      data: res.data || { message: 'OTP verification failed' },
+      success: false,status: res.status,error: true, data: res.data || { message: 'OTP verification failed' },
     };
   },
 
-  /* -------- LOGOUT (AUTH) -------- */
+
   logout: () =>
     request('/logout/', {
       method: 'POST',
       auth: true,
     }),
 
-  /* -------- RESEND OTP (OPTIONAL) -------- */
   resendOTP: (userId) =>
     request(`/otp/${userId}/`, {
       method: 'GET',
