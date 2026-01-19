@@ -8,12 +8,7 @@ import { registrationSchema } from '../../../schemas/authSchemas';
 import PasswordValidation from './PasswordValidation';
 import { getAllCountries } from '../../../services/countryService';
 
-export default function RegistrationForm({
-  onSubmit,
-  onSocialRegister,
-  loading,
-  error,
-}) {
+export default function RegistrationForm({onSubmit,onSocialRegister,loading,error,}) {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -150,8 +145,7 @@ export default function RegistrationForm({
           whileTap={{ scale: 0.98 }}
           type="button"
           onClick={() => onSocialRegister('google')}
-          className="flex items-center justify-center gap-3 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-        >
+          className="flex items-center justify-center gap-3 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
           <FcGoogle size={20} />
           <span className="text-gray-700 text-sm">Sign Up with Google</span>
         </motion.button>
@@ -160,8 +154,7 @@ export default function RegistrationForm({
           whileTap={{ scale: 0.98 }}
           type="button"
           onClick={() => onSocialRegister('apple')}
-          className="flex items-center justify-center gap-3 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-        >
+          className="flex items-center justify-center gap-3 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
           <PiAppleLogoBold size={20} />
           <span className="text-gray-700 text-sm">Sign Up with Apple</span>
         </motion.button>
@@ -172,12 +165,6 @@ export default function RegistrationForm({
         <span className="mx-2 text-gray-500 text-sm">Or</span>
         <div className="flex-grow border-t border-gray-300" />
       </div>
-
-      {submitError && (
-        <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-4 text-center">
-          {submitError}
-        </div>
-      )}
 
       <form onSubmit={onSubmitForm} className="space-y-3">
         <div>
@@ -196,10 +183,8 @@ export default function RegistrationForm({
 
         <div>
           <label className="text-sm font-medium text-gray-700 mb-1 block">Last Name *</label>
-          <input
-            type="text"
-            value={formData.lastName}
-            placeholder="Enter your last name"
+          <input type="text"
+            value={formData.lastName} placeholder="Enter your last name"
             onChange={(e) => handleChange('lastName', e.target.value)}
             onBlur={() => handleBlur('lastName')}
             className={inputClass(fieldErrors.lastName)}
@@ -256,20 +241,10 @@ export default function RegistrationForm({
         <div className="mb-4">
           <label className="text-sm font-medium text-gray-700 mb-1 block">Password *</label>
           <div className="relative">
-            <input
-              type={showPassword ? 'text' : 'password'}
-              value={formData.password}
-              placeholder="Create your password"
-              onChange={(e) => handleChange('password', e.target.value)}
-              onBlur={() => handleBlur('password')}
-              className={`${inputClass(fieldErrors.password)} pr-10`}
-              required
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-2 pr-1 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
-            >
+            <input type={showPassword ? 'text' : 'password'} value={formData.password} placeholder="Create your password" onChange={(e) => handleChange('password', e.target.value)}
+              onBlur={() => handleBlur('password')}  className={`${inputClass(fieldErrors.password)} pr-10`} required/>
+            <button type="button" onClick={() => setShowPassword(!showPassword)}
+              className="absolute inset-y-0 right-2 pr-1 flex items-center text-gray-400 hover:text-gray-600 transition-colors">
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
@@ -290,9 +265,7 @@ export default function RegistrationForm({
               I agree to the{' '}
               <a href="/terms" className="text-green-600 hover:underline font-medium">Terms</a>,{' '}
               <a href="/privacy" className="text-green-600 hover:underline font-medium">Privacy</a>{' '}
-              &{' '}
-              <a href="/fees" className="text-green-600 hover:underline font-medium">Fees</a>
-              .
+              &{' '}.
             </span>
           </label>
           {fieldErrors.agreeToTerms && <p className="text-red-600 text-xs mt-1">{fieldErrors.agreeToTerms}</p>}
@@ -304,23 +277,12 @@ export default function RegistrationForm({
           type="submit"
           disabled={loading || isSubmitting || !isFormValid}
           className={`w-full bg-green-600 text-white py-3 rounded-lg font-semibold transition-all duration-200 ${
-            loading || isSubmitting || !isFormValid ? 'opacity-60 cursor-not-allowed' : 'hover:bg-green-700'
-          }`}
-        >
+            loading || isSubmitting || !isFormValid ? 'opacity-60 cursor-not-allowed' : 'hover:bg-green-700' }`}>
           {loading || isSubmitting ? (
-            <span className="flex items-center justify-center gap-2">
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              Creating Account...
-            </span>
-          ) : (
-            'Create Account'
-          )}
+            <span className="flex items-center justify-center gap-2"><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Creating Account...</span>) : ('Create Account')}
         </motion.button>
 
-        <p className="text-center text-sm text-gray-600 mt-3">
-          Already have an account?{' '}
-          <Link to="/login" className="text-green-600 hover:underline font-medium">Log In</Link>
-        </p>
+        <p className="text-center text-sm text-gray-600 mt-3">Already have an account?{' '}<Link to="/login" className="text-green-600 hover:underline font-medium">Log In</Link></p>
       </form>
     </div>
   );
