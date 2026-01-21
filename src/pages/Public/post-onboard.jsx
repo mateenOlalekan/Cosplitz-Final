@@ -135,7 +135,6 @@ export default function CoSplitzOnboarding() {
     if (currentStep < steps.length - 1) {
       setCurrentStep((s) => s + 1);
     } else {
-      // COMPLETE → SHOW LOADING → NAVIGATE
       setIsLoading(true);
       setTimeout(() => navigate("/kyc-flow"), 1500);
     }
@@ -147,9 +146,6 @@ export default function CoSplitzOnboarding() {
 
   const progress = ((currentStep + 1) / steps.length) * 100;
 
-  // =======================
-  //   LOADING SCREEN
-  // =======================
   if (isLoading) {
     return (
      <>

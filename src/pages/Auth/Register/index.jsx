@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { useAuthStore } from '../../../store/authStore';
+import { useNavigate } from 'react-router-dom';
 import loginlogo from "../../../assets/login.jpg";
 import logo from "../../../assets/logo.svg";
 import RegistrationForm from './RegistrationForm';
@@ -12,117 +12,156 @@ const steps = [
   { id: 3, label: 'Success', description: 'Account created successfully' },
 ];
 
+// Mock OTP storage (in real app, this would be in backend)
+let MOCK_OTP = '123456';
+let MOCK_USERS = JSON.parse(localStorage.getItem('mock_users') || '[]');
+
 export default function Register() {
-  const {register,verifyOTP,resendOTP,tempRegister,user,error,isLoading,clearError,clearIncompleteRegistration,} = useAuthStore();
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [verificationError, setVerificationError] = useState('');
-  const [hasClearedState, setHasClearedState] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [tempRegister, setTempRegister] = useState(null);
+  const [user, setUser] = useState(null);
   const isMounted = useRef(true);
 
-  useEffect(() => {
-    if (!hasClearedState) {
-      console.log(' Clearing incomplete registration on mount');
-      clearIncompleteRegistration();
-      setHasClearedState(true);
-    }
-  }, [hasClearedState, clearIncompleteRegistration]);
-
-  useEffect(() => {
-    if (isMounted.current && tempRegister?.userId && hasClearedState) {
-      if (currentStep === 1) {
-        console.log(' Transitioning from step 1 to 2');
-        setCurrentStep(2);
-        clearError();
-      }
-    }
-  }, [tempRegister, currentStep, clearError, hasClearedState]);
-
-  useEffect(() => {
-    if (isMounted.current && user && hasClearedState) {
-      if (currentStep === 2) {
-        console.log(' Transitioning from step 2 to 3');
-        setCurrentStep(3);
-        clearError();
-      }
-    }
-  }, [user, currentStep, clearError, hasClearedState]);
-
-  // Clear errors on step change
-  useEffect(() => {
-    clearError();
-    setVerificationError('');
-  }, [currentStep, clearError]);
-
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       isMounted.current = false;
     };
   }, []);
 
-  const handleRegister = async (formData) => {
-    console.log(' handleRegister called with:', formData);
-    const payload = {
-      first_name: formData.firstName.trim(),
-      last_name: formData.lastName.trim(),
-      email: formData.email.toLowerCase().trim(),
-      password: formData.password,
-      nationality: formData.nationality.trim(),
-    };
+  // Clear errors on step change
+  useEffect(() => {
+    setError('');
+    setVerificationError('');
+  }, [currentStep]);
 
-    console.log(' Register payload:', payload);
+  const simulateApiCall = (duration = 1000) => 
+    new Promise(resolve => setTimeout(resolve, duration));
+
+  const handleRegister = async (formData) => {
+    console.log('handleRegister called with:', formData);
+    setIsLoading(true);
+    setError('');
 
     try {
-      const res = await register(payload);
-      console.log(' Register store response:', res);
+      await simulateApiCall(1500);
       
-      if (res.success) {
-        return { success: true };
-      } else {
-        const errorMsg = res.error || res.data?.message || 'Registration failed';
-        console.log(' Registration failed:', errorMsg);
-        return { success: false, error: errorMsg };
+      // Check if user already exists
+      const existingUser = MOCK_USERS.find(u => u.email === formData.email.toLowerCase().trim());
+      if (existingUser) {
+        throw new Error('User with this email already exists');
       }
+
+      // Generate new mock OTP
+      MOCK_OTP = Math.floor(100000 + Math.random() * 900000).toString();
+      console.log('Generated OTP:', MOCK_OTP); // Log it so you can test with different OTPs
+
+      // Store temp registration data
+      const tempData = {
+        email: formData.email.toLowerCase().trim(),
+        userId: Date.now(),
+        formData
+      };
+      setTempRegister(tempData);
+      
+      // Move to verification step
+      setCurrentStep(2);
+      return { success: true };
     } catch (err) {
-      console.error(' Register error:', err);
-      return { success: false, error: 'Registration failed' };
+      const errorMsg = err.message || 'Registration failed';
+      setError(errorMsg);
+      return { success: false, error: errorMsg };
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleVerifyOTP = async (otp) => {
     setVerificationError('');
+    setIsLoading(true);
 
-    const res = await verifyOTP({ otp });
+    try {
+      await simulateApiCall(1000);
 
-    if (res.success) {
-      return { success: true };
+      if (otp === MOCK_OTP) {
+        // Create user object
+        const newUser = {
+          id: tempRegister.userId,
+          email: tempRegister.email,
+          first_name: tempRegister.formData.firstName,
+          last_name: tempRegister.formData.lastName,
+          nationality: tempRegister.formData.nationality,
+          created_at: new Date().toISOString(),
+          is_verified: true
+        };
+
+        // Save to localStorage
+        MOCK_USERS.push(newUser);
+        localStorage.setItem('mock_users', JSON.stringify(MOCK_USERS));
+        localStorage.setItem('current_user', JSON.stringify(newUser));
+
+        setUser(newUser);
+        setCurrentStep(3);
+        return { success: true };
+      } else {
+        throw new Error('Invalid OTP. Try again or click Resend Code.');
+      }
+    } catch (err) {
+      const errorMsg = err.message || 'Verification failed';
+      setVerificationError(errorMsg);
+      return { success: false, error: errorMsg };
+    } finally {
+      setIsLoading(false);
     }
-
-    setVerificationError(res.message);
-    return { success: false, error: res.message };
   };
-
 
   const handleResendOTP = async () => {
-    console.log(' handleResendOTP called');
+    setIsLoading(true);
     try {
-      const res = await resendOTP();
-      console.log(' resendOTP store response:', res);
+      await simulateApiCall(1000);
+      MOCK_OTP = Math.floor(100000 + Math.random() * 900000).toString();
+      console.log('Resent OTP:', MOCK_OTP);
       return { success: true };
     } catch (err) {
-      console.error(' Resend OTP error:', err);
       return { success: false, error: 'Failed to resend OTP' };
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleSocialRegister = (provider) => {
-    alert(`${provider} registration is coming soon!`);
+  const handleSocialRegister = async (provider) => {
+    setIsLoading(true);
+    try {
+      await simulateApiCall(1500);
+      // Simulate successful social registration
+      const socialUser = {
+        id: Date.now(),
+        email: `${provider}_user@example.com`,
+        first_name: provider,
+        last_name: 'User',
+        nationality: '',
+        created_at: new Date().toISOString(),
+        is_verified: true,
+        provider: provider
+      };
+      
+      localStorage.setItem('current_user', JSON.stringify(socialUser));
+      setUser(socialUser);
+      setCurrentStep(3);
+    } catch (err) {
+      setError(`${provider} registration failed`);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleBackToRegistration = () => {
-    console.log(' handleBackToRegistration called');
     setCurrentStep(1);
-    clearError();
+    setTempRegister(null);
+    setError('');
     setVerificationError('');
   };
 
@@ -181,12 +220,13 @@ export default function Register() {
                 onSubmit={handleRegister}
                 onSocialRegister={handleSocialRegister}
                 loading={isLoading}
-                error={error || verificationError}
+                error={error}
               />
             )}
 
-            {currentStep === 2 && (
+            {currentStep === 2 && tempRegister && (
               <EmailVerificationStep
+                email={tempRegister.email}
                 onVerify={handleVerifyOTP}
                 onResend={handleResendOTP}
                 onBack={handleBackToRegistration}

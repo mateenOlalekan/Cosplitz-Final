@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Mail, AlertCircle } from 'lucide-react';
-import { useAuthStore } from '../../../store/authStore';
 
-export default function EmailVerificationStep({ onVerify, onResend, onBack, isLoading }) {
-  const { tempRegister, error: storeError, clearIncompleteRegistration } = useAuthStore();
+export default function EmailVerificationStep({ email, onVerify, onResend, onBack, isLoading }) {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [timer, setTimer] = useState(180);
   const [resendLoading, setResendLoading] = useState(false);
@@ -11,17 +9,14 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
   const [verificationLoading, setVerificationLoading] = useState(false);
   const inputRefs = useRef([]);
   const isMounted = useRef(true);
-  const email = tempRegister?.email;
-  const userId = tempRegister?.userId;
 
   useEffect(() => {
-    console.log(' useEffect - Checking tempRegister:', tempRegister);
-    if (!tempRegister?.email && isMounted.current) {
-      console.warn(' No valid temp registration data found, redirecting back');
+    if (!email && isMounted.current) {
+      console.warn('No valid temp registration data found, redirecting back');
       setLocalError('No registration data found. Please register again.');
       onBack();
     }
-  }, [tempRegister, onBack]);
+  }, [email, onBack]);
 
   useEffect(() => {
     isMounted.current = true;
@@ -36,16 +31,6 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
     };
   }, []);
 
-  // Store error → local error with better handling
-  useEffect(() => {
-    console.log(' useEffect - storeError changed:', storeError);
-    if (storeError && isMounted.current) {
-      setLocalError(storeError);
-      setVerificationLoading(false);
-    }
-  }, [storeError]);
-
-  // Clear error on typing
   useEffect(() => {
     if (otp.every(d => d !== '') && localError) {
       setLocalError('');
@@ -64,7 +49,6 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
       inputRefs.current[index + 1]?.focus();
     }
     if (newOtp.every(d => d !== '') && !isLoading && !verificationLoading) {
-      console.log(' Auto-verifying OTP:', newOtp.join(''));
       handleVerifyClick(newOtp.join(''));
     }
   };
@@ -78,7 +62,6 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
   const handlePaste = (e) => {
     e.preventDefault();
     const pasted = e.clipboardData.getData('text/plain').trim();
-    console.log(' Pasted OTP:', pasted);
 
     if (/^\d{6}$/.test(pasted)) {
       const digits = pasted.split('');
@@ -91,47 +74,36 @@ export default function EmailVerificationStep({ onVerify, onResend, onBack, isLo
     }
   };
 
-const handleVerifyClick = async (code = null) => {
-  if (isLoading || verificationLoading) return;
+  const handleVerifyClick = async (code = null) => {
+    if (isLoading || verificationLoading) return;
 
-  const otpCode = code || otp.join('');
+    const otpCode = code || otp.join('');
 
-  if (otpCode.length !== 6) {
-    setLocalError('Please enter the complete 6-digit code.');
-    return;
-  }
-
-  setLocalError('');
-  setVerificationLoading(true);
-
-  const result = await onVerify(otpCode);
-
-  if (isMounted.current) {
-    setVerificationLoading(false);
-  }
-
-  return result;
-};
-
-
-  const handleResend = async () => {
-    console.log(' handleResend called');
-    if (timer > 0 || isLoading || resendLoading) {
-      console.log(' Cannot resend - timer:', timer, 'isLoading:', isLoading);
-      return;
-    }
-    if (!email) {
-      setLocalError('Cannot resend OTP. Email is missing.');
+    if (otpCode.length !== 6) {
+      setLocalError('Please enter the complete 6-digit code.');
       return;
     }
 
+    setLocalError('');
+    setVerificationLoading(true);
+
+    const result = await onVerify(otpCode);
+
+    if (isMounted.current) {
+      setVerificationLoading(false);
+    }
+
+    return result;
+  };
+
+  const handleResendClick = async () => {
+    if (timer > 0 || isLoading || resendLoading) return;
+    
     setResendLoading(true);
     setLocalError('');
-    console.log(' Calling onResend...');
 
     try {
       const result = await onResend();
-      console.log(' onResend result:', result);
       
       if (isMounted.current) {
         setTimer(180);
@@ -139,7 +111,6 @@ const handleVerifyClick = async (code = null) => {
         inputRefs.current[0]?.focus();
       }
     } catch (err) {
-      console.error(' Resend error:', err);
       if (isMounted.current) {
         setLocalError(err.message || 'Failed to resend OTP.');
       }
@@ -150,12 +121,7 @@ const handleVerifyClick = async (code = null) => {
     }
   };
 
-  const handleBackClick = () => {
-    clearIncompleteRegistration();
-    onBack();
-  };
-
-  const formatTime = (seconds) =>`${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
+  const formatTime = (seconds) => `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
   const canVerify = otp.every(d => d !== '') && !isLoading && !verificationLoading;
   const verifyButtonText = verificationLoading ? 'Verifying...' : 'Verify Email';
 
@@ -163,7 +129,7 @@ const handleVerifyClick = async (code = null) => {
     <div className="flex flex-col items-center gap-5 py-4 relative w-full"> 
       <div className='flex flex-col justify-center items-center max-w-xl gap-4'>
         <button
-          onClick={handleBackClick}
+          onClick={onBack}
           disabled={isLoading || verificationLoading}
           className="absolute left-4 top-4 text-gray-600 hover:text-green-600 transition disabled:opacity-50"
         >
@@ -200,10 +166,10 @@ const handleVerifyClick = async (code = null) => {
           ))}
         </div>
 
-        {(localError || storeError) && (
+        {(localError) && (
           <div className="flex items-center gap-2 text-red-600 text-sm mt-2">
             <AlertCircle size={16} />
-            <span>{localError || storeError}</span>
+            <span>{localError}</span>
           </div>
         )}
 
@@ -215,7 +181,7 @@ const handleVerifyClick = async (code = null) => {
           ) : (
             <button
               type="button"
-              onClick={handleResend}
+              onClick={handleResendClick}
               disabled={resendLoading || isLoading || verificationLoading}
               className="text-green-600 hover:text-green-700 font-medium text-sm disabled:opacity-50 transition-colors"
             >
