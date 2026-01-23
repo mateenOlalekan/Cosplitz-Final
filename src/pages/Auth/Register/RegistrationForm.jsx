@@ -90,33 +90,33 @@ export default function RegistrationForm({onSubmit,onSocialRegister,loading,erro
     setOpen(false);
   };
 
+
   const onSubmitForm = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setSubmitError('');
+  e.preventDefault();
+  setIsSubmitting(true);
+  setSubmitError('');
 
-    const result = registrationSchema.safeParse(formData);
-    if (!result.success) {
-      const errors = {};
-      result.error.issues.forEach(issue => {
-        errors[issue.path[0]] = issue.message;
-      });
-      setFieldErrors(errors);
-      setIsSubmitting(false);
-      return;
-    }
+  const result = registrationSchema.safeParse(formData);
 
-    try {
-      const result = await onSubmit(formData);
-      if (!result.success) {
-        setSubmitError(result.error || 'Registration failed');
-      }
-    } catch (err) {
-      setSubmitError('Registration failed. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  if (!result.success) {
+    const errors = {};
+    result.error.issues.forEach(issue => {
+      errors[issue.path[0]] = issue.message;
+    });
+    setFieldErrors(errors);
+    setIsSubmitting(false);
+    return;
+  }
+
+  const res = await onSubmit(formData);
+
+  if (!res.success) {
+    setSubmitError(res.error || 'Registration failed');
+  }
+
+  setIsSubmitting(false);
+};
+
 
   const inputClass = (hasError) =>
     `w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors ${

@@ -1,24 +1,27 @@
 // src/components/Dashboard/DashboardHeader.jsx
+
 import { Bell, Settings, MapPin, ChevronDown, Menu } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../../assets/logo.svg";
-import { useAuthStore } from "../../store/authStore";
+import useAuthStore from "../../store/authStore";
 
 export default function DashboardHeader({ onMenuClick }) {
-  
-  // ✅ Correct Zustand selectors
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
-
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const navigate = useNavigate();
 
-  const handleLogout = async () => {
-    await logout();         // clears token/user using store
-    navigate("/login");     // redirect after clearing
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
   };
 
+  if (!isAuthenticated()) {
+    return null;
+  }
+
   return (
-    <header className=" bg-white border-b border-gray-200 z-30 px-4">
+    <header className="bg-white border-b border-gray-200 z-30 px-4">
       <div
         className="flex items-center justify-between block md:hidden"
         role="banner"
@@ -33,22 +36,28 @@ export default function DashboardHeader({ onMenuClick }) {
             e.currentTarget.style.display = "none";
           }}
         />
-
         <nav aria-label="User menu">
           <Menu onClick={onMenuClick} />
         </nav>
       </div>
 
       <div className="flex items-center justify-between py-3">
+
         <div className="flex items-center gap-1 text-gray-600">
           <MapPin size={16} />
-          <span className="text-sm">{user?.location || "Ikeja, Lagos"}</span>
+          <span className="text-sm">
+            {user?.location || "Ikeja, Lagos"}
+          </span>
           <ChevronDown size={16} />
         </div>
 
         <div className="flex items-center gap-4">
+
           <div className="hidden md:block text-sm text-gray-600">
-            Welcome, <span className="font-medium">{user?.first_name || "User"}</span>
+            Welcome,{" "}
+            <span className="font-medium">
+              {user?.first_name || "User"}
+            </span>
           </div>
 
           <Link
@@ -74,8 +83,11 @@ export default function DashboardHeader({ onMenuClick }) {
           >
             Logout
           </button>
+
         </div>
+
       </div>
+
     </header>
   );
 }
