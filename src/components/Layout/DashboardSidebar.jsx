@@ -98,7 +98,7 @@ export default function DashboardSidebar({ isOpen, onClose }) {
           />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-gray-900 truncate">
-              {user?.email.split('@')[0] || "User"}
+              {user?.email}
             </p>
             <p className="text-xs text-gray-500 truncate">View profile & settings</p>
           </div>
