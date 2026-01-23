@@ -1,14 +1,13 @@
 // src/components/Dashboard/DashboardSidebar.jsx
-import { NavLink, useLocation, Link } from "react-router-dom";
-import { Home, Share2, MessageSquare, Wallet, MapPin, BarChart3,Menu } from "lucide-react";
+import { NavLink, useLocation, Link, useNavigate } from "react-router-dom";
+import { Home, Share2, MessageSquare, Wallet, MapPin, BarChart3, Menu } from "lucide-react";
 import logo from "../../assets/logo.svg";
 import { useAuthStore } from "../../store/authStore";
 
-
 export default function DashboardSidebar({ isOpen, onClose }) {
   const { user } = useAuthStore();
+  const navigate = useNavigate(); // ✅ FIXED
 
-  // Navigation items for regular users
   const navItems = [
     { icon: Home, label: "Home", to: "/dashboard" },
     { icon: Share2, label: "My Splits", to: "/dashboard/mysplitz", count: 3 },
@@ -22,22 +21,20 @@ export default function DashboardSidebar({ isOpen, onClose }) {
     <aside 
       className={`
         fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 
-        transform ${isOpen ? 'translate-x-0 duration-4000' : '-translate-x-full'} 
+        transform ${isOpen ? 'translate-x-0' : '-translate-x-full'}  // ✅ FIXED
         lg:translate-x-0 transition-transform duration-300
         flex flex-col h-full
-      `}>
-      {/* Close button (mobile only) */}
+      `}
+    >
+      <div className="flex items-center pl-7 py-4 gap-3">
+        <img 
+          src={logo} 
+          alt="Logo" 
+          className="h-10 cursor-pointer" 
+          onClick={() => navigate("/dashboard")}  // works now
+        />
+      </div>
 
-
-        <div className="flex items-center  pl-7 py-4 gap-3">
-          <img 
-            src={logo} 
-            alt="Logo" 
-            className="h-10 cursor-pointer" 
-            onClick={() => navigate("/dashboard")} 
-          />
-        </div>
-      {/* Navigation menu */}
       <nav className="flex-1 p-4 overflow-y-auto">
         <div className="space-y-1">
           {navItems.map((item) => (
@@ -58,7 +55,8 @@ export default function DashboardSidebar({ isOpen, onClose }) {
                 <item.icon size={20} />
                 <span className="text-sm font-semibold">{item.label}</span>
               </div>
-              {item.count && (
+
+              {item.count !== undefined && (
                 <span className="text-xs font-semibold px-2 py-1 rounded-full bg-gray-100 text-gray-700">
                   {item.count}
                 </span>
@@ -67,7 +65,6 @@ export default function DashboardSidebar({ isOpen, onClose }) {
           ))}
         </div>
 
-        {/* Community standing card */}
         <div className="mt-6 p-4 bg-[#1F8225] rounded-xl text-white">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-semibold">Community Standing</h3>
@@ -88,7 +85,6 @@ export default function DashboardSidebar({ isOpen, onClose }) {
         </div>
       </nav>
 
-      {/* User profile footer */}
       <div className="p-4 border-t border-gray-100">
         <Link to="/dashboard/settings" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50">
           <img

@@ -4,49 +4,55 @@ import { Link, useNavigate } from "react-router-dom";
 import logo from "../../assets/logo.svg";
 import { useAuthStore } from "../../store/authStore";
 
-
 export default function DashboardHeader({ onMenuClick }) {
-  const { user, logout } = useAuthStore();
+  
+  // ✅ Correct Zustand selectors
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
+
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();         // clears token/user using store
+    navigate("/login");     // redirect after clearing
+  };
 
   return (
     <header className=" bg-white border-b border-gray-200 z-30 px-4">
-      <div className="flex items-center justify-between block md:hidden" 
+      <div
+        className="flex items-center justify-between block md:hidden"
         role="banner"
         aria-label="Application header"
       >
-        <img 
-          src={logo} 
-          alt="Company Logo" 
+        <img
+          src={logo}
+          alt="Company Logo"
           className="w-20 h-20 object-contain select-none"
           draggable="false"
           onError={(e) => {
-            e.currentTarget.style.display = 'none';
+            e.currentTarget.style.display = "none";
           }}
         />
 
-        {/* User menu: Wrapped in nav for semantics */}
         <nav aria-label="User menu">
           <Menu onClick={onMenuClick} />
         </nav>
       </div>
-      <div className="flex items-center justify-between py-3">
-        {/* Left side: Mobile menu button + Logo */}
-          <div className=" flex items-center gap-1 text-gray-600">
-            <MapPin size={16} />
-            <span className="text-sm">{user?.location || "Ikeja, Lagos"}</span>
-            <ChevronDown size={16} />
-          </div>
 
-        {/* Right side: User actions */}
+      <div className="flex items-center justify-between py-3">
+        <div className="flex items-center gap-1 text-gray-600">
+          <MapPin size={16} />
+          <span className="text-sm">{user?.location || "Ikeja, Lagos"}</span>
+          <ChevronDown size={16} />
+        </div>
+
         <div className="flex items-center gap-4">
-          {/* Welcome message */}
           <div className="hidden md:block text-sm text-gray-600">
             Welcome, <span className="font-medium">{user?.first_name || "User"}</span>
           </div>
 
-          {/* Notifications */}
-          <Link 
-            to="/dashboard/notifications" 
+          <Link
+            to="/dashboard/notifications"
             className="relative p-2 hover:bg-gray-100 rounded-lg transition"
             aria-label="Notifications"
           >
@@ -54,19 +60,17 @@ export default function DashboardHeader({ onMenuClick }) {
             <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
           </Link>
 
-          {/* Settings */}
-          <Link 
-            to="/dashboard/settings" 
+          <Link
+            to="/dashboard/settings"
             className="p-2 hover:bg-gray-100 rounded-lg transition"
             aria-label="Settings"
           >
             <Settings size={18} className="text-gray-600" />
           </Link>
 
-          {/* Logout button */}
           <button
-            onClick={logout}
-            className="px-3 py-1.5  text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+            onClick={handleLogout}
+            className="px-3 py-1.5 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
           >
             Logout
           </button>
