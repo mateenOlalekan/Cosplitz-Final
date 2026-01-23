@@ -119,7 +119,7 @@ export const authService = {
     }),
 
   verifyOTP: async (payload) => {
-    const res = await request('/verify_otp', {
+    const res = await request('/verify_otp/', {
       method: 'POST',
       body: payload,
       auth: true,

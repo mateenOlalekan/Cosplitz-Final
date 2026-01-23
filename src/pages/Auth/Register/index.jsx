@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import loginlogo from "../../../assets/login.jpg";
 import logo from "../../../assets/logo.svg";
@@ -15,8 +15,6 @@ const steps = [
 
 export default function Register() {
   const navigate = useNavigate();
-  const isMounted = useRef(true);
-
   const {
     register,
     verifyOTP,
@@ -26,36 +24,33 @@ export default function Register() {
     error,
     clearError,
     isVerified,
+    user,
   } = useAuthStore();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [verificationError, setVerificationError] = useState('');
 
-  useEffect(() => {
-    return () => {
-      isMounted.current = false;
-    };
-  }, []);
-
+  // Step transition based on store state
   useEffect(() => {
     clearError();
     setVerificationError('');
   }, [currentStep]);
 
+  // Redirect if user already logged in
+  useEffect(() => {
+    if (user) navigate('/dashboard/post-onboard', { replace: true });
+  }, [user, navigate]);
 
+  // Move to success step if OTP verified
   useEffect(() => {
     if (isVerified) {
       setCurrentStep(3);
-
-      setTimeout(() => {
-        navigate('/dashboard/post-onboard');
-      }, 1500);
+      setTimeout(() => navigate('/dashboard/post-onboard'), 1500);
     }
-  }, [isVerified]);
+  }, [isVerified, navigate]);
 
   const handleRegister = async (formData) => {
     clearError();
-
     const payload = {
       email: formData.email,
       password: formData.password,
@@ -63,32 +58,21 @@ export default function Register() {
       last_name: formData.lastName,
       nationality: formData.nationality,
     };
-
     const res = await register(payload);
-    if (res.success) {
-      setCurrentStep(2);
-    }
+    if (res.success) setCurrentStep(2);
     return res;
   };
 
   const handleVerifyOTP = async (otp) => {
     setVerificationError('');
     const res = await verifyOTP({ otp });
-    if (!res.success) {
-      setVerificationError(res.message || 'OTP verification failed');
-    }
+    if (!res.success) setVerificationError(res.message || 'OTP verification failed');
     return res;
   };
 
+  const handleResendOTP = async () => resendOTP();
 
-  const handleResendOTP = async () => {
-    return resendOTP();
-  };
-
-
-  const handleSocialRegister = () => {
-    alert('Social signup coming soon');
-  };
+  const handleSocialRegister = () => alert('Social signup coming soon');
 
   const handleBackToRegistration = () => {
     setCurrentStep(1);
@@ -102,12 +86,7 @@ export default function Register() {
 
         <div className="hidden lg:flex w-1/2 bg-[#F8EACD] rounded-xl p-6 items-center justify-center">
           <div className="w-full flex flex-col items-center">
-            <img
-              src={loginlogo}
-              alt="Register"
-              className="rounded-lg w-full h-auto max-h-[400px] object-contain"
-            />
-
+            <img src={loginlogo} alt="Register" className="rounded-lg w-full h-auto max-h-[400px] object-contain" />
             <div className="bg-gradient-to-br max-w-lg from-[#FAF3E8] to-[#F8EACD] mt-4 p-4 rounded-2xl shadow-sm text-center">
               <h1 className="text-3xl font-semibold text-[#2D0D23] mb-1">
                 Share Expenses & Resources in Real Time
@@ -126,44 +105,33 @@ export default function Register() {
 
           <div className="w-full max-w-2xl p-5 rounded-xl shadow-none md:shadow-md bg-white">
 
+            {/* Stepper */}
             <div className="w-full flex flex-col items-center py-4 mb-4">
               <div className="flex items-center gap-2 justify-center mb-2">
                 {steps.map((s, i) => (
                   <div key={s.id} className="flex items-center">
-                    <div
-                      className={`w-6 h-6 rounded-full flex items-center justify-center border-2 text-xs font-semibold ${
-                        currentStep >= s.id
-                          ? 'bg-green-600 border-green-600 text-white'
-                          : 'bg-white border-gray-300 text-gray-400'
-                      }`}
-                    >
-                      {s.id}
-                    </div>
-
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 text-xs font-semibold ${
+                      currentStep >= s.id ? 'bg-green-600 border-green-600 text-white' : 'bg-white border-gray-300 text-gray-400'
+                    }`}>{s.id}</div>
                     {i < steps.length - 1 && (
-                      <div
-                        className={`w-16 md:w-24 border-t-2 mx-2 ${
-                          currentStep > s.id
-                            ? 'border-green-600'
-                            : 'border-gray-300'
-                        }`}
-                      />
+                      <div className={`w-16 md:w-24 border-t-2 mx-2 ${
+                        currentStep > s.id ? 'border-green-600' : 'border-gray-300'
+                      }`} />
                     )}
                   </div>
                 ))}
               </div>
-
-              <p className="text-sm text-gray-600">
-                {steps.find(s => s.id === currentStep)?.description}
-              </p>
+              <p className="text-sm text-gray-600">{steps.find(s => s.id === currentStep)?.description}</p>
             </div>
 
+            {/* Error */}
             {(error || verificationError) && (
               <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-4 text-center">
                 {error || verificationError}
               </div>
             )}
 
+            {/* Step Components */}
             {currentStep === 1 && (
               <RegistrationForm
                 onSubmit={handleRegister}

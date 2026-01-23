@@ -15,7 +15,7 @@ export default function DashboardSidebar({ isOpen, onClose }) {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated());
+  // const isAuthenticated = useAuthStore((s) => s.isAuthenticated());
 
   const navItems = [
     { icon: Home, label: "Home", to: "/dashboard" },
@@ -31,9 +31,9 @@ export default function DashboardSidebar({ isOpen, onClose }) {
     navigate("/login");
   };
 
-  if (!isAuthenticated()) {
-    return null;
-  }
+  // if (!isAuthenticated()) {
+  //   return null;
+  // }
 
   return (
     <aside
