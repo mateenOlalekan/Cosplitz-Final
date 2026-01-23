@@ -56,7 +56,7 @@ export default function DashboardSidebar({ isOpen, onClose }) {
             >
               <div className="flex items-center gap-3">
                 <item.icon size={20} />
-                <span className="text-sm font-medium">{item.label}</span>
+                <span className="text-sm font-semibold">{item.label}</span>
               </div>
               {item.count && (
                 <span className="text-xs font-semibold px-2 py-1 rounded-full bg-gray-100 text-gray-700">
@@ -98,9 +98,9 @@ export default function DashboardSidebar({ isOpen, onClose }) {
           />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-gray-900 truncate">
-              {user?.first_name} {user?.last_name}
+              {user?.email.split('@')[0] || "User"}
             </p>
-            <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+            <p className="text-xs text-gray-500 truncate">View profile & settings</p>
           </div>
         </Link>
       </div>

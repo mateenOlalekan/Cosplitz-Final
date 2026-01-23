@@ -4,6 +4,7 @@ import { Outlet } from "react-router-dom";
 import DashboardSidebar from "../../pages/Dashboard/Settings/Sidebar";
 import LogoutModal from "../Settings/LogoutModal";
 import DeleteAccountModal from "../Settings/DeleteAccount";
+import { Link } from "react-router-dom";
 
 
 export default function DashboardSettingLayout() {
@@ -33,28 +34,7 @@ export default function DashboardSettingLayout() {
             </div>
 
             {/* Settings navigation tabs (optional) */}
-            <div className="border-b border-gray-200 mb-6">
-              <nav className="flex gap-6">
-                <Link 
-                  to="/dashboard/settings/profile"
-                  className="py-2 text-sm font-medium border-b-2 border-transparent hover:border-green-500"
-                >
-                  Profile
-                </Link>
-                <Link 
-                  to="/dashboard/settings/password"
-                  className="py-2 text-sm font-medium border-b-2 border-transparent hover:border-green-500"
-                >
-                  Password
-                </Link>
-                <Link 
-                  to="/dashboard/settings/privacy"
-                  className="py-2 text-sm font-medium border-b-2 border-transparent hover:border-green-500"
-                >
-                  Privacy
-                </Link>
-              </nav>
-            </div>
+
 
             {/* Nested settings routes render here */}
             <Outlet context={{ 

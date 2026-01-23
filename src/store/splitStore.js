@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { splitService } from '../services/SplitServices';
+import { splitService } from '../services/splitService';
 import useAuthStore from './authStore';
 
 const useSplitStore = create((set, get) => ({

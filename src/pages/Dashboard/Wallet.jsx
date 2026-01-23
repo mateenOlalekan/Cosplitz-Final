@@ -98,42 +98,38 @@ export default function Wallet() {
         </div>
 
         {/* Payment Methods */}
-        <div className="bg-white rounded-2xl p-6 space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-green-700">
-              Payment Methods
-            </h2>
+        <div className="bg-white rounded-2xl p-6 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-2">
+            <h2 className="text-lg text-green-600 font-semibold">Payment Methods</h2>
             <button className="flex items-center gap-1 text-green-600 font-medium">
               <Plus className="w-4 h-4" />
-              Add Card
+              Add Cards
             </button>
           </div>
 
           <div className="space-y-3">
-            <div className="flex justify-between items-center p-4 border rounded-xl">
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-gray-200 rounded-xl gap-3">
               <div className="flex items-center gap-3">
                 <img src={paymenticon} className="w-10 h-10" />
                 <div>
-                  <p className="font-medium">VISA •••• 4242</p>
-                  <p className="text-sm text-gray-500">
-                    Synced with escrow
-                  </p>
+                  <div className="font-medium">VISA***4242</div>
+                  <div className="text-sm text-gray-500">Synced with escrow</div>
                 </div>
               </div>
-              <span className="text-sm text-green-600 font-medium">
-                Default
-              </span>
+              <div className="text-green-600 text-sm font-medium">Default</div>
             </div>
 
-            <div className="flex items-center p-4 border rounded-xl gap-3">
-              <img src={paymenticon} className="w-10 h-10" />
-              <div>
-                <p className="font-medium">Mastercard •••• 8182</p>
-                <p className="text-sm text-gray-500">
-                  Synced with escrow
-                </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-gray-200 rounded-xl gap-3">
+              <div className="flex items-center gap-3">
+                <img src={paymenticon} className="w-10 h-10" />
+                <div>
+                  <div className="font-medium">Mastercard***8182</div>
+                  <div className="text-sm text-gray-500">Synced with escrow</div>
+                </div>
               </div>
             </div>
+
           </div>
         </div>
 
@@ -202,3 +198,5 @@ export default function Wallet() {
     </div>
   );
 }
+
+

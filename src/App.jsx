@@ -37,8 +37,8 @@ const ResetPassword = lazy(() => import("./pages/Dashboard/Settings/ResetPasswor
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 /* Splitz Pages */
-// const CreateSplitz = lazy(() => import("./pages/Dashboard/Splits/CreateSplitz"));
-// const MySplitz = lazy(() => import("./pages/Dashboard/Splits/MySplitz"));
+const CreateSplitz = lazy(() => import("./pages/Dashboard/Splits/CreateSplitz"));
+const MySplitz = lazy(() => import("./pages/Dashboard/Splits/MySplitz"));
 // const Allsplitz = lazy(() => import("./components/Splitz/AllSplitsPage"));
 // const SplitzDetail = lazy(() => import("./pages/Dashboard/Splits/SplitzDetail"));
 // const SplitzSuccessful = lazy(() => import("./pages/Dashboard/Splits/SplitzSuccessful")); // 
@@ -84,6 +84,9 @@ export default function App() {
             <Route path="kyc-flow" element={<KYCFlow />} />
             <Route path="post-onboarding" element={<PostOnboard />} />
             
+            <Route path="mysplitz" element={<MySplitz />} />
+            <Route path="create-splitz" element={<CreateSplitz />} />
+
             {/* Settings Nested Route - NEW LAYOUT */}
             <Route path="settings" element={<DashboardSettingLayout />}>
               <Route index element={<MyProfile />} />
