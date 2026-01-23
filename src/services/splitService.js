@@ -1,5 +1,5 @@
 // services/splitService.js
-const API_BASE_URL = 'https://cosplitz-backend.onrender.com/api/api';
+const API_BASE_URL = 'https://cosplitz-backend.onrender.com/api';
 
 const request = async (endpoint, options = {}) => {
   try {
