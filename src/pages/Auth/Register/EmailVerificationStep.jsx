@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Mail, AlertCircle } from 'lucide-react';
 
+const OTP_DURATION = 180; // ✅ 3 minutes
+
 export default function EmailVerificationStep({
   email,
   onVerify,
@@ -9,20 +11,27 @@ export default function EmailVerificationStep({
   isLoading
 }) {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [timer, setTimer] = useState(180);
+  const [timer, setTimer] = useState(OTP_DURATION);
   const [localError, setLocalError] = useState('');
   const [verificationLoading, setVerificationLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
 
   const inputRefs = useRef([]);
+  const intervalRef = useRef(null);
 
+  // ✅ Timer logic (safe + clean)
   useEffect(() => {
-    const interval = setInterval(() => {
-      setTimer(t => (t > 0 ? t - 1 : 0));
+    if (timer === 0) {
+      clearInterval(intervalRef.current);
+      return;
+    }
+
+    intervalRef.current = setInterval(() => {
+      setTimer(prev => prev - 1);
     }, 1000);
 
-    return () => clearInterval(interval);
-  }, []);
+    return () => clearInterval(intervalRef.current);
+  }, [timer]);
 
   const handleChange = (value, index) => {
     if (!/^[0-9]?$/.test(value)) return;
@@ -52,7 +61,6 @@ export default function EmailVerificationStep({
     }
 
     setVerificationLoading(true);
-
     const res = await onVerify(otpCode);
 
     if (!res.success) {
@@ -67,8 +75,10 @@ export default function EmailVerificationStep({
 
     setResendLoading(true);
     await onResend();
+
     setOtp(['', '', '', '', '', '']);
-    setTimer(180);
+    setTimer(OTP_DURATION); // ✅ reset to 3 minutes
+
     setResendLoading(false);
   };
 
@@ -96,7 +106,7 @@ export default function EmailVerificationStep({
         {otp.map((digit, i) => (
           <input
             key={i}
-            ref={el => inputRefs.current[i] = el}
+            ref={el => (inputRefs.current[i] = el)}
             maxLength={1}
             value={digit}
             onChange={(e) => handleChange(e.target.value, i)}
@@ -112,7 +122,9 @@ export default function EmailVerificationStep({
       )}
 
       <div className="text-sm text-gray-500">
-        {timer > 0 ? `Resend in ${formatTime(timer)}` : (
+        {timer > 0 ? (
+          `Resend in ${formatTime(timer)}`
+        ) : (
           <button
             onClick={handleResendClick}
             disabled={resendLoading}
@@ -130,7 +142,6 @@ export default function EmailVerificationStep({
       >
         {verificationLoading ? 'Verifying...' : 'Verify Email'}
       </button>
-
     </div>
   );
 }
