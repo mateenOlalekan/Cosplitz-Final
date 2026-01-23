@@ -137,11 +137,21 @@ export const authService = {
   },
 
 
-  logout: () =>
-    request('/logout/', {
-      method: 'POST',
-      auth: true,
-    }),
+logout: () => {
+  try {
+    localStorage.removeItem("authToken");
+    sessionStorage.removeItem("authToken");
+    localStorage.removeItem("userInfo");
+    localStorage.removeItem("tempRegister");
+    console.log("[AuthService] Logged out successfully");
+    return true;
+  } catch (err) {
+    console.error("[AuthService] Logout failed:", err);
+    return false;
+  }
+},
+
+
 
   resendOTP: (userId) =>
     request(`/otp/${userId}/`, {

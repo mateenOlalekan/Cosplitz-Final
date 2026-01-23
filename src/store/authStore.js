@@ -229,29 +229,20 @@ export const useAuthStore = create(
         }
       },
 
-      /* 🚪 LOGOUT */
-      logout: async () => {
-        try {
-          await authService.logout();
-        } catch {}
+    logout: () => {
+      try {
+        localStorage.removeItem("authToken");
+        sessionStorage.removeItem("authToken");
+        localStorage.removeItem("userInfo");
+        localStorage.removeItem("tempRegister");
+        console.log("[AuthService] Logged out successfully");
+        return true;
+      } catch (err) {
+        console.error("[AuthService] Logout failed:", err);
+        return false;
+      }
+    },
 
-        set({
-          user: null,
-          authToken: null,
-          userId: null,
-          tempRegister: null,
-          otpSent: false,
-          isVerified: false,
-          error: null,
-        });
-
-        get()._saveToken(null);
-        get()._saveUser(null);
-        get()._saveTempRegister(null);
-
-        sessionStorage.clear();
-        log('Logged out', COL.warn);
-      },
 
       /* -------------------- derived helpers -------------------- */
       isAuthenticated: () => !!get().authToken && !!get().user,
