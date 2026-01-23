@@ -4,8 +4,6 @@ import { Outlet } from "react-router-dom";
 import DashboardSidebar from "../../pages/Dashboard/Settings/Sidebar";
 import LogoutModal from "../Settings/LogoutModal";
 import DeleteAccountModal from "../Settings/DeleteAccount";
-import { Link } from "react-router-dom";
-
 
 export default function DashboardSettingLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);

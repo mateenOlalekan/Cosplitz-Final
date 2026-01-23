@@ -8,13 +8,14 @@ import useAuthStore from "../../store/authStore";
 export default function DashboardHeader({ onMenuClick }) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated());
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
+const handleLogout = async () => {
+  await logout();
+  navigate("/login", { replace: true });
+};
+
 
   if (!isAuthenticated()) {
     return null;

@@ -1,5 +1,3 @@
-// src/components/Dashboard/DashboardSidebar.jsx
-
 import { NavLink, Link, useNavigate } from "react-router-dom";
 import {
   Home,
@@ -14,16 +12,10 @@ import logo from "../../assets/logo.svg";
 import useAuthStore from "../../store/authStore";
 
 export default function DashboardSidebar({ isOpen, onClose }) {
-
   const navigate = useNavigate();
-
-  const {
-    user,
-    isAuthenticated,
-    logout
-  } = useAuthStore();
-
-  /* ---------------- NAV ITEMS ---------------- */
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated());
 
   const navItems = [
     { icon: Home, label: "Home", to: "/dashboard" },
@@ -34,14 +26,10 @@ export default function DashboardSidebar({ isOpen, onClose }) {
     { icon: BarChart3, label: "Analytics", to: "/dashboard/analytics" },
   ];
 
-  /* ---------------- LOGOUT ---------------- */
-
   const handleLogout = () => {
     logout();
     navigate("/login");
   };
-
-  /* ---------------- AUTH GUARD ---------------- */
 
   if (!isAuthenticated()) {
     return null;
