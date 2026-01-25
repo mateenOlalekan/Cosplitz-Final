@@ -1,12 +1,11 @@
 import { Users2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
 import Overlay1 from "../../assets/Overlay.svg";
 import Overlay2 from "../../assets/Overlay1.svg";
 import Overlay3 from "../../assets/Overlay2.svg";
 import Overlay4 from "../../assets/Overlay3.svg";
-
 import { deals } from "../../Data/Alldata";
+import ActiveSplits from "../../components/dashboard/AllSplit";
 
 const categories = [
   { icon: Overlay1, label: "Split Expenses" },
@@ -17,6 +16,7 @@ const categories = [
 
 export default function Main(){
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState("All Active");
 
   const CreateSplitz = () => {
     navigate("/dashboard/create-splitz");
@@ -107,8 +107,7 @@ export default function Main(){
         </div>
       </section>
     </div>
-      
-      <section className="flex flex-col md:px-0 px-4 ">
+      <section className="flex flex-col md:px-0 px-4 mb-4">
         <div
           className="w-full bg-linear-to-r from-[#096A0F] to-[#1F8225]
           px-5 py-5  mt-5 flex flex-col sm:flex-row
@@ -133,6 +132,9 @@ export default function Main(){
           </button>
         </div>
       </section>
+    <div className="p-4">
+      <ActiveSplits activeTab={activeTab} onTabChange={setActiveTab} />
+    </div>
     
     </>
 )}

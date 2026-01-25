@@ -2,10 +2,6 @@ import ticket from "../assets/ticket.jpg";
 import shop from "../assets/shop.jpg";
 import car from "../assets/car.jpg";
 
-
-
-
-
 export const deals = [
     {
       badge: "Limited Deal",
@@ -63,3 +59,56 @@ export const deals = [
       color: "from-[#065026] via-[#0F8542] to-[#065026]",
     },
   ];
+
+export const TABS = ["All Active", "Popular", "Newest", "Food", "Rides", "Tools"];
+
+export const CATEGORY_STYLES = {
+  food: {
+    name: "food",
+    textColor: "#65CADF",
+    bgClass: "bg-[rgba(101,202,223,0.16)]",
+    badge: "Food",
+  },
+  groceries: {
+    name: "food",
+    textColor: "#65CADF",
+    bgClass: "bg-[rgba(101,202,223,0.16)]",
+    badge: "Food",
+  },
+  transport: {
+    name: "ride",
+    textColor: "#FB9851",
+    bgClass: "bg-[rgba(251,152,81,0.16)]",
+    badge: "Ride",
+  },
+  ride: {
+    name: "ride",
+    textColor: "#FB9851",
+    bgClass: "bg-[rgba(251,152,81,0.16)]",
+    badge: "Ride",
+  },
+  event: {
+    name: "event",
+    textColor: "#65CADF",
+    bgClass: "bg-[rgba(101,202,223,0.16)]",
+    badge: "Event",
+  },
+  ticket: {
+    name: "event",
+    textColor: "#65CADF",
+    bgClass: "bg-[rgba(101,202,223,0.16)]",
+    badge: "Event",
+  },
+  tools: {
+    name: "tools",
+    textColor: "#8B5CF6",
+    bgClass: "bg-[rgba(139,92,246,0.16)]",
+    badge: "Tools",
+  },
+  default: {
+    name: "other",
+    textColor: "#65CADF",
+    bgClass: "bg-[rgba(101,202,223,0.16)]",
+    badge: "Split",
+  },
+};

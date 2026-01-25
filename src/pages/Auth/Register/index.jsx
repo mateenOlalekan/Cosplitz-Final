@@ -1,7 +1,7 @@
 // src/pages/Register/index.jsx
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useRegistrationFlow, useTempRegister, useUser } from '../../services/queries/auth';
+import { useRegistrationFlow, useTempRegister, useUser } from '../../../services/queries/auth';
 import loginlogo from "../../../assets/login.jpg";
 import logo from "../../../assets/logo.svg";
 import RegistrationForm from './RegistrationForm';
