@@ -1,14 +1,23 @@
+// src/services/endpoints/auth.js
+
 const API_BASE_URL = 'https://cosplitz-backend.onrender.com/api';
 
-const getToken = () => 
-  localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+// ============ TOKEN HELPERS ============
+
+const getToken = () => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+};
 
 const setToken = (token, remember = true) => {
+  if (typeof window === 'undefined') return;
+  
   if (!token) {
     localStorage.removeItem('authToken');
     sessionStorage.removeItem('authToken');
     return;
   }
+  
   if (remember) {
     localStorage.setItem('authToken', token);
     sessionStorage.removeItem('authToken');
@@ -19,126 +28,123 @@ const setToken = (token, remember = true) => {
 };
 
 const clearAuth = () => {
+  if (typeof window === 'undefined') return;
   localStorage.removeItem('authToken');
   sessionStorage.removeItem('authToken');
   localStorage.removeItem('userInfo');
   localStorage.removeItem('tempRegister');
 };
 
-const handleResponse = async (response) => {
-  let data = null;
-  try {
-    data = await response.json();
-  } catch {
-    data = null;
+// ============ REQUEST HELPER ============
+
+async function makeRequest(url, options = {}) {
+  const headers = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+    ...options.headers,
+  };
+
+  // Add auth token if needed
+  if (options.auth) {
+    const token = getToken();
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
   }
+
+  const response = await fetch(url, {
+    ...options,
+    headers,
+  });
+
+  const data = await response.json().catch(() => null);
 
   if (!response.ok) {
-    const message = data?.message || data?.detail || `Request failed (${response.status})`;
-    throw new Error(message);
+    const error = new Error(data?.message || data?.detail || `Request failed (${response.status})`);
+    error.status = response.status;
+    error.data = data;
+    throw error;
   }
 
-  return { success: true, status: response.status, data };
-};
+  return data;
+}
 
 // ============ ENDPOINTS ============
-/**Step 1: Register user POST /api/register/ */
+
+/**
+ * Step 1: Register user
+ */
 export const registerEndpoint = async (userData) => {
-  const response = await fetch(`${API_BASE_URL}/register/`, {
+  const data = await makeRequest(`${API_BASE_URL}/register/`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
     body: JSON.stringify(userData),
   });
 
-  const result = await handleResponse(response);
-  
   return {
-    userId: result.data?.user?.id || result.data?.user_id,
+    userId: data?.user?.id || data?.user_id,
     email: userData.email,
     firstName: userData.first_name,
     lastName: userData.last_name,
-    message: result.data?.message || 'Registration successful',
+    message: data?.message || 'Registration successful',
   };
 };
 
-/** Step 2: Auto-login (hidden from user) POST /api/login/ */
+/**
+ * Step 2: Login (returns token)
+ */
 export const loginEndpoint = async (credentials, remember = true) => {
-  const response = await fetch(`${API_BASE_URL}/login/`, {
+  const data = await makeRequest(`${API_BASE_URL}/login/`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
     body: JSON.stringify(credentials),
+    auth: false, // No token needed for login
   });
 
-  const result = await handleResponse(response);
+  const { token, refresh_token } = data;
   
-  const { token, refresh_token, data } = result.data;
-  
+  if (!token) {
+    throw new Error('No token received from server');
+  }
+
   // Store token immediately
   setToken(token, remember);
 
   return {
     token,
     refreshToken: refresh_token,
-    user: data || result.data?.user || result.data,
+    user: data?.data || data?.user || data,
   };
 };
 
 /**
  * Step 3: Request OTP
- * GET /api/otp/{userId}/
  */
 export const getOTPEndpoint = async (userId) => {
-  const token = getToken();
-  
-  if (!token) throw new Error('Authentication required');
-
-  const response = await fetch(`${API_BASE_URL}/otp/${userId}/`, {
+  const data = await makeRequest(`${API_BASE_URL}/otp/${userId}/`, {
     method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
+    auth: true, // Requires token
   });
 
-  return handleResponse(response);
+  return data;
 };
 
 /**
  * Step 4: Verify OTP
- * POST /api/verify_otp/
  */
 export const verifyOTPEndpoint = async ({ email, otp }) => {
-  const token = getToken();
-  
-  if (!token) throw new Error('Authentication required');
-
-  const response = await fetch(`${API_BASE_URL}/verify_otp/`, {
+  const data = await makeRequest(`${API_BASE_URL}/verify_otp/`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
     body: JSON.stringify({ email, otp }),
+    auth: true, // Requires token
   });
 
-  const result = await handleResponse(response);
-  
-  // Update with final verified token if provided
-  if (result.data?.token) {
-    setToken(result.data.token, true);
+  // Update token if new one provided
+  if (data?.token) {
+    setToken(data.token, true);
   }
 
   return {
-    user: result.data?.user || result.data,
-    token: result.data?.token,
+    user: data?.user || data,
+    token: data?.token,
     isVerified: true,
   };
 };
@@ -152,22 +158,14 @@ export const resendOTPEndpoint = async (userId) => {
 
 /**
  * Get user info
- * GET /api/user/info
  */
 export const getUserInfoEndpoint = async () => {
-  const token = getToken();
-  if (!token) throw new Error('No token found');
-
-  const response = await fetch(`${API_BASE_URL}/user/info`, {
+  const data = await makeRequest(`${API_BASE_URL}/user/info`, {
     method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
+    auth: true,
   });
 
-  return handleResponse(response);
+  return data;
 };
 
 /**

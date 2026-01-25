@@ -1,6 +1,5 @@
 // src/services/queries/auth.js
-
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   registerEndpoint,
   loginEndpoint,
@@ -9,7 +8,7 @@ import {
   resendOTPEndpoint,
   getUserInfoEndpoint,
   logoutEndpoint,
-} from '../endpoints/auth';
+} from "../endpoints/auth";
 
 // ============ QUERY KEYS ============
 
@@ -22,41 +21,64 @@ export const authKeys = {
 // ============ STORAGE HELPERS ============
 
 const saveTempRegister = (data) => {
+  if (typeof window === 'undefined') return;
   if (data) localStorage.setItem('tempRegister', JSON.stringify(data));
   else localStorage.removeItem('tempRegister');
 };
 
 const getTempRegister = () => {
+  if (typeof window === 'undefined') return null;
   const data = localStorage.getItem('tempRegister');
   return data ? JSON.parse(data) : null;
 };
 
+const getToken = () => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+};
+
 // ============ QUERIES ============
 
-/* Get current user (auto-refreshes if token exists) */
+/**
+ * Get current user - ONLY runs if token exists
+ */
 export const useUser = () => {
   return useQuery({
     queryKey: authKeys.user(),
     queryFn: async () => {
       const response = await getUserInfoEndpoint();
-      return response.data;
+      return response?.data || response;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: false,
-    enabled: !!localStorage.getItem('authToken') || !!sessionStorage.getItem('authToken'),
+    // CRITICAL: Only enable if token exists
+    enabled: !!getToken(),
+    staleTime: 5 * 60 * 1000,
+    retry: (failureCount, error) => {
+      // Don't retry on 401
+      if (error?.status === 401) return false;
+      return failureCount < 2;
+    },
+    // Handle 401 gracefully
+    throwOnError: (error) => error?.status !== 401,
   });
 };
 
-/*Check if has pending registration */
+/**
+ * Get temp registration data
+ */
 export const useTempRegister = () => {
   return useQuery({
     queryKey: authKeys.tempRegister(),
     queryFn: getTempRegister,
     staleTime: Infinity,
+    enabled: typeof window !== 'undefined',
   });
 };
 
-/* Login mutation */
+// ============ MUTATIONS ============
+
+/**
+ * Login mutation
+ */
 export const useLogin = () => {
   const queryClient = useQueryClient();
 
@@ -69,39 +91,42 @@ export const useLogin = () => {
   });
 };
 
-/* Verify OTP mutation */
+/**
+ * Verify OTP mutation
+ */
 export const useVerifyOTP = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: verifyOTPEndpoint,
     onSuccess: (data) => {
-      // Clear temp registration
       saveTempRegister(null);
-      queryClient.invalidateQueries({ queryKey: authKeys.tempRegister() });
-      // Set verified user
+      queryClient.removeQueries({ queryKey: authKeys.tempRegister() });
       queryClient.setQueryData(authKeys.user(), data.user);
     },
   });
 };
 
-/* Resend OTP mutation */
- 
+/**
+ * Resend OTP mutation
+ */
 export const useResendOTP = () => {
   return useMutation({
     mutationFn: resendOTPEndpoint,
   });
 };
 
-/* Logout mutation */
+/**
+ * Logout mutation
+ */
 export const useLogout = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: logoutEndpoint,
     onSuccess: () => {
+      queryClient.removeQueries({ queryKey: authKeys.all });
       queryClient.setQueryData(authKeys.user(), null);
-      queryClient.clear();
     },
   });
 };
@@ -109,26 +134,23 @@ export const useLogout = () => {
 // ============ COMPLETE REGISTRATION FLOW ============
 
 /**
- * Multi-step registration: Register → Auto-login → Get OTP * Returns function to execute flow and verification mutation
+ * Multi-step registration with proper sequencing
  */
 export const useRegistrationFlow = () => {
   const queryClient = useQueryClient();
-
-  // Step 4: Verify OTP (separate, user-triggered)
   const verifyOTP = useVerifyOTP();
 
-  // Execute Steps 1-3
   const executeFlow = async (userData) => {
     // Step 1: Register
     const regData = await registerEndpoint(userData);
     
-    // Step 2: Auto-login (hidden)
-    await loginEndpoint({
+    // Step 2: Auto-login (stores token)
+    const loginData = await loginEndpoint({
       email: userData.email,
       password: userData.password,
     }, true);
     
-    // Step 3: Get OTP
+    // Step 3: Request OTP (uses token from login)
     await getOTPEndpoint(regData.userId);
     
     // Save temp data for verification step
@@ -139,8 +161,11 @@ export const useRegistrationFlow = () => {
       lastName: regData.lastName,
     };
     saveTempRegister(tempData);
+    
+    // Update query cache
     queryClient.setQueryData(authKeys.tempRegister(), tempData);
     
+    // Return temp data but DON'T trigger user query yet
     return tempData;
   };
 
@@ -151,14 +176,3 @@ export const useRegistrationFlow = () => {
     isVerifying: verifyOTP.isPending,
   };
 };
-
-export const useAuthStatus = () => {
-  const { data: user, isLoading } = useUser();
-  
-  return {
-    isAuthenticated: !!user,
-    isLoading,
-    user,
-  };
-};
-

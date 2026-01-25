@@ -1,10 +1,9 @@
 // src/pages/Register/index.jsx
-
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useRegistrationFlow, useTempRegister, useUser } from '../../../services/queries/auth';
-import loginlogo from '../../../assets/login.jpg';
-import logo from '../../../assets/logo.svg';
+import { useRegistrationFlow, useTempRegister, useUser } from '../../services/queries/auth';
+import loginlogo from "../../../assets/login.jpg";
+import logo from "../../../assets/logo.svg";
 import RegistrationForm from './RegistrationForm';
 import EmailVerificationStep from './EmailVerificationStep';
 import Successful from './Successful';
@@ -22,20 +21,22 @@ export default function Register() {
 
   // TanStack Query hooks
   const { data: tempRegister } = useTempRegister();
-  const { data: user } = useUser();
+  const { data: user, isLoading: isUserLoading } = useUser();
   const { executeFlow, verifyOTP, resendOTP, isVerifying } = useRegistrationFlow();
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (user) navigate('/dashboard', { replace: true });
-  }, [user, navigate]);
+    if (user && !isUserLoading) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, isUserLoading, navigate]);
 
   // Resume at OTP step if temp registration exists
   useEffect(() => {
     if (tempRegister && currentStep === 1) {
       setCurrentStep(2);
     }
-  }, [tempRegister]);
+  }, [tempRegister, currentStep]);
 
   const handleRegister = async (formData) => {
     setVerificationError('');
@@ -49,11 +50,12 @@ export default function Register() {
     };
 
     try {
-      // Execute: Register → Auto-login → Get OTP
+      // Execute: Register → Login → Get OTP
       await executeFlow(payload);
-      setCurrentStep(2); // Move to verification
+      setCurrentStep(2);
       return { success: true };
     } catch (error) {
+      setVerificationError(error.message || 'Registration failed');
       return { success: false, error: error.message };
     }
   };
@@ -66,10 +68,10 @@ export default function Register() {
         email: tempRegister?.email, 
         otp 
       });
-      setCurrentStep(3); // Success
+      setCurrentStep(3);
       return { success: true };
     } catch (error) {
-      setVerificationError(error.message || 'Invalid OTP code');
+      setVerificationError(error.message || 'Invalid verification code');
       return { success: false, error: error.message };
     }
   };
@@ -85,7 +87,7 @@ export default function Register() {
 
   const handleBackToRegistration = () => {
     localStorage.removeItem('tempRegister');
-    window.location.reload(); // Clear query cache
+    window.location.reload();
   };
 
   const isLoading = isVerifying;
@@ -151,7 +153,7 @@ export default function Register() {
             {currentStep === 1 && (
               <RegistrationForm
                 onSubmit={handleRegister}
-                loading={false} // Flow handles its own loading
+                loading={false}
               />
             )}
 
