@@ -1,12 +1,22 @@
+// src/components/Auth/AuthGuard.jsx
 import { Navigate, Outlet, useLocation } from "react-router-dom";
-import useAuthStore from "../../store/authStore";
+import { useUser } from "../../services/queries/auth";
 
 export default function AuthGuard() {
-
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated());
+  const { data: user, isLoading } = useUser();
   const location = useLocation();
 
-  if (!isAuthenticated) {
+  // Show nothing while checking auth status
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="w-8 h-8 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Redirect to login if not authenticated
+  if (!user) {
     return (
       <Navigate
         to="/login"

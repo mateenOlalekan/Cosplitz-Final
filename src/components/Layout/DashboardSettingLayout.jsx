@@ -4,25 +4,48 @@ import { Outlet } from "react-router-dom";
 import DashboardSidebar from "../../pages/Dashboard/Settings/Sidebar";
 import LogoutModal from "../Settings/LogoutModal";
 import DeleteAccountModal from "../Settings/DeleteAccount";
+import { useLogout } from "../../services/queries/auth";
 
 export default function DashboardSettingLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-
   
+  const logout = useLogout();
+
   useEffect(() => {
     document.body.style.overflow = (showLogoutModal || showDeleteModal) ? "hidden" : "";
-    return () => document.body.style.overflow = "";
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [showLogoutModal, showDeleteModal]);
 
   const closeSidebar = () => setSidebarOpen(false);
 
+  const handleLogoutConfirm = async () => {
+    try {
+      await logout.mutateAsync();
+      // Navigation handled by AuthGuard or logout mutation
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    // TODO: Add delete account API call
+    try {
+      // await deleteAccount();
+      await logout.mutateAsync();
+    } catch (error) {
+      console.error("Delete account failed:", error);
+    }
+  };
+
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
       <DashboardSidebar isOpen={sidebarOpen} onClose={closeSidebar} />
+      
       <div className="flex-1 flex flex-col overflow-hidden">
-
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           <div className="max-w-4xl mx-auto">
             {/* Settings-specific header */}
@@ -31,10 +54,7 @@ export default function DashboardSettingLayout() {
               <p className="text-gray-600">Manage your account preferences</p>
             </div>
 
-            {/* Settings navigation tabs (optional) */}
-
-
-            {/* Nested settings routes render here */}
+            {/* Nested settings routes */}
             <Outlet context={{ 
               setShowLogoutModal, 
               setShowDeleteModal 
@@ -47,17 +67,14 @@ export default function DashboardSettingLayout() {
       <LogoutModal 
         open={showLogoutModal} 
         onClose={() => setShowLogoutModal(false)} 
-        onConfirm={() => {
-          useAuthStore.getState().logout();
-        }} 
+        onConfirm={handleLogoutConfirm}
+        isLoading={logout.isPending}
       />
+      
       <DeleteAccountModal 
         open={showDeleteModal} 
         onClose={() => setShowDeleteModal(false)} 
-        onConfirm={() => {
-          // Add delete account API call here
-          useAuthStore.getState().logout();
-        }} 
+        onConfirm={handleDeleteConfirm}
       />
     </div>
   );

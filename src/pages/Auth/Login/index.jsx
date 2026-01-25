@@ -1,95 +1,93 @@
-import { useState, useCallback, useEffect } from 'react';
+// src/pages/Login/index.jsx
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff } from 'lucide-react';
 import logo from '../../../assets/logo.svg';
 import LeftPanel from '../../../components/Home/LeftPanel';
-import useAuthStore from '../../../store/authStore';
+import { useLogin, useUser } from '../../../services/queries/auth';
 import { loginSchema } from '../../../schemas/authSchemas';
-import { COL } from '../../../utils/LoggerDefinition';
-
-const log = (msg, style = COL.info, ...rest) =>
-  console.log(`%c[Login] ${msg}`, style, ...rest);
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname || '/dashboard';
 
-  // ✅ Store hooks
-  const login = useAuthStore((state) => state.login);
-  const user = useAuthStore((state) => state.user);
-  const isLoading = useAuthStore((state) => state.isLoading);
-  const error = useAuthStore((state) => state.error);
-  const setError = useAuthStore((state) => state.setError);
-  const clearError = useAuthStore((state) => state.clearError);
+  // TanStack Query hooks
+  const { data: user } = useUser();
+  const login = useLogin();
 
+  // Form state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({ email: '', password: '' });
+  const [submitError, setSubmitError] = useState('');
 
-  // ✅ Redirect if already logged in
+  // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      log('✅ User already logged in, redirecting...', COL.ok);
       navigate(from, { replace: true });
     }
   }, [user, navigate, from]);
 
-  // ✅ Login handler
-  const handleLogin = useCallback(
-    async (e) => {
-      e.preventDefault();
-      clearError();
-      setFieldErrors({ email: '', password: '' });
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setSubmitError('');
+    setFieldErrors({ email: '', password: '' });
 
-      // Validate input
-      const result = loginSchema.safeParse({ email, password });
-      if (!result.success) {
-        const errs = {};
-        result.error.errors.forEach((err) => (errs[err.path[0]] = err.message));
-        setFieldErrors(errs);
-        log('❌ Validation failed', COL.err, result.error);
-        return;
-      }
+    // Validate
+    const result = loginSchema.safeParse({ email, password });
+    if (!result.success) {
+      const errors = {};
+      result.error.errors.forEach((err) => {
+        errors[err.path[0]] = err.message;
+      });
+      setFieldErrors(errors);
+      return;
+    }
 
-      log('📧 Attempting login', COL.info, email);
-      const res = await login(
-        { email: email.trim().toLowerCase(), password },
-        { remember }
-      );
-
-      if (!res.success) {
-        log('❌ Login failed', COL.err, res.error);
-      }
-    },
-    [email, password, remember, login, clearError]
-  );
-
-  const handleSocialLogin = useCallback(
-    (provider) => {
-      setError(`${provider} login coming soon!`);
-      log(`🌐 Social login attempted: ${provider}`, COL.info);
-    },
-    [setError]
-  );
+    // Submit
+    try {
+      await login.mutateAsync({
+        credentials: {
+          email: email.trim().toLowerCase(),
+          password,
+        },
+        remember,
+      });
+      // Success - user query will update and trigger redirect
+    } catch (error) {
+      setSubmitError(error.message || 'Login failed. Please try again.');
+    }
+  };
 
   const inputClass = (hasError) =>
     `w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors ${
       hasError ? 'border-red-300' : 'border-gray-300 focus:border-green-500'
     }`;
 
+  const isLoading = login.isPending;
+
   return (
     <div className="flex bg-[#F7F5F9] w-full h-screen justify-center overflow-hidden md:px-6 md:py-4">
       <div className="flex max-w-screen-2xl w-full min-h-full rounded-xl overflow-hidden">
+        
+        {/* Left Panel */}
         <LeftPanel />
+
+        {/* Right Panel */}
         <div className="flex flex-1 flex-col items-center p-3 overflow-y-auto">
+          
+          {/* Logo */}
           <div className="w-full mb-4 flex justify-center md:justify-start">
             <img src={logo} alt="Logo" className="h-10 md:h-12" />
           </div>
+
           <div className="w-full max-w-2xl p-5 rounded-xl shadow-none md:shadow-md border-none md:border border-gray-100 bg-white space-y-6">
+            
+            {/* Header */}
             <h1 className="text-2xl sm:text-3xl text-center font-bold text-gray-900">
               Welcome Back
             </h1>
@@ -97,20 +95,22 @@ export default function Login() {
               Sign in to continue sharing expenses.
             </p>
 
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-3 text-center">
-                {error}
+            {/* Error Display */}
+            {submitError && (
+              <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg text-center">
+                {submitError}
               </div>
             )}
 
+            {/* Social Login */}
             <div className="grid grid-cols-1 gap-2">
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 type="button"
-                onClick={() => handleSocialLogin('google')}
+                onClick={() => alert('Google login coming soon!')}
                 disabled={isLoading}
-                className="flex items-center justify-center gap-3 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center justify-center gap-3 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 <span className="text-gray-700 text-sm">Sign in with Google</span>
               </motion.button>
@@ -119,9 +119,9 @@ export default function Login() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 type="button"
-                onClick={() => handleSocialLogin('apple')}
+                onClick={() => alert('Apple login coming soon!')}
                 disabled={isLoading}
-                className="flex items-center justify-center gap-3 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center justify-center gap-3 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 <span className="text-gray-700 text-sm">Sign in with Apple</span>
               </motion.button>
@@ -133,7 +133,10 @@ export default function Login() {
               <div className="flex-grow border-t border-gray-300" />
             </div>
 
+            {/* Login Form */}
             <form onSubmit={handleLogin} className="space-y-3">
+              
+              {/* Email */}
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-1 block">
                   Email Address *
@@ -143,8 +146,8 @@ export default function Login() {
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
-                    clearError();
-                    setFieldErrors((f) => ({ ...f, email: '' }));
+                    setFieldErrors(prev => ({ ...prev, email: '' }));
+                    setSubmitError('');
                   }}
                   placeholder="Enter your email"
                   className={inputClass(fieldErrors.email)}
@@ -155,6 +158,7 @@ export default function Login() {
                 )}
               </div>
 
+              {/* Password */}
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-1 block">
                   Password *
@@ -165,8 +169,8 @@ export default function Login() {
                     value={password}
                     onChange={(e) => {
                       setPassword(e.target.value);
-                      clearError();
-                      setFieldErrors((f) => ({ ...f, password: '' }));
+                      setFieldErrors(prev => ({ ...prev, password: '' }));
+                      setSubmitError('');
                     }}
                     placeholder="Enter your password"
                     className={`${inputClass(fieldErrors.password)} pr-10`}
@@ -185,6 +189,7 @@ export default function Login() {
                 )}
               </div>
 
+              {/* Remember Me & Forgot Password */}
               <div className="flex justify-between items-center">
                 <label className="flex gap-2 text-sm text-gray-600 cursor-pointer">
                   <input
@@ -203,6 +208,7 @@ export default function Login() {
                 </Link>
               </div>
 
+              {/* Submit Button */}
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -222,6 +228,7 @@ export default function Login() {
                 )}
               </motion.button>
 
+              {/* Sign Up Link */}
               <p className="text-center text-sm text-gray-600 mt-3">
                 Don't have an account?{' '}
                 <Link

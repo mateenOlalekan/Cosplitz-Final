@@ -1,7 +1,8 @@
+// src/App.jsx
 import "./App.css";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Suspense, lazy } from "react";
-import { useAuthStore } from "./store/authStore";
+import { useUser } from "./services/queries/auth";
 import AuthGuard from "./components/Layout/AuthGuard";
 
 /* ---------- lazy pages ---------- */
@@ -33,32 +34,37 @@ const Verification = lazy(() => import("./pages/Dashboard/Settings/Verification"
 const Support = lazy(() => import("./pages/Dashboard/Settings/Support"));
 const ResetPassword = lazy(() => import("./pages/Dashboard/Settings/ResetPassword"));
 
-/* ---------- 404 ---------- */
-const NotFound = lazy(() => import("./pages/NotFound"));
-
-/* Splitz Pages */
+/* ---------- splitz ---------- */
 const CreateSplitz = lazy(() => import("./pages/Dashboard/Splits/CreateSplitz"));
 const MySplitz = lazy(() => import("./pages/Dashboard/Splits/MySplitz"));
 
+/* ---------- 404 ---------- */
+const NotFound = lazy(() => import("./pages/NotFound"));
 
+/* ---------- Public Only Guard ---------- */
 function PublicOnly({ children }) {
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated());
+  const { data: user, isLoading } = useUser();
   const location = useLocation();
-  return isAuthenticated ? <Navigate to="/dashboard" replace state={{ from: location }} /> : children;
+  if (isLoading) return null;
+  if (user) {
+    return <Navigate to="/dashboard" replace state={{ from: location }} />;
+  }
+  return children;
 }
 
 export default function App() {
   return (
     <Suspense fallback={<LoadingScreen />}>
       <Routes>
+        {/* PUBLIC */}
         <Route path="/" element={<Home />} />
-        <Route path="/login" element={<PublicOnly><Login /></PublicOnly>} />
-        <Route path="/register" element={<PublicOnly><Register /></PublicOnly>} />
+        <Route path="/login" element={<PublicOnly><Login /></PublicOnly>}/>
+        <Route path="/register"  element={<PublicOnly><Register /></PublicOnly>}/>
         <Route path="/forgot-password" element={<ForgetPassword />} />
-        <Route path="/Pre-onboard" element={<PreOnboard/>} />
+        <Route path="/pre-onboard" element={<PreOnboard />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/password-reset-success" element={<PasswordResetSuccess />} />
-        {/* PROTECTED ROUTES */}
+        {/* PROTECTED */}
         <Route element={<AuthGuard />}>
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<MainOverview />} />
@@ -71,6 +77,7 @@ export default function App() {
             <Route path="post-onboarding" element={<PostOnboard />} />
             <Route path="mysplitz" element={<MySplitz />} />
             <Route path="create-splitz" element={<CreateSplitz />} />
+            {/* SETTINGS NESTED */}
             <Route path="settings" element={<DashboardSettingLayout />}>
               <Route index element={<MyProfile />} />
               <Route path="profile" element={<MyProfile />} />

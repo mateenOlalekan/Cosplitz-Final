@@ -1,11 +1,13 @@
+// src/pages/Register/index.jsx
+
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import loginlogo from "../../../assets/login.jpg";
-import logo from "../../../assets/logo.svg";
+import { useRegistrationFlow, useTempRegister, useUser } from '../../../services/queries/auth';
+import loginlogo from '../../../assets/login.jpg';
+import logo from '../../../assets/logo.svg';
 import RegistrationForm from './RegistrationForm';
 import EmailVerificationStep from './EmailVerificationStep';
 import Successful from './Successful';
-import useAuthStore from '../../../store/authStore';
 
 const steps = [
   { id: 1, label: 'Account', description: 'Create your account' },
@@ -15,75 +17,84 @@ const steps = [
 
 export default function Register() {
   const navigate = useNavigate();
-  const {
-    register,
-    verifyOTP,
-    resendOTP,
-    tempRegister,
-    isLoading,
-    error,
-    clearError,
-    isVerified,
-    user,
-  } = useAuthStore();
-
   const [currentStep, setCurrentStep] = useState(1);
   const [verificationError, setVerificationError] = useState('');
 
-  // Step transition based on store state
-  useEffect(() => {
-    clearError();
-    setVerificationError('');
-  }, [currentStep]);
+  // TanStack Query hooks
+  const { data: tempRegister } = useTempRegister();
+  const { data: user } = useUser();
+  const { executeFlow, verifyOTP, resendOTP, isVerifying } = useRegistrationFlow();
 
-  // Redirect if user already logged in
+  // Redirect if already authenticated
   useEffect(() => {
-    if (user) navigate('/dashboard/post-onboard', { replace: true });
+    if (user) navigate('/dashboard', { replace: true });
   }, [user, navigate]);
 
-  // Move to success step if OTP verified
+  // Resume at OTP step if temp registration exists
   useEffect(() => {
-    if (isVerified) {
-      setCurrentStep(3);
-      setTimeout(() => navigate('/dashboard/post-onboard'), 1500);
+    if (tempRegister && currentStep === 1) {
+      setCurrentStep(2);
     }
-  }, [isVerified, navigate]);
+  }, [tempRegister]);
 
   const handleRegister = async (formData) => {
-    clearError();
+    setVerificationError('');
+    
     const payload = {
-      email: formData.email,
+      first_name: formData.firstName.trim(),
+      last_name: formData.lastName.trim(),
+      email: formData.email.toLowerCase().trim(),
       password: formData.password,
-      first_name: formData.firstName,
-      last_name: formData.lastName,
-      nationality: formData.nationality,
+      nationality: formData.nationality.trim(),
     };
-    const res = await register(payload);
-    if (res.success) setCurrentStep(2);
-    return res;
+
+    try {
+      // Execute: Register → Auto-login → Get OTP
+      await executeFlow(payload);
+      setCurrentStep(2); // Move to verification
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   };
 
   const handleVerifyOTP = async (otp) => {
     setVerificationError('');
-    const res = await verifyOTP({ otp });
-    if (!res.success) setVerificationError(res.message || 'OTP verification failed');
-    return res;
+    
+    try {
+      await verifyOTP({ 
+        email: tempRegister?.email, 
+        otp 
+      });
+      setCurrentStep(3); // Success
+      return { success: true };
+    } catch (error) {
+      setVerificationError(error.message || 'Invalid OTP code');
+      return { success: false, error: error.message };
+    }
   };
 
-  const handleResendOTP = async () => resendOTP();
-
-  const handleSocialRegister = () => alert('Social signup coming soon');
+  const handleResendOTP = async () => {
+    try {
+      await resendOTP(tempRegister?.userId);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  };
 
   const handleBackToRegistration = () => {
-    setCurrentStep(1);
-    clearError();
-    setVerificationError('');
+    localStorage.removeItem('tempRegister');
+    window.location.reload(); // Clear query cache
   };
+
+  const isLoading = isVerifying;
 
   return (
     <div className="flex bg-[#F7F5F9] w-full h-screen justify-center overflow-hidden md:px-6 md:py-4">
       <div className="flex max-w-screen-2xl w-full min-h-full rounded-xl overflow-hidden">
-
+        
+        {/* Left Panel */}
         <div className="hidden lg:flex w-1/2 bg-[#F8EACD] rounded-xl p-6 items-center justify-center">
           <div className="w-full flex flex-col items-center">
             <img src={loginlogo} alt="Register" className="rounded-lg w-full h-auto max-h-[400px] object-contain" />
@@ -98,13 +109,14 @@ export default function Register() {
           </div>
         </div>
 
+        {/* Right Panel */}
         <div className="flex flex-1 flex-col items-center p-3 sm:p-5 overflow-y-auto">
           <div className="w-full mb-4 flex justify-center md:justify-start">
             <img src={logo} alt="Logo" className="h-10 md:h-12" />
           </div>
 
           <div className="w-full max-w-2xl p-5 rounded-xl shadow-none md:shadow-md bg-white">
-
+            
             {/* Stepper */}
             <div className="w-full flex flex-col items-center py-4 mb-4">
               <div className="flex items-center gap-2 justify-center mb-2">
@@ -112,7 +124,9 @@ export default function Register() {
                   <div key={s.id} className="flex items-center">
                     <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 text-xs font-semibold ${
                       currentStep >= s.id ? 'bg-green-600 border-green-600 text-white' : 'bg-white border-gray-300 text-gray-400'
-                    }`}>{s.id}</div>
+                    }`}>
+                      {s.id}
+                    </div>
                     {i < steps.length - 1 && (
                       <div className={`w-16 md:w-24 border-t-2 mx-2 ${
                         currentStep > s.id ? 'border-green-600' : 'border-gray-300'
@@ -121,23 +135,23 @@ export default function Register() {
                   </div>
                 ))}
               </div>
-              <p className="text-sm text-gray-600">{steps.find(s => s.id === currentStep)?.description}</p>
+              <p className="text-sm text-gray-600">
+                {steps.find(s => s.id === currentStep)?.description}
+              </p>
             </div>
 
-            {/* Error */}
-            {(error || verificationError) && (
+            {/* Error Display */}
+            {verificationError && (
               <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-4 text-center">
-                {error || verificationError}
+                {verificationError}
               </div>
             )}
 
-            {/* Step Components */}
+            {/* Step Content */}
             {currentStep === 1 && (
               <RegistrationForm
                 onSubmit={handleRegister}
-                onSocialRegister={handleSocialRegister}
-                loading={isLoading}
-                error={error}
+                loading={false} // Flow handles its own loading
               />
             )}
 

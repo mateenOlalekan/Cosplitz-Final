@@ -1,28 +1,31 @@
 // src/components/Dashboard/DashboardHeader.jsx
-
 import { Bell, Settings, MapPin, ChevronDown, Menu } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../../assets/logo.svg";
-import useAuthStore from "../../store/authStore";
+import { useUser, useLogout } from "../../services/queries/auth";
 
 export default function DashboardHeader({ onMenuClick }) {
-  const user = useAuthStore((s) => s.user);
-  const logout = useAuthStore((s) => s.logout);
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated());
+  const { data: user } = useUser();
+  const logout = useLogout();
   const navigate = useNavigate();
 
-const handleLogout = async () => {
-  await logout();
-  navigate("/login", { replace: true });
-};
+  const handleLogout = async () => {
+    try {
+      await logout.mutateAsync();
+      navigate("/login", { replace: true });
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
 
-
-  if (!isAuthenticated()) {
+  // Don't render if no user (AuthGuard should handle this, but safety check)
+  if (!user) {
     return null;
   }
 
   return (
     <header className="bg-white border-b border-gray-200 z-30 px-4">
+      {/* Mobile Header */}
       <div
         className="flex items-center justify-between block md:hidden"
         role="banner"
@@ -42,8 +45,8 @@ const handleLogout = async () => {
         </nav>
       </div>
 
+      {/* Desktop Header */}
       <div className="flex items-center justify-between py-3">
-
         <div className="flex items-center gap-1 text-gray-600">
           <MapPin size={16} />
           <span className="text-sm">
@@ -53,11 +56,10 @@ const handleLogout = async () => {
         </div>
 
         <div className="flex items-center gap-4">
-
           <div className="hidden md:block text-sm text-gray-600">
             Welcome,{" "}
             <span className="font-medium">
-              {user?.first_name || "User"}
+              {user?.first_name || user?.firstName || "User"}
             </span>
           </div>
 
@@ -80,15 +82,13 @@ const handleLogout = async () => {
 
           <button
             onClick={handleLogout}
-            className="px-3 py-1.5 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+            disabled={logout.isPending}
+            className="px-3 py-1.5 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
           >
-            Logout
+            {logout.isPending ? "Logging out..." : "Logout"}
           </button>
-
         </div>
-
       </div>
-
     </header>
   );
 }
