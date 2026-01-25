@@ -137,7 +137,7 @@ export default function DashboardSidebar({ isOpen, onClose }) {
         <button
           onClick={handleLogout}
           disabled={logout.isPending}
-          className="mt-3 w-full flex hidden items-center gap-3 p-3 rounded-lg text-red-600 hover:bg-red-50 transition disabled:opacity-50"
+          className="mt-3 w-full flex items-center gap-3 p-3 rounded-lg text-red-600 hover:bg-red-50 transition disabled:opacity-50"
         >
           <LogOut size={18} />
           <span className="text-sm font-semibold">
