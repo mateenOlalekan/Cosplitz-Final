@@ -59,7 +59,7 @@ export default function DashboardHeader({ onMenuClick }) {
           <div className="hidden md:block text-sm text-gray-600">
             Welcome,{" "}
             <span className="font-medium">
-              {user?.first_name || user?.firstName || "User"}
+              {user?.first_name || user?.email}
             </span>
           </div>
 

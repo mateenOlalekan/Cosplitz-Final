@@ -109,8 +109,7 @@ export const useLogout = () => {
 // ============ COMPLETE REGISTRATION FLOW ============
 
 /**
- * Multi-step registration: Register → Auto-login → Get OTP
- * Returns function to execute flow and verification mutation
+ * Multi-step registration: Register → Auto-login → Get OTP * Returns function to execute flow and verification mutation
  */
 export const useRegistrationFlow = () => {
   const queryClient = useQueryClient();
