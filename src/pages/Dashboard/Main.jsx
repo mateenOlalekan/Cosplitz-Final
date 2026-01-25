@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Users2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Overlay1 from "../../assets/Overlay.svg";
@@ -135,6 +136,5 @@ export default function Main(){
     <div className="p-4">
       <ActiveSplits activeTab={activeTab} onTabChange={setActiveTab} />
     </div>
-    
     </>
 )}
