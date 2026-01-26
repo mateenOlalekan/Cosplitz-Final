@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import DashboardSidebar from "./DashboardSidebar";
 import LogoutModal from "../Settings/LogoutModal";
-import DeleteAccountModal from "../Settings/DeleteAccountModal";
+import DeleteAccountModal from "../Settings/DeleteAccount";
 import { useLogout } from "../../services/queries/auth";
 
 export default function DashboardSettingLayout() {

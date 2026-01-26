@@ -8,7 +8,7 @@ import {
   updateSplitEndpoint,
   deleteSplitEndpoint,
   joinSplitEndpoint,
-} from '../endpoints/splits';
+} from '../endpoints/split';
 
 export const splitsKeys = {
   all: ['splits'],

@@ -1,8 +1,8 @@
 // src/pages/dashboard/SplitzSuccessful.jsx
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
-import { useSplit } from '../../services/queries/splits';
-import CheckLast from '../../assets/CheckLast.svg';
+import { useSplit } from '../../../services/queries/split';
+import CheckLast from '../../../assets/CheckLast.svg';
 
 function SplitzSuccessful() {
   const navigate = useNavigate();

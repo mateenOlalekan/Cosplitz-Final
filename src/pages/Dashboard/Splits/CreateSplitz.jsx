@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ChevronLeft, Camera, Calendar, AlertCircle, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useCreateSplit } from '../../../services/queries/splits';
+import { useCreateSplit } from '../../../services/queries/split';
 import { SplitFormSchema } from '../../../schemas/splitSchemas';
 
 const CreateSplitzPage = () => {

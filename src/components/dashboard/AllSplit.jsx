@@ -1,7 +1,7 @@
 // src/components/Splits/ActiveSplits.jsx
 import { useMemo } from "react";
 import { Heart, Share2, Users, Clock, MapPin } from "lucide-react";
-import { useSplits } from "../../services/queries/splits";
+import { useSplits } from "../../services/queries/split";
 import { useNavigate } from "react-router-dom";
 import placeholderImage from "../../assets/onboard3.jpg";
 

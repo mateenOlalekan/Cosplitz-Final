@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { ChevronLeft, Check, Copy, Loader2 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useJoinSplit } from '../../services/queries/splits';
+import { useJoinSplit } from '../../services/queries/split';
 
 const PaymentPage = () => {
   const navigate = useNavigate();

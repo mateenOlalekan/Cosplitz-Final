@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { ChevronDown, ListFilter, Search, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useMySplits, useDeleteSplit } from "../../../services/queries/splits";
+import { useMySplits, useDeleteSplit } from "../../../services/queries/split";
 import screen from "../../../assets/screen.svg";
 
 function MySplitz() {

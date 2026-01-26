@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useSplit } from "../../../services/queries/splits";
+import { useSplit } from "../../../services/queries/split";
 
 function SplitzDetail() {
   const { id } = useParams();

@@ -12,7 +12,7 @@ const handleApiError = (response, data) => {
   return data;
 };
 
-// Update the makeRequest function:
+
 async function makeRequest(url, options = {}) {
   const headers = {
     'Content-Type': 'application/json',
@@ -32,6 +32,8 @@ async function makeRequest(url, options = {}) {
     ...options,
     headers,
   });
+
+
 
   const data = await response.json().catch(() => null);
   
@@ -72,37 +74,7 @@ const clearAuth = () => {
 
 
 
-async function makeRequest(url, options = {}) {
-  const headers = {
-    'Content-Type': 'application/json',
-    Accept: 'application/json',
-    ...options.headers,
-  };
 
-  // Add auth token if needed
-  if (options.auth) {
-    const token = getToken();
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
-  }
-
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
-
-  const data = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    const error = new Error(data?.message || data?.detail || data?.error || `Request failed (${response.status})`);
-    error.status = response.status;
-    error.data = data;
-    throw error;
-  }
-
-  return data;
-}
 
 // ============ ENDPOINTS ============
 
