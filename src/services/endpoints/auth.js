@@ -3,6 +3,10 @@ const API_BASE_URL = 'https://cosplitz-backend.onrender.com/api';
 
 const handleApiError = (response, data) => {
   if (!response.ok) {
+    if (response.status === 401) {
+      clearAuth();
+    }
+    
     const errorMessage = data?.message || data?.detail || data?.error || `Request failed (${response.status})`;
     const error = new Error(errorMessage);
     error.status = response.status;
@@ -20,26 +24,24 @@ async function makeRequest(url, options = {}) {
     ...options.headers,
   };
 
-  // Add auth token if needed
   if (options.auth) {
     const token = getToken();
+    console.log('Token for request:', token ? 'Present' : 'MISSING'); // Debug
     if (token) {
       headers.Authorization = `Bearer ${token}`;
     }
   }
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
-
-
+  const response = await fetch(url, { ...options, headers });
+  
+  if (!response.ok && response.status === 401) {
+    console.error('401 Error - URL:', url, 'Token present:', !!getToken());
+  }
 
   const data = await response.json().catch(() => null);
-  
-  // Handle errors
   return handleApiError(response, data);
 }
+
 // ============ TOKEN HELPERS ============
 const getToken = () => {
   if (typeof window === 'undefined') return null;

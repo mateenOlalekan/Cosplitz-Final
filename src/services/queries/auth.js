@@ -10,7 +10,6 @@ import {
   logoutEndpoint,
 } from "../endpoints/auth";
 
-// ============ QUERY KEYS ============
 
 export const authKeys = {
   all: ['auth'],
@@ -18,7 +17,6 @@ export const authKeys = {
   tempRegister: () => [...authKeys.all, 'tempRegister'],
 };
 
-// ============ STORAGE HELPERS ============
 
 const saveTempRegister = (data) => {
   if (typeof window === 'undefined') return;
@@ -37,31 +35,24 @@ const getToken = () => {
   return localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
 };
 
-// ============ QUERIES ============
 
-/**
- * Get current user - ONLY runs if token exists
- */
+
 export const useUser = () => {
   return useQuery({
-    queryKey: authKeys.user(),
-    queryFn: async () => {
-      const response = await getUserInfoEndpoint();
-      return response; // API returns user object directly
-    },
-    enabled: !!getToken(),
-    staleTime: 5 * 60 * 1000,
+    queryKey: userKeys.detail(),
+    queryFn: getUserInfoEndpoint,
     retry: (failureCount, error) => {
+      // Don't retry on 401 Unauthorized
       if (error?.status === 401) return false;
-      return failureCount < 2;
+      return failureCount < 3;
     },
-    throwOnError: (error) => error?.status !== 401,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    staleTime: 5 * 60 * 1000, 
+    refetchOnWindowFocus: false, 
   });
 };
 
-/**
- * Get temp registration data
- */
+/* Get temp registration data */
 export const useTempRegister = () => {
   return useQuery({
     queryKey: authKeys.tempRegister(),
@@ -73,24 +64,23 @@ export const useTempRegister = () => {
 
 // ============ MUTATIONS ============
 
-/**
- * Login mutation
- */
+/* Login mutation */
 export const useLogin = () => {
   const queryClient = useQueryClient();
-
+  
   return useMutation({
     mutationFn: ({ credentials, remember }) => 
       loginEndpoint(credentials, remember),
     onSuccess: (data) => {
-      queryClient.setQueryData(authKeys.user(), data.user);
+      // Immediately set user data to prevent 401 race condition
+      queryClient.setQueryData(userKeys.detail(), data.user);
+      // Then refetch to confirm
+      queryClient.invalidateQueries({ queryKey: userKeys.detail() });
     },
   });
 };
 
-/**
- * Verify OTP mutation
- */
+/* Verify OTP mutation  */
 export const useVerifyOTP = () => {
   const queryClient = useQueryClient();
 
