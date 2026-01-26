@@ -1,9 +1,9 @@
 // src/components/Auth/AuthGuard.jsx
 import { Navigate, Outlet, useLocation } from "react-router-dom";
-import { useUser } from "../../services/queries/auth";
+import { useAuth } from "../../hooks/useAuth"; // Use new hook
 
 export default function AuthGuard() {
-  const { data: user, isLoading } = useUser();
+  const { isAuthenticated, isLoading } = useAuth(); // Use centralized auth hook
   const location = useLocation();
 
   // Show loading while checking auth status
@@ -16,7 +16,7 @@ export default function AuthGuard() {
   }
 
   // Redirect to login if not authenticated
-  if (!user) {
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 

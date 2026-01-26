@@ -24,6 +24,11 @@ export const useSplits = () => {
     queryKey: splitsKeys.lists(),
     queryFn: getSplitsEndpoint,
     staleTime: 30 * 1000,
+    // Don't retry on 401 - let auth handle it
+    retry: (failureCount, error) => {
+      if (error?.status === 401) return false;
+      return failureCount < 2;
+    },
   });
 };
 
@@ -32,6 +37,10 @@ export const useMySplits = () => {
     queryKey: splitsKeys.my(),
     queryFn: getMySplitsEndpoint,
     staleTime: 10 * 1000,
+    retry: (failureCount, error) => {
+      if (error?.status === 401) return false;
+      return failureCount < 2;
+    },
   });
 };
 
@@ -41,6 +50,10 @@ export const useSplit = (id) => {
     queryFn: () => getSplitByIdEndpoint(id),
     enabled: !!id,
     staleTime: 10 * 1000,
+    retry: (failureCount, error) => {
+      if (error?.status === 401) return false;
+      return failureCount < 2;
+    },
   });
 };
 
@@ -54,6 +67,12 @@ export const useCreateSplit = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: splitsKeys.lists() });
       queryClient.invalidateQueries({ queryKey: splitsKeys.my() });
+    },
+    onError: (error) => {
+      // Handle 401 errors gracefully
+      if (error?.status === 401) {
+        console.error('Authentication required');
+      }
     },
   });
 };
@@ -89,6 +108,7 @@ export const useJoinSplit = () => {
     mutationFn: ({ splitId, paymentData }) => joinSplitEndpoint(splitId, paymentData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: splitsKeys.all });
+      queryClient.invalidateQueries({ queryKey: splitsKeys.my() });
     },
   });
 };

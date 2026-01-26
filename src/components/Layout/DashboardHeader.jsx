@@ -2,22 +2,22 @@
 import { Bell, Settings, MapPin, ChevronDown, Menu } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../../assets/logo.svg";
-import { useUser, useLogout } from "../../services/queries/auth";
+import { useAuth } from "../../hooks/useAuth"; // Use new hook
 
 export default function DashboardHeader({ onMenuClick }) {
-  const { data: user } = useUser();
-  const logout = useLogout();
+  const { user, logout, isLoading } = useAuth(); // Use centralized auth hook
   const navigate = useNavigate();
 
   const handleLogout = async () => {
     try {
-      await logout.mutateAsync();
-      navigate("/login", { replace: true });
+      await logout();
+      // Navigation handled by useAuth
     } catch (error) {
       console.error("Logout failed:", error);
     }
   };
 
+  // Don't render if no user data (handled by AuthGuard, but extra safety)
   if (!user) return null;
 
   return (
@@ -68,10 +68,10 @@ export default function DashboardHeader({ onMenuClick }) {
 
           <button
             onClick={handleLogout}
-            disabled={logout.isPending}
+            disabled={isLoading}
             className="px-3 py-1.5 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
           >
-            {logout.isPending ? "Logging out..." : "Logout"}
+            {isLoading ? "Logging out..." : "Logout"}
           </button>
         </div>
       </div>

@@ -9,13 +9,20 @@ const getToken = () => {
 
 const makeRequest = async (url, options = {}) => {
   const token = getToken();
+  
+  // Don't make request if no token (prevents 401)
+  if (!token) {
+    const error = new Error('No authentication token available');
+    error.status = 401;
+    throw error;
+  }
+
   const headers = {
     Accept: 'application/json',
+    Authorization: `Bearer ${token}`,
     ...options.headers,
   };
 
-  if (token) headers.Authorization = `Bearer ${token}`;
-  
   if (!(options.body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
   }
@@ -27,6 +34,13 @@ const makeRequest = async (url, options = {}) => {
     const error = new Error(data?.message || data?.detail || data?.error || `Request failed (${response.status})`);
     error.status = response.status;
     error.data = data;
+    
+    // Clear auth on 401 to trigger redirect
+    if (response.status === 401) {
+      localStorage.removeItem('authToken');
+      sessionStorage.removeItem('authToken');
+    }
+    
     throw error;
   }
 
@@ -52,19 +66,25 @@ export const getMySplitsEndpoint = async () => {
 
 export const createSplitEndpoint = async (formData) => {
   const token = getToken();
+  
+  if (!token) {
+    throw new Error('Authentication required');
+  }
+
   const response = await fetch(`${API_BASE_URL}/splits/`, {
     method: 'POST',
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    body: formData, // Keep as FormData, don't stringify
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData, // Keep as FormData
   });
 
   const data = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new Error(data?.message || data?.detail || 'Failed to create split');
+    const error = new Error(data?.message || data?.detail || 'Failed to create split');
+    error.status = response.status;
+    throw error;
   }
   return data?.data || data;
 };
-
 
 export const updateSplitEndpoint = async (id, splitData) => {
   const data = await makeRequest(`${API_BASE_URL}/splits/${id}/`, {

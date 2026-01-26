@@ -13,8 +13,8 @@ export default function Login() {
   const location = useLocation();
   const from = location.state?.from?.pathname || '/dashboard';
 
-  // TanStack Query hooks
-  const { data: user } = useUser();
+  // TanStack Query hooks - updated to check loading state
+  const { data: user, isLoading: isUserLoading } = useUser();
   const login = useLogin();
 
   // Form state
@@ -25,12 +25,12 @@ export default function Login() {
   const [fieldErrors, setFieldErrors] = useState({ email: '', password: '' });
   const [submitError, setSubmitError] = useState('');
 
-  // Redirect if already logged in
+  // Redirect if already logged in - only when not loading and user exists
   useEffect(() => {
-    if (user) {
+    if (user && !isUserLoading) {
       navigate(from, { replace: true });
     }
-  }, [user, navigate, from]);
+  }, [user, isUserLoading, navigate, from]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -59,7 +59,12 @@ export default function Login() {
       });
       // Success - user query will update and trigger redirect
     } catch (error) {
-      setSubmitError(error.message || 'Login failed. Please try again.');
+      // Handle specific error types for better UX
+      if (error?.status === 401) {
+        setSubmitError('Invalid email or password');
+      } else {
+        setSubmitError(error?.message || 'Login failed. Please try again.');
+      }
     }
   };
 
@@ -68,7 +73,17 @@ export default function Login() {
       hasError ? 'border-red-300' : 'border-gray-300 focus:border-green-500'
     }`;
 
-  const isLoading = login.isPending;
+  // Combined loading state
+  const isLoading = login.isPending || isUserLoading;
+
+  // Show loading while checking auth status
+  if (isUserLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-[#F7F5F9]">
+        <div className="w-8 h-8 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex bg-[#F7F5F9] w-full h-screen justify-center overflow-hidden md:px-6 md:py-4">
@@ -218,7 +233,7 @@ export default function Login() {
                   isLoading ? 'opacity-60 cursor-not-allowed' : 'hover:bg-green-700'
                 }`}
               >
-                {isLoading ? (
+                {login.isPending ? (
                   <span className="flex items-center justify-center gap-2">
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     Signing In...

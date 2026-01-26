@@ -19,17 +19,17 @@ export default function Register() {
   const [currentStep, setCurrentStep] = useState(1);
   const [verificationError, setVerificationError] = useState('');
 
-  // TanStack Query hooks
+  // TanStack Query hooks - updated to handle loading states properly
   const { data: tempRegister } = useTempRegister();
-  const { data: user, isLoading: isUserLoading } = useUser();
+  const { data: user, isLoading: isUserLoading, isError: isUserError } = useUser();
   const { executeFlow, verifyOTP, resendOTP, isVerifying } = useRegistrationFlow();
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated - only when user data is actually available
   useEffect(() => {
-    if (user && !isUserLoading) {
+    if (user && !isUserLoading && !isUserError) {
       navigate('/dashboard', { replace: true });
     }
-  }, [user, isUserLoading, navigate]);
+  }, [user, isUserLoading, isUserError, navigate]);
 
   // Resume at OTP step if temp registration exists
   useEffect(() => {
@@ -38,11 +38,9 @@ export default function Register() {
     }
   }, [tempRegister, currentStep]);
 
-// In handleRegister function, update payload:
   const handleRegister = async (formData) => {
     setVerificationError('');
     
-    // Match API expected field names
     const payload = {
       first_name: formData.firstName.trim(),
       last_name: formData.lastName.trim(),
@@ -56,33 +54,44 @@ export default function Register() {
       setCurrentStep(2);
       return { success: true };
     } catch (error) {
-      setVerificationError(error.message || 'Registration failed');
-      return { success: false, error: error.message };
+      const message = error?.message || 'Registration failed';
+      setVerificationError(message);
+      return { success: false, error: message };
     }
   };
 
   const handleVerifyOTP = async (otp) => {
     setVerificationError('');
     
+    if (!tempRegister?.email) {
+      setVerificationError('Session expired. Please register again.');
+      return { success: false, error: 'Session expired' };
+    }
+    
     try {
       await verifyOTP({ 
-        email: tempRegister?.email, 
+        email: tempRegister.email, 
         otp 
       });
       setCurrentStep(3);
       return { success: true };
     } catch (error) {
-      setVerificationError(error.message || 'Invalid verification code');
-      return { success: false, error: error.message };
+      const message = error?.message || 'Invalid verification code';
+      setVerificationError(message);
+      return { success: false, error: message };
     }
   };
 
   const handleResendOTP = async () => {
+    if (!tempRegister?.userId) {
+      return { success: false, error: 'Session expired' };
+    }
+    
     try {
-      await resendOTP(tempRegister?.userId);
+      await resendOTP(tempRegister.userId);
       return { success: true };
     } catch (error) {
-      return { success: false, error: error.message };
+      return { success: false, error: error?.message || 'Failed to resend code' };
     }
   };
 
@@ -91,7 +100,14 @@ export default function Register() {
     window.location.reload();
   };
 
-  const isLoading = isVerifying;
+  // Show loading state while checking auth
+  if (isUserLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-[#F7F5F9]">
+        <div className="w-8 h-8 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex bg-[#F7F5F9] w-full h-screen justify-center overflow-hidden md:px-6 md:py-4">
@@ -164,7 +180,7 @@ export default function Register() {
                 onVerify={handleVerifyOTP}
                 onResend={handleResendOTP}
                 onBack={handleBackToRegistration}
-                isLoading={isLoading}
+                isLoading={isVerifying}
               />
             )}
 

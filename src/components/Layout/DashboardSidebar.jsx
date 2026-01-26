@@ -12,12 +12,11 @@ import {
   List,
 } from "lucide-react";
 import logo from "../../assets/logo.svg";
-import { useUser, useLogout } from "../../services/queries/auth";
+import { useAuth } from "../../hooks/useAuth"; // Use the new useAuth hook
 
 export default function DashboardSidebar({ isOpen, onClose }) {
   const navigate = useNavigate();
-  const { data: user } = useUser();
-  const logout = useLogout();
+  const { user, logout, isLoading } = useAuth(); // Use centralized auth hook
 
   const navItems = [
     { icon: Home, label: "Home", to: "/dashboard" },
@@ -32,12 +31,21 @@ export default function DashboardSidebar({ isOpen, onClose }) {
 
   const handleLogout = async () => {
     try {
-      await logout.mutateAsync();
-      navigate("/login");
+      await logout();
+      // Navigation is handled inside useAuth logout
     } catch (error) {
       console.error("Logout failed:", error);
     }
   };
+
+  // Show loading state for user data
+  if (isLoading) {
+    return (
+      <aside className="fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+      </aside>
+    );
+  }
 
   return (
     <aside
@@ -124,7 +132,7 @@ export default function DashboardSidebar({ isOpen, onClose }) {
           />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-gray-900 truncate">
-              {user?.email || user?.first_name || "User"}
+              {user?.first_name || user?.email || "User"}
             </p>
             <p className="text-xs text-gray-500 truncate">View profile & settings</p>
           </div>
@@ -132,12 +140,12 @@ export default function DashboardSidebar({ isOpen, onClose }) {
 
         <button
           onClick={handleLogout}
-          disabled={logout.isPending}
+          disabled={isLoading}
           className="mt-3 w-full flex md:hidden items-center gap-3 p-3 rounded-lg text-red-600 hover:bg-red-50 transition disabled:opacity-50"
         >
           <LogOut size={18} />
           <span className="text-sm font-semibold">
-            {logout.isPending ? "Logging out..." : "Logout"}
+            {isLoading ? "Logging out..." : "Logout"}
           </span>
         </button>
       </div>

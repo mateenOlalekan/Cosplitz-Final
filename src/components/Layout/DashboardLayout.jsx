@@ -3,21 +3,16 @@ import { useState, useEffect, useCallback } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import DashboardSidebar from "./DashboardSidebar";
 import DashboardHeader from "./DashboardHeader";
-import { useUser } from "../../services/queries/auth";
+import { useAuth } from "../../hooks/useAuth"; // Use new hook
 
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   
-  const { data: user, isLoading } = useUser();
+  const { user, isLoading, isAuthenticated } = useAuth(); // Use centralized auth hook
 
   // Hide sidebar + header only on post-onboarding route
   const isPostOnboarding = location.pathname.includes("/dashboard/post-onboarding");
-
-  // Redirect if not authenticated (fallback if AuthGuard fails)
-  if (!isLoading && !user && !isPostOnboarding) {
-    return <Navigate to="/login" replace />;
-  }
 
   // Close sidebar on window resize to desktop
   useEffect(() => {
@@ -43,6 +38,11 @@ export default function DashboardLayout() {
         <div className="w-8 h-8 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
+  }
+
+  // Redirect if not authenticated (fallback if AuthGuard fails)
+  if (!isAuthenticated && !isPostOnboarding) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   return (

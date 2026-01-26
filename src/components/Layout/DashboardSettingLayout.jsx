@@ -4,14 +4,14 @@ import { Outlet } from "react-router-dom";
 import DashboardSidebar from "./DashboardSidebar";
 import LogoutModal from "../Settings/LogoutModal";
 import DeleteAccountModal from "../Settings/DeleteAccount";
-import { useLogout } from "../../services/queries/auth";
+import { useAuth } from "../../hooks/useAuth"; // Use new hook
 
 export default function DashboardSettingLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   
-  const logout = useLogout();
+  const { logout, isLoading } = useAuth(); // Use centralized auth hook
 
   useEffect(() => {
     document.body.style.overflow = (showLogoutModal || showDeleteModal) ? "hidden" : "";
@@ -24,7 +24,8 @@ export default function DashboardSettingLayout() {
 
   const handleLogoutConfirm = async () => {
     try {
-      await logout.mutateAsync();
+      await logout();
+      // Navigation handled by useAuth
     } catch (error) {
       console.error("Logout failed:", error);
     }
@@ -32,7 +33,8 @@ export default function DashboardSettingLayout() {
 
   const handleDeleteConfirm = async () => {
     try {
-      await logout.mutateAsync();
+      // TODO: Implement actual account deletion API call
+      await logout();
     } catch (error) {
       console.error("Delete account failed:", error);
     }
@@ -59,7 +61,7 @@ export default function DashboardSettingLayout() {
         open={showLogoutModal} 
         onClose={() => setShowLogoutModal(false)} 
         onConfirm={handleLogoutConfirm}
-        isLoading={logout.isPending}
+        isLoading={isLoading}
       />
       
       <DeleteAccountModal 
