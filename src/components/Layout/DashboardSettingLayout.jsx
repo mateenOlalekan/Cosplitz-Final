@@ -1,9 +1,9 @@
-// src/components/Settings/DashboardSettingLayout.jsx
+// src/components/Layout/DashboardSettingLayout.jsx
 import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
-import DashboardSidebar from "../../pages/Dashboard/Settings/Sidebar";
+import DashboardSidebar from "./DashboardSidebar";
 import LogoutModal from "../Settings/LogoutModal";
-import DeleteAccountModal from "../Settings/DeleteAccount";
+import DeleteAccountModal from "../Settings/DeleteAccountModal";
 import { useLogout } from "../../services/queries/auth";
 
 export default function DashboardSettingLayout() {
@@ -25,16 +25,13 @@ export default function DashboardSettingLayout() {
   const handleLogoutConfirm = async () => {
     try {
       await logout.mutateAsync();
-      // Navigation handled by AuthGuard or logout mutation
     } catch (error) {
       console.error("Logout failed:", error);
     }
   };
 
   const handleDeleteConfirm = async () => {
-    // TODO: Add delete account API call
     try {
-      // await deleteAccount();
       await logout.mutateAsync();
     } catch (error) {
       console.error("Delete account failed:", error);
@@ -48,22 +45,16 @@ export default function DashboardSettingLayout() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           <div className="max-w-4xl mx-auto">
-            {/* Settings-specific header */}
             <div className="mb-6">
               <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
               <p className="text-gray-600">Manage your account preferences</p>
             </div>
 
-            {/* Nested settings routes */}
-            <Outlet context={{ 
-              setShowLogoutModal, 
-              setShowDeleteModal 
-            }} />
+            <Outlet context={{ setShowLogoutModal, setShowDeleteModal }} />
           </div>
         </main>
       </div>
 
-      {/* Modals */}
       <LogoutModal 
         open={showLogoutModal} 
         onClose={() => setShowLogoutModal(false)} 

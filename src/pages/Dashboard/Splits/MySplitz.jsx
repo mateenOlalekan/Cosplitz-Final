@@ -1,37 +1,41 @@
-// src/pages/dashboard/MySplitz.js
-import { useState, useEffect } from "react";
-import { ChevronDown, Bell, Settings, MapPin, ListFilter, Search } from "lucide-react";
-import { useNavigate, Link } from "react-router-dom";
+// src/pages/dashboard/MySplitz.jsx
+import { useState } from "react";
+import { ChevronDown, ListFilter, Search, Trash2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useMySplits, useDeleteSplit } from "../../../services/queries/splits";
 import screen from "../../../assets/screen.svg";
-import useSplitStore from "../../../store/splitStore";
-import useAuthStore from "../../../store/authStore";
 
 function MySplitz() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { mySplits, fetchMySplits, isLoading } = useSplitStore();
-  const user = useAuthStore(state => state.user);
+  const { data: mySplits = [], isLoading, isFetching } = useMySplits();
+  const deleteSplit = useDeleteSplit();
 
-  const allfiter = ["All", "Active", "Success", "Failed"];
-
-  useEffect(() => {
-    fetchMySplits();
-  }, []);
+  const allFilter = ["All", "Active", "Success", "Failed"];
 
   const filterCounts = {
     All: mySplits.length,
-    Active: mySplits.filter(item => item.status === "Active").length,
-    Success: mySplits.filter(item => item.status === "Success").length,
-    Failed: mySplits.filter(item => item.status === "Failed").length
+    Active: mySplits.filter(item => 
+      (item.status || "active").toLowerCase() === "active"
+    ).length,
+    Success: mySplits.filter(item => 
+      (item.status || "").toLowerCase() === "success"
+    ).length,
+    Failed: mySplits.filter(item => 
+      (item.status || "").toLowerCase() === "failed"
+    ).length
   };
 
   const filteredData = mySplits.filter(item => {
-    const statusMatch = filter === "All" || item.status === filter;
+    const itemStatus = (item.status || "active").toLowerCase();
+    const filterLower = filter.toLowerCase();
+    
+    const statusMatch = filter === "All" || itemStatus === filterLower;
     
     const searchMatch = searchQuery === "" || 
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (item.category && item.category.toLowerCase().includes(searchQuery.toLowerCase()));
     
     return statusMatch && searchMatch;
@@ -45,11 +49,22 @@ function MySplitz() {
     navigate(`/dashboard/splitz-details/${id}`);
   };
 
+  const handleDelete = async (id, e) => {
+    e.stopPropagation();
+    if (!window.confirm('Are you sure you want to delete this split?')) return;
+    
+    try {
+      await deleteSplit.mutateAsync(id);
+    } catch (error) {
+      alert(error.message || 'Failed to delete split');
+    }
+  };
+
   const formatCurrency = (amount) => {
     const numAmount = parseFloat(amount) || 0;
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-NG', {
       style: 'currency',
-      currency: '$',
+      currency: 'NGN',
       minimumFractionDigits: 0
     }).format(numAmount);
   };
@@ -60,14 +75,20 @@ function MySplitz() {
     return Math.min((participants / maxParticipants) * 100, 100);
   };
 
+  // Determine role based on backend response
   const getUserRole = (split) => {
-    return split.creator?.id === user?.id ? 'Creator' : 'Participant';
+    if (split.role) return split.role === 'creator' ? 'Creator' : 'Participant';
+    const currentUserId = localStorage.getItem('userId');
+    return split.user === parseInt(currentUserId) ? 'Creator' : 'Participant';
+  };
+
+  const canDelete = (split) => {
+    return getUserRole(split) === 'Creator';
   };
 
   return (
     <div className="w-full flex flex-col h-fit bg-gray-50">
-
-      {/* Page Title - Reduced padding and font sizes */}
+      {/* Page Title */}
       <div className="flex items-center justify-between px-3 md:px-6 py-1.5 md:py-2">
         <div>
           <h2 className="text-sm md:text-lg font-bold text-gray-800">
@@ -84,7 +105,7 @@ function MySplitz() {
         </button>
       </div>
 
-      {/* Search Section - Compact spacing */}
+      {/* Search Section */}
       <div className="flex items-center justify-end gap-1.5 md:gap-2 px-3 md:px-6 py-1">
         <div className="relative w-full max-w-sm">
           <Search className="absolute left-2.5 md:left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 md:w-4 md:h-4 text-gray-400" />
@@ -102,10 +123,10 @@ function MySplitz() {
         </button>
       </div>
 
-      {/* Filter Tabs - Reduced spacing and padding */}
+      {/* Filter Tabs */}
       <div className="border-b border-gray-200">
         <div className="flex space-x-4 md:space-x-8 px-3 md:px-6 overflow-x-auto">
-          {allfiter.map((item) => (
+          {allFilter.map((item) => (
             <button
               key={item}
               onClick={() => setFilter(item)}
@@ -117,13 +138,16 @@ function MySplitz() {
             >
               <span className="text-xs md:text-base">
                 {item} ({filterCounts[item]})
+                {isFetching && item === filter && (
+                  <span className="ml-1 inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                )}
               </span>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Table Content - Compact layout */}
+      {/* Table Content */}
       <div className="px-0 md:px-6 mt-2 md:mt-4 flex-1">
         {isLoading ? (
           <div className="space-y-2 md:space-y-3 px-3 md:px-0">
@@ -180,9 +204,9 @@ function MySplitz() {
                           <td className="py-2 md:py-3 px-2 md:px-4">
                             <span
                               className={`inline-block px-2 md:px-3 py-0.5 md:py-1 rounded-full text-[10px] md:text-xs font-medium ${
-                                split.status === 'Active'
+                                (split.status || 'active').toLowerCase() === 'active'
                                   ? 'bg-green-100 text-green-800'
-                                  : split.status === 'Success'
+                                  : (split.status || '').toLowerCase() === 'success'
                                   ? 'bg-blue-100 text-blue-800'
                                   : 'bg-red-100 text-red-800'
                               }`}
@@ -219,12 +243,24 @@ function MySplitz() {
                           </td>
 
                           <td className="py-2 md:py-3 px-2 md:px-4">
-                            <button
-                              onClick={() => handleViewDetails(split.id)}
-                              className="px-2.5 md:px-4 py-1 md:py-2 text-xs md:text-sm font-medium text-green-700 hover:text-green-800 hover:bg-green-50 rounded-md transition-colors whitespace-nowrap"
-                            >
-                              View Details
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleViewDetails(split.id)}
+                                className="px-2.5 md:px-4 py-1 md:py-2 text-xs md:text-sm font-medium text-green-700 hover:text-green-800 hover:bg-green-50 rounded-md transition-colors whitespace-nowrap"
+                              >
+                                View Details
+                              </button>
+                              {canDelete(split) && (
+                                <button
+                                  onClick={(e) => handleDelete(split.id, e)}
+                                  disabled={deleteSplit.isPending}
+                                  className="p-1.5 md:p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
+                                  title="Delete Split"
+                                >
+                                  <Trash2 size={16} className="md:w-[18px] md:h-[18px]" />
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );

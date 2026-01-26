@@ -1,26 +1,29 @@
+// src/pages/dashboard/CreateSplitz.jsx
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ChevronLeft, Camera, Calendar, AlertCircle, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
-import useSplitStore from '../../../store/splitStore';
-import useAuthStore from '../../../store/authStore';
+import { useCreateSplit } from '../../../services/queries/splits';
 import { SplitFormSchema } from '../../../schemas/splitSchemas';
 
 const CreateSplitzPage = () => {
   const navigate = useNavigate();
-  const createSplit = useSplitStore((state) => state.createSplit);
-  const isLoading = useSplitStore((state) => state.isLoading);
-
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const createSplit = useCreateSplit();
 
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
   const [includeMe, setIncludeMe] = useState(true);
   const [participantsCount, setParticipantsCount] = useState(1);
 
-  const {register,handleSubmit,formState: { errors, isSubmitting }, watch,setValue, reset,} = useForm({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    watch,
+    setValue,
+    reset,
+  } = useForm({
     resolver: zodResolver(SplitFormSchema),
     defaultValues: {
       title: '',
@@ -34,8 +37,7 @@ const CreateSplitzPage = () => {
       amount: 1000,
       max_participants: 1,
       visibility_radius: 5,
-      rules:
-        'Mandatory Refund Rule: A 5% charge applies if the split is canceled before 70% participation.',
+      rules: 'Mandatory Refund Rule: A 5% charge applies if the split is canceled before 70% participation.',
       description: '',
     },
   });
@@ -52,21 +54,9 @@ const CreateSplitzPage = () => {
   ];
 
   const splitMethods = [
-    {
-      value: 'SpecificAmounts',
-      label: 'Equal Split',
-      description: 'All participants pay the same amount',
-    },
-    {
-      value: 'CustomAmounts',
-      label: 'Custom Split',
-      description: 'Set custom amounts for each participant',
-    },
-    {
-      value: 'Percentage',
-      label: 'Percentage Split',
-      description: 'Split by percentage allocation',
-    },
+    { value: 'SpecificAmounts', label: 'Equal Split', description: 'All participants pay the same amount' },
+    { value: 'CustomAmounts', label: 'Custom Split', description: 'Set custom amounts for each participant' },
+    { value: 'Percentage', label: 'Percentage Split', description: 'Split by percentage allocation' },
   ];
 
   const handleFileUpload = (e) => {
@@ -79,9 +69,7 @@ const CreateSplitzPage = () => {
 
   const onSubmit = async (data) => {
     try {
-      const totalParticipants = includeMe
-        ? participantsCount + 1
-        : participantsCount;
+      const totalParticipants = includeMe ? participantsCount + 1 : participantsCount;
 
       const formData = new FormData();
 
@@ -107,16 +95,32 @@ const CreateSplitzPage = () => {
         formData.append('image', imageFile);
       }
 
-      const newSplit = await createSplit(formData);
+      const newSplit = await createSplit.mutateAsync(formData);
 
       reset();
       setImageFile(null);
       setImagePreview('');
       setParticipantsCount(1);
 
-      navigate('/dashboard/splitz-success', { 
-        state: { split: newSplit },
-        replace: true 
+      // Calculate price per person
+      const pricePerPerson = totalParticipants > 0 
+        ? parseFloat(data.amount) / totalParticipants 
+        : parseFloat(data.amount);
+
+      // Navigate to payment page with all necessary data
+      navigate('/dashboard/payment', {
+        state: {
+          splitId: newSplit.id,
+          splitTitle: newSplit.title,
+          totalAmount: parseFloat(data.amount),
+          amount: pricePerPerson,
+          maxParticipants: totalParticipants,
+          isCreator: true,
+          
+          // Data to pass through to success page (since no payment endpoint)
+          createdSplitData: newSplit,
+        },
+        replace: true,
       });
     } catch (err) {
       alert(err.message || 'Failed to create split');
@@ -137,6 +141,8 @@ const CreateSplitzPage = () => {
     };
   }, [imagePreview]);
 
+  const isLoading = createSplit.isPending;
+
   return (
     <div className="min-h-screen bg-gray-50 px-3 sm:px-6 lg:px-8 py-4 md:py-6">
       <main className="max-w-3xl mx-auto space-y-4 md:space-y-6">
@@ -154,6 +160,7 @@ const CreateSplitzPage = () => {
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 md:space-y-6">
+          {/* Section: What are you splitting? */}
           <section className="p-4 md:p-6 rounded-xl shadow-sm bg-white space-y-4 md:space-y-6">
             <div className="mb-3 md:mb-4">
               <h2 className="text-base md:text-lg font-semibold text-gray-900">What are you splitting?</h2>
@@ -436,13 +443,13 @@ const CreateSplitzPage = () => {
             </div>
           </section>
           
-            <button
-              type="submit"
-              disabled={isSubmitting || isLoading}
-              className="w-full py-3 md:py-4 bg-green-600 text-white rounded-lg font-semibold text-base md:text-lg hover:bg-green-700 transition disabled:opacity-70 disabled:cursor-not-allowed shadow-md"
-            >
-              {isSubmitting || isLoading ? 'Creating Split...' : 'Create Split'}
-            </button>
+          <button
+            type="submit"
+            disabled={isLoading || isSubmitting}
+            className="w-full py-3 md:py-4 bg-green-600 text-white rounded-lg font-semibold text-base md:text-lg hover:bg-green-700 transition disabled:opacity-70 disabled:cursor-not-allowed shadow-md"
+          >
+            {isLoading || isSubmitting ? 'Creating Split...' : 'Create Split'}
+          </button>
         </form>
       </main>
     </div>

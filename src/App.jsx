@@ -18,7 +18,7 @@ const LoadingScreen = lazy(() => import("./pages/Public/LoadingScreen"));
 const KYCFlow = lazy(() => import("./components/Identification/KYCFlow"));
 
 /* ---------- dashboard shells ---------- */
-const DashboardLayout = lazy(() => import("./components/Layout/DashoardLayout"));
+const DashboardLayout = lazy(() => import("./components/Layout/DashboardLayout"));
 const DashboardSettingLayout = lazy(() => import("./components/Layout/DashboardSettingLayout"));
 
 /* ---------- dashboard pages ---------- */
@@ -34,9 +34,12 @@ const Verification = lazy(() => import("./pages/Dashboard/Settings/Verification"
 const Support = lazy(() => import("./pages/Dashboard/Settings/Support"));
 const ResetPassword = lazy(() => import("./pages/Dashboard/Settings/ResetPassword"));
 
-/* ---------- splitz ---------- */
+/* ---------- splitz pages ---------- */
 const CreateSplitz = lazy(() => import("./pages/Dashboard/Splits/CreateSplitz"));
 const MySplitz = lazy(() => import("./pages/Dashboard/Splits/MySplitz"));
+const SplitzDetail = lazy(() => import("./pages/Dashboard/Splits/SplitzDetail"));
+const SplitzSuccessful = lazy(() => import("./pages/Dashboard/Splits/SplitzSuccessful"));
+const AllSplitsPage = lazy(() => import("./pages/Dashboard/Splits/AllSplitsPage")); // ADDED
 
 /* ---------- 404 ---------- */
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -59,11 +62,12 @@ export default function App() {
         {/* PUBLIC */}
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<PublicOnly><Login /></PublicOnly>}/>
-        <Route path="/register"  element={<PublicOnly><Register /></PublicOnly>}/>
+        <Route path="/register" element={<PublicOnly><Register /></PublicOnly>}/>
         <Route path="/forgot-password" element={<ForgetPassword />} />
         <Route path="/pre-onboard" element={<PreOnboard />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/password-reset-success" element={<PasswordResetSuccess />} />
+
         {/* PROTECTED */}
         <Route element={<AuthGuard />}>
           <Route path="/dashboard" element={<DashboardLayout />}>
@@ -75,8 +79,14 @@ export default function App() {
             <Route path="notification" element={<Notification />} />
             <Route path="kyc-flow" element={<KYCFlow />} />
             <Route path="post-onboarding" element={<PostOnboard />} />
+            
+            {/* Splitz Routes */}
+            <Route path="allsplits" element={<AllSplitsPage />} /> {/* ADDED */}
             <Route path="mysplitz" element={<MySplitz />} />
             <Route path="create-splitz" element={<CreateSplitz />} />
+            <Route path="splitz-details/:id" element={<SplitzDetail />} />
+            <Route path="splitz-success" element={<SplitzSuccessful />} />
+
             {/* SETTINGS NESTED */}
             <Route path="settings" element={<DashboardSettingLayout />}>
               <Route index element={<MyProfile />} />
@@ -88,47 +98,10 @@ export default function App() {
             </Route>
           </Route>
         </Route>
+
         {/* FALLBACK */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
   );
 }
-
-
-
-// // const Allsplitz = lazy(() => import("./components/Splitz/AllSplitsPage"));
-// // const SplitzDetail = lazy(() => import("./pages/Dashboard/Splits/SplitzDetail"));
-// // const SplitzSuccessful = lazy(() => import("./pages/Dashboard/Splits/SplitzSuccessful")); // 
-// <Route path="create-splitz" element={<CreateSplitz />} />
-// <Route path="allsplits" element={<Allsplitz/>}/>
-// <Route path="mysplitz" element={<MySplitz />} />
-// <Route path="splitz-details/:id" element={<SplitzDetail />} />
-// <Route path="splitz-success" element={<SplitzSuccessful />} /> */}
-          {/* <Route path="/dashboard" element={<DashboardLayout />}>
-            <Route index element={<MainOverview />} />
-            <Route path="messages" element={<Messages />} />
-            <Route path="analytics" element={<Analytics />} />
-            <Route path="payment" element={<Payment />} />
-            <Route path="wallet" element={<Wallet />} />
-            <Route path="notification" element={<Notification />} />
-            <Route path="kyc-flow" element={<KYCFlow />} />
-            <Route path="post-onboarding" element={<PostOnboard />} />
-            
-            <Route path="mysplitz" element={<MySplitz />} />
-            <Route path="create-splitz" element={<CreateSplitz />} />
-            <Route path="settings" element={<DashboardSettingLayout />}>
-              <Route index element={<MyProfile />} />
-              <Route path="profile" element={<MyProfile />} />
-              <Route path="notifications" element={<NotificationSettings />} />
-              <Route path="verification" element={<Verification />} />
-              <Route path="reset-password" element={<ResetPassword />} />
-              <Route path="support" element={<Support />} />
-            </Route>
-          </Route>
-          <Route element={<AuthGuard />}>
-            <Route path="/admin" element={<DashboardLayout />}>
-              <Route index element={<div>Admin Overview</div>} />
-              <Route path="allsplitz" element={<div>All Splits</div>} />
-            </Route>
-          </Route> */}

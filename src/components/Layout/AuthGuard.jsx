@@ -6,10 +6,10 @@ export default function AuthGuard() {
   const { data: user, isLoading } = useUser();
   const location = useLocation();
 
-  // Show nothing while checking auth status
+  // Show loading while checking auth status
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-screen bg-[#F7F5F9]">
         <div className="w-8 h-8 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -17,13 +17,7 @@ export default function AuthGuard() {
 
   // Redirect to login if not authenticated
   if (!user) {
-    return (
-      <Navigate
-        to="/login"
-        replace
-        state={{ from: location }}
-      />
-    );
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   return <Outlet />;

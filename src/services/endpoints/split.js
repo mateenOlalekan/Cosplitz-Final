@@ -1,151 +1,90 @@
 // src/services/endpoints/splits.js
-// Centralized API endpoints for splits
 
 const API_BASE_URL = 'https://cosplitz-backend.onrender.com/api';
-
-// ============ TOKEN HELPER ============
 
 const getToken = () => {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
 };
 
-// ============ REQUEST HELPER ============
-
-async function makeRequest(url, options = {}) {
+const makeRequest = async (url, options = {}) => {
   const token = getToken();
-  
   const headers = {
-    'Content-Type': 'application/json',
     Accept: 'application/json',
     ...options.headers,
   };
 
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
+  if (token) headers.Authorization = `Bearer ${token}`;
+  
+  if (!(options.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
   }
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
-
+  const response = await fetch(url, { ...options, headers });
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
-    const error = new Error(
-      data?.message || data?.detail || `Request failed (${response.status})`
-    );
+    const error = new Error(data?.message || data?.detail || data?.error || `Request failed (${response.status})`);
     error.status = response.status;
     error.data = data;
     throw error;
   }
 
   return data;
-}
+};
 
-// ============ ENDPOINTS ============
+// ============ SPLIT ENDPOINTS ============
 
-/**
- * Get all splits
- * GET /api/splits/
- * 
- * @returns {Promise<Array>} Array of split objects
- */
 export const getSplitsEndpoint = async () => {
-  const data = await makeRequest(`${API_BASE_URL}/splits/`, {
-    method: 'GET',
-  });
-
-  console.log('[Splits] Fetched:', data);
-  return data?.data || data || [];
+  const data = await makeRequest(`${API_BASE_URL}/splits/`);
+  return data?.data || [];
 };
 
-/**
- * Get split by ID
- * GET /api/splits/:id/
- * 
- * @param {number|string} id - Split ID
- * @returns {Promise<Object>} Split data
- */
 export const getSplitByIdEndpoint = async (id) => {
-  const data = await makeRequest(`${API_BASE_URL}/splits/${id}/`, {
-    method: 'GET',
-  });
-
+  const data = await makeRequest(`${API_BASE_URL}/splits/${id}/`);
   return data?.data || data;
 };
 
-/**
- * Create a new split
- * POST /api/splits/
- * 
- * @param {Object} splitData - Split data
- * @param {string} splitData.title - Split title
- * @param {string} splitData.category - Category (Housing, Food, Transport, etc.)
- * @param {number} splitData.amount - Total amount
- * @param {number} splitData.max_participants - Maximum participants
- * @param {string} splitData.split_method - Split method (Equal, Percentage, SpecificAmounts)
- * @param {string} splitData.location - Location
- * @param {string} [splitData.image_url] - Optional image URL
- * @returns {Promise<Object>} Created split data
- */
-export const createSplitEndpoint = async (splitData) => {
-  const data = await makeRequest(`${API_BASE_URL}/splits/`, {
+export const getMySplitsEndpoint = async () => {
+  const data = await makeRequest(`${API_BASE_URL}/splits/my_splits/`);
+  return data?.data || [];
+};
+
+export const createSplitEndpoint = async (formData) => {
+  const token = getToken();
+  const response = await fetch(`${API_BASE_URL}/splits/`, {
     method: 'POST',
-    body: JSON.stringify(splitData),
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData, // Keep as FormData, don't stringify
   });
 
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(data?.message || data?.detail || 'Failed to create split');
+  }
   return data?.data || data;
 };
 
-/**
- * Update a split
- * PUT /api/splits/:id/
- * 
- * @param {number|string} id - Split ID
- * @param {Object} splitData - Updated split data
- * @returns {Promise<Object>} Updated split data
- */
+
 export const updateSplitEndpoint = async (id, splitData) => {
-  const data = await makeRequest(`${API_BASE_URL}/splits/${id}/`, {
-    method: 'PUT',
-    body: JSON.stringify(splitData),
-  });
-
-  console.log('[Splits] Updated:', data);
-  return data?.data || data;
-};
-
-/**
- * Partially update a split
- * PATCH /api/splits/:id/
- * 
- * @param {number|string} id - Split ID
- * @param {Object} splitData - Partial split data to update
- * @returns {Promise<Object>} Updated split data
- */
-export const patchSplitEndpoint = async (id, splitData) => {
   const data = await makeRequest(`${API_BASE_URL}/splits/${id}/`, {
     method: 'PATCH',
     body: JSON.stringify(splitData),
   });
-
-  console.log('[Splits] Patched:', data);
   return data?.data || data;
 };
 
-/**
- * Delete a split
- * DELETE /api/splits/:id/
- * 
- * @param {number|string} id - Split ID
- * @returns {Promise<Object>} Deletion confirmation
- */
 export const deleteSplitEndpoint = async (id) => {
   const data = await makeRequest(`${API_BASE_URL}/splits/${id}/`, {
     method: 'DELETE',
   });
+  return data;
+};
 
+export const joinSplitEndpoint = async (splitId, paymentData = {}) => {
+  const data = await makeRequest(`${API_BASE_URL}/splits/${splitId}/join_splits/`, {
+    method: 'POST',
+    body: JSON.stringify(paymentData),
+  });
   return data?.data || data;
 };

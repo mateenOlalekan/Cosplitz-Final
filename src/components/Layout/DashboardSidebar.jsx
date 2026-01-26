@@ -1,4 +1,4 @@
-// src/components/Dashboard/DashboardSidebar.jsx
+// src/components/Layout/DashboardSidebar.jsx
 import { NavLink, Link, useNavigate } from "react-router-dom";
 import {
   Home,
@@ -7,7 +7,9 @@ import {
   Wallet,
   MapPin,
   BarChart3,
-  LogOut
+  LogOut,
+  PlusCircle,
+  List,
 } from "lucide-react";
 import logo from "../../assets/logo.svg";
 import { useUser, useLogout } from "../../services/queries/auth";
@@ -19,7 +21,9 @@ export default function DashboardSidebar({ isOpen, onClose }) {
 
   const navItems = [
     { icon: Home, label: "Home", to: "/dashboard" },
+    { icon: List, label: "All Splits", to: "/dashboard/allsplits" },
     { icon: Share2, label: "My Splits", to: "/dashboard/mysplitz" },
+    { icon: PlusCircle, label: "Create Split", to: "/dashboard/create-splitz" },
     { icon: MessageSquare, label: "Messages", to: "/dashboard/messages" },
     { icon: Wallet, label: "Wallet", to: "/dashboard/wallet" },
     { icon: MapPin, label: "Nearby", to: "/dashboard/filter" },
@@ -74,9 +78,7 @@ export default function DashboardSidebar({ isOpen, onClose }) {
             >
               <div className="flex items-center gap-3">
                 <item.icon size={20} />
-                <span className="text-sm font-semibold">
-                  {item.label}
-                </span>
+                <span className="text-sm font-semibold">{item.label}</span>
               </div>
             </NavLink>
           ))}
@@ -85,9 +87,7 @@ export default function DashboardSidebar({ isOpen, onClose }) {
         {/* Community Standing Card */}
         <div className="mt-6 p-4 bg-[#1F8225] rounded-xl text-white">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-semibold">
-              Community Standing
-            </h3>
+            <h3 className="text-xs font-semibold">Community Standing</h3>
             <div className="flex gap-1">
               {[1, 2, 3, 4].map(i => (
                 <span
@@ -98,9 +98,7 @@ export default function DashboardSidebar({ isOpen, onClose }) {
             </div>
           </div>
 
-          <p className="text-sm font-bold">
-            Level {user?.level || 1}
-          </p>
+          <p className="text-sm font-bold">Level {user?.level || 1}</p>
 
           <div className="text-sm space-y-1 mt-2">
             <p>23 Completed Splits</p>
@@ -128,16 +126,14 @@ export default function DashboardSidebar({ isOpen, onClose }) {
             <p className="text-sm font-semibold text-gray-900 truncate">
               {user?.email || user?.first_name || "User"}
             </p>
-            <p className="text-xs text-gray-500 truncate">
-              View profile & settings
-            </p>
+            <p className="text-xs text-gray-500 truncate">View profile & settings</p>
           </div>
         </Link>
 
         <button
           onClick={handleLogout}
           disabled={logout.isPending}
-          className="mt-3 w-full flex items-center gap-3 p-3 rounded-lg text-red-600 hover:bg-red-50 transition disabled:opacity-50"
+          className="mt-3 w-full flex md:hidden items-center gap-3 p-3 rounded-lg text-red-600 hover:bg-red-50 transition disabled:opacity-50"
         >
           <LogOut size={18} />
           <span className="text-sm font-semibold">

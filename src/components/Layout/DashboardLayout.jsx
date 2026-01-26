@@ -1,10 +1,9 @@
-// src/components/Dashboard/DashboardLayout.jsx
+// src/components/Layout/DashboardLayout.jsx
 import { useState, useEffect, useCallback } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import DashboardSidebar from "./DashboardSidebar";
 import DashboardHeader from "./DashboardHeader";
 import { useUser } from "../../services/queries/auth";
-
 
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);

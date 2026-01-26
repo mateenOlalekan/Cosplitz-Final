@@ -47,17 +47,14 @@ export const useUser = () => {
     queryKey: authKeys.user(),
     queryFn: async () => {
       const response = await getUserInfoEndpoint();
-      return response?.data || response;
+      return response; // API returns user object directly
     },
-    // CRITICAL: Only enable if token exists
     enabled: !!getToken(),
     staleTime: 5 * 60 * 1000,
     retry: (failureCount, error) => {
-      // Don't retry on 401
       if (error?.status === 401) return false;
       return failureCount < 2;
     },
-    // Handle 401 gracefully
     throwOnError: (error) => error?.status !== 401,
   });
 };
@@ -135,17 +132,24 @@ export const useLogout = () => {
 
 /**
  * Multi-step registration with proper sequencing
+ * Flow: Register → Login → Get OTP
  */
 export const useRegistrationFlow = () => {
   const queryClient = useQueryClient();
   const verifyOTP = useVerifyOTP();
 
   const executeFlow = async (userData) => {
-    // Step 1: Register
-    const regData = await registerEndpoint(userData);
+    // Step 1: Register (no token needed)
+    const regData = await registerEndpoint({
+      first_name: userData.first_name,
+      last_name: userData.last_name,
+      email: userData.email,
+      password: userData.password,
+      nationality: userData.nationality,
+    });
     
     // Step 2: Auto-login (stores token)
-    const loginData = await loginEndpoint({
+    await loginEndpoint({
       email: userData.email,
       password: userData.password,
     }, true);
@@ -165,7 +169,6 @@ export const useRegistrationFlow = () => {
     // Update query cache
     queryClient.setQueryData(authKeys.tempRegister(), tempData);
     
-    // Return temp data but DON'T trigger user query yet
     return tempData;
   };
 

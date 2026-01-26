@@ -38,9 +38,11 @@ export default function Register() {
     }
   }, [tempRegister, currentStep]);
 
+// In handleRegister function, update payload:
   const handleRegister = async (formData) => {
     setVerificationError('');
     
+    // Match API expected field names
     const payload = {
       first_name: formData.firstName.trim(),
       last_name: formData.lastName.trim(),
@@ -50,7 +52,6 @@ export default function Register() {
     };
 
     try {
-      // Execute: Register → Login → Get OTP
       await executeFlow(payload);
       setCurrentStep(2);
       return { success: true };

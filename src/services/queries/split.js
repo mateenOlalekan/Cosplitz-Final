@@ -3,46 +3,49 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getSplitsEndpoint,
   getSplitByIdEndpoint,
+  getMySplitsEndpoint,
   createSplitEndpoint,
   updateSplitEndpoint,
-  patchSplitEndpoint,
   deleteSplitEndpoint,
-} from '../endpoints/split';
-
-// ============ QUERY KEYS ============
+  joinSplitEndpoint,
+} from '../endpoints/splits';
 
 export const splitsKeys = {
   all: ['splits'],
   lists: () => [...splitsKeys.all, 'list'],
-  list: (filters) => [...splitsKeys.lists(), { filters }],
-  details: () => [...splitsKeys.all, 'detail'],
-  detail: (id) => [...splitsKeys.details(), id],
+  my: () => [...splitsKeys.all, 'my'],
+  detail: (id) => [...splitsKeys.all, 'detail', id],
 };
 
 // ============ QUERIES ============
 
-/*Get all splits */
 export const useSplits = () => {
   return useQuery({
     queryKey: splitsKeys.lists(),
     queryFn: getSplitsEndpoint,
-    staleTime: 1 * 60 * 1000, // 1 minute
+    staleTime: 30 * 1000,
   });
 };
 
-/*Get split by ID */
+export const useMySplits = () => {
+  return useQuery({
+    queryKey: splitsKeys.my(),
+    queryFn: getMySplitsEndpoint,
+    staleTime: 10 * 1000,
+  });
+};
+
 export const useSplit = (id) => {
   return useQuery({
     queryKey: splitsKeys.detail(id),
     queryFn: () => getSplitByIdEndpoint(id),
     enabled: !!id,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 10 * 1000,
   });
 };
 
 // ============ MUTATIONS ============
 
-/* Create split */
 export const useCreateSplit = () => {
   const queryClient = useQueryClient();
 
@@ -50,47 +53,42 @@ export const useCreateSplit = () => {
     mutationFn: createSplitEndpoint,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: splitsKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: splitsKeys.my() });
     },
   });
 };
 
-/* Update split (PUT - full update) */
 export const useUpdateSplit = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, data }) => updateSplitEndpoint(id, data),
-    onSuccess: (result, variables) => {
-      // Update cache for this specific split
-      queryClient.setQueryData(splitsKeys.detail(variables.id), result);
-      // Invalidate lists
+    onSuccess: (updated, { id }) => {
+      queryClient.setQueryData(splitsKeys.detail(id), updated);
       queryClient.invalidateQueries({ queryKey: splitsKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: splitsKeys.my() });
     },
   });
 };
 
-/* Patch split (PATCH - partial update)  */
-export const usePatchSplit = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, data }) => patchSplitEndpoint(id, data),
-    onSuccess: (result, variables) => {
-      queryClient.setQueryData(splitsKeys.detail(variables.id), result);
-      queryClient.invalidateQueries({ queryKey: splitsKeys.lists() });
-    },
-  });
-};
-
-/* Delete split */
 export const useDeleteSplit = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: deleteSplitEndpoint,
-    onSuccess: (_, id) => {
-      queryClient.removeQueries({ queryKey: splitsKeys.detail(id) });
-      queryClient.invalidateQueries({ queryKey: splitsKeys.lists() });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: splitsKeys.all });
+    },
+  });
+};
+
+export const useJoinSplit = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ splitId, paymentData }) => joinSplitEndpoint(splitId, paymentData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: splitsKeys.all });
     },
   });
 };

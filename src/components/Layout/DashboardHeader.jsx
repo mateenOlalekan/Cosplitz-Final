@@ -1,4 +1,4 @@
-// src/components/Dashboard/DashboardHeader.jsx
+// src/components/Layout/DashboardHeader.jsx
 import { Bell, Settings, MapPin, ChevronDown, Menu } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../../assets/logo.svg";
@@ -18,49 +18,35 @@ export default function DashboardHeader({ onMenuClick }) {
     }
   };
 
-  // Don't render if no user (AuthGuard should handle this, but safety check)
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
   return (
     <header className="bg-white border-b border-gray-200 z-30 px-4">
       {/* Mobile Header */}
-      <div
-        className="flex items-center justify-between block md:hidden"
-        role="banner"
-        aria-label="Application header"
-      >
+      <div className="flex items-center justify-between md:hidden" role="banner">
         <img
           src={logo}
           alt="Company Logo"
           className="w-20 h-20 object-contain select-none"
           draggable="false"
-          onError={(e) => {
-            e.currentTarget.style.display = "none";
-          }}
         />
         <nav aria-label="User menu">
-          <Menu onClick={onMenuClick} />
+          <Menu onClick={onMenuClick} className="cursor-pointer" />
         </nav>
       </div>
 
       {/* Desktop Header */}
-      <div className="flex items-center justify-between py-3">
+      <div className="hidden md:flex items-center justify-between py-3">
         <div className="flex items-center gap-1 text-gray-600">
           <MapPin size={16} />
-          <span className="text-sm">
-            {user?.location || "Ikeja, Lagos"}
-          </span>
+          <span className="text-sm">{user?.location || "Ikeja, Lagos"}</span>
           <ChevronDown size={16} />
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="hidden md:block text-sm text-gray-600">
+          <div className="text-sm text-gray-600">
             Welcome,{" "}
-            <span className="font-medium">
-              {user?.first_name || user?.email || "User"}
-            </span>
+            <span className="font-medium">{user?.first_name || user?.email || "User"}</span>
           </div>
 
           <Link
