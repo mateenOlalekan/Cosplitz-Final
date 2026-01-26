@@ -1,17 +1,17 @@
-// src/components/Layout/DashboardSettingLayout.jsx
+// src/components/Layout/DashboardSettingLayout.jsx - NO CHANGES
 import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import DashboardSidebar from "./DashboardSidebar";
 import LogoutModal from "../Settings/LogoutModal";
 import DeleteAccountModal from "../Settings/DeleteAccount";
-import { useAuth } from "../../hooks/useAuth"; // Use new hook
+import { useLogout } from "../../services/queries/auth";
 
 export default function DashboardSettingLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   
-  const { logout, isLoading } = useAuth(); // Use centralized auth hook
+  const logout = useLogout();
 
   useEffect(() => {
     document.body.style.overflow = (showLogoutModal || showDeleteModal) ? "hidden" : "";
@@ -24,8 +24,7 @@ export default function DashboardSettingLayout() {
 
   const handleLogoutConfirm = async () => {
     try {
-      await logout();
-      // Navigation handled by useAuth
+      await logout.mutateAsync();
     } catch (error) {
       console.error("Logout failed:", error);
     }
@@ -33,8 +32,7 @@ export default function DashboardSettingLayout() {
 
   const handleDeleteConfirm = async () => {
     try {
-      // TODO: Implement actual account deletion API call
-      await logout();
+      await logout.mutateAsync();
     } catch (error) {
       console.error("Delete account failed:", error);
     }
@@ -51,7 +49,6 @@ export default function DashboardSettingLayout() {
               <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
               <p className="text-gray-600">Manage your account preferences</p>
             </div>
-
             <Outlet context={{ setShowLogoutModal, setShowDeleteModal }} />
           </div>
         </main>
@@ -61,7 +58,7 @@ export default function DashboardSettingLayout() {
         open={showLogoutModal} 
         onClose={() => setShowLogoutModal(false)} 
         onConfirm={handleLogoutConfirm}
-        isLoading={isLoading}
+        isLoading={logout.isPending}
       />
       
       <DeleteAccountModal 

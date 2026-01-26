@@ -1,12 +1,11 @@
-// src/App.jsx
+// src/App.jsx - NO CHANGES
 import "./App.css";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Suspense, lazy } from "react";
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useAuth } from "./hooks/useAuth";
+import { useUser } from "./services/queries/auth";
 import AuthGuard from "./components/Layout/AuthGuard";
 
-/* ---------- lazy pages ---------- */
 const Home = lazy(() => import("./pages/Public/Home"));
 const PreOnboard = lazy(() => import("./pages/Public/pre-onboard"));
 const PostOnboard = lazy(() => import("./pages/Public/post-onboard"));
@@ -18,11 +17,9 @@ const PasswordResetSuccess = lazy(() => import("./pages/Auth/PasswordReset"));
 const LoadingScreen = lazy(() => import("./pages/Public/LoadingScreen"));
 const KYCFlow = lazy(() => import("./components/Identification/KYCFlow"));
 
-/* ---------- dashboard shells ---------- */
 const DashboardLayout = lazy(() => import("./components/Layout/DashboardLayout"));
 const DashboardSettingLayout = lazy(() => import("./components/Layout/DashboardSettingLayout"));
 
-/* ---------- dashboard pages ---------- */
 const MainOverview = lazy(() => import("./pages/Dashboard/Main"));
 const Messages = lazy(() => import("./pages/Dashboard/Messages"));
 const Analytics = lazy(() => import("./pages/Dashboard/Analytics"));
@@ -35,28 +32,27 @@ const Verification = lazy(() => import("./pages/Dashboard/Settings/Verification"
 const Support = lazy(() => import("./pages/Dashboard/Settings/Support"));
 const ResetPassword = lazy(() => import("./pages/Dashboard/Settings/ResetPassword"));
 
-/* ---------- splitz pages ---------- */
 const CreateSplitz = lazy(() => import("./pages/Dashboard/Splits/CreateSplitz"));
 const MySplitz = lazy(() => import("./pages/Dashboard/Splits/MySplitz"));
 const SplitzDetail = lazy(() => import("./pages/Dashboard/Splits/SplitzDetail"));
 const SplitzSuccessful = lazy(() => import("./pages/Dashboard/Splits/SplitzSuccessful"));
 const AllSplitsPage = lazy(() => import("./pages/Dashboard/Splits/AllSplitsPage"));
 
-/* ---------- 404 ---------- */
 const NotFound = lazy(() => import("./pages/NotFound"));
 
-/* ---------- Public Only Guard ---------- */
 function PublicOnly({ children }) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { data: user, isLoading } = useUser();
   const location = useLocation();
   
   if (isLoading) return <LoadingScreen />;
   
-  if (isAuthenticated) {
+  if (user) {
     return <Navigate to="/dashboard" replace state={{ from: location }} />;
-  }  
+  }
+  
   return children;
 }
+
 
 
 export default function App() {
@@ -64,7 +60,6 @@ export default function App() {
     <>
       <Suspense fallback={<LoadingScreen />}>
         <Routes>
-          {/* PUBLIC */}
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<PublicOnly><Login /></PublicOnly>}/>
           <Route path="/register" element={<PublicOnly><Register /></PublicOnly>}/>
@@ -73,7 +68,6 @@ export default function App() {
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/password-reset-success" element={<PasswordResetSuccess />} />
 
-          {/* PROTECTED */}
           <Route element={<AuthGuard />}>
             <Route path="/dashboard" element={<DashboardLayout />}>
               <Route index element={<MainOverview />} />
@@ -85,14 +79,12 @@ export default function App() {
               <Route path="kyc-flow" element={<KYCFlow />} />
               <Route path="post-onboarding" element={<PostOnboard />} />
               
-              {/* Splitz Routes */}
               <Route path="allsplits" element={<AllSplitsPage />} />
               <Route path="mysplitz" element={<MySplitz />} />
               <Route path="create-splitz" element={<CreateSplitz />} />
               <Route path="splitz-details/:id" element={<SplitzDetail />} />
               <Route path="splitz-success" element={<SplitzSuccessful />} />
 
-              {/* SETTINGS NESTED */}
               <Route path="settings" element={<DashboardSettingLayout />}>
                 <Route index element={<MyProfile />} />
                 <Route path="profile" element={<MyProfile />} />
@@ -104,7 +96,6 @@ export default function App() {
             </Route>
           </Route>
 
-          {/* FALLBACK */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>

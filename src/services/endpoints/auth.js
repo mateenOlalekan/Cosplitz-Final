@@ -1,5 +1,5 @@
+// src/services/endpoints/auth.js
 const API_BASE_URL = 'https://cosplitz-backend.onrender.com/api';
-
 
 const handleApiError = (response, data) => {
   if (!response.ok) {
@@ -16,7 +16,6 @@ const handleApiError = (response, data) => {
   return data;
 };
 
-
 async function makeRequest(url, options = {}) {
   const headers = {
     'Content-Type': 'application/json',
@@ -26,24 +25,18 @@ async function makeRequest(url, options = {}) {
 
   if (options.auth) {
     const token = getToken();
-    console.log('Token for request:', token ? 'Present' : 'MISSING'); // Debug
     if (token) {
       headers.Authorization = `Bearer ${token}`;
     }
   }
 
   const response = await fetch(url, { ...options, headers });
-  
-  if (!response.ok && response.status === 401) {
-    console.error('401 Error - URL:', url, 'Token present:', !!getToken());
-  }
-
   const data = await response.json().catch(() => null);
   return handleApiError(response, data);
 }
 
 // ============ TOKEN HELPERS ============
-const getToken = () => {
+export const getToken = () => {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
 };
@@ -74,16 +67,8 @@ const clearAuth = () => {
   localStorage.removeItem('tempRegister');
 };
 
-
-
-
-
 // ============ ENDPOINTS ============
 
-/**
- * Step 1: Register user
- * POST /api/register/
- */
 export const registerEndpoint = async (userData) => {
   const payload = {
     email: userData.email,
@@ -98,7 +83,6 @@ export const registerEndpoint = async (userData) => {
     body: JSON.stringify(payload),
   });
 
-  // API returns: { user: { id, email, first_name, last_name, ... } }
   return {
     userId: data?.user?.id,
     email: data?.user?.email,
@@ -109,10 +93,6 @@ export const registerEndpoint = async (userData) => {
   };
 };
 
-/**
- * Step 2: Login (returns token)
- * POST /api/login/
- */
 export const loginEndpoint = async (credentials, remember = true) => {
   const data = await makeRequest(`${API_BASE_URL}/login/`, {
     method: 'POST',
@@ -123,48 +103,35 @@ export const loginEndpoint = async (credentials, remember = true) => {
     auth: false,
   });
 
-  // API returns: { token, data: { id, email, first_name, last_name, ... } }
   const { token } = data;
   
   if (!token) {
     throw new Error('No token received from server');
   }
 
-  // Store token immediately
   setToken(token, remember);
 
   return {
     token,
-    user: data?.data, // User data is in 'data' field
+    user: data?.data,
   };
 };
 
-/**
- * Step 3: Request OTP
- * GET /api/otp/{userId}/
- */
 export const getOTPEndpoint = async (userId) => {
   const data = await makeRequest(`${API_BASE_URL}/otp/${userId}/`, {
     method: 'GET',
-    auth: true, // Requires token from login
+    auth: true,
   });
-
-  // API returns: { message: "OTP sent" }
   return data;
 };
 
-/**
- * Step 4: Verify OTP
- * POST /api/verify_otp/
- */
 export const verifyOTPEndpoint = async ({ email, otp }) => {
   const data = await makeRequest(`${API_BASE_URL}/verify_otp/`, {
     method: 'POST',
     body: JSON.stringify({ email, otp }),
-    auth: true, // Requires token
+    auth: true,
   });
 
-  // Update token if new one provided
   if (data?.token) {
     setToken(data.token, true);
   }
@@ -176,30 +143,18 @@ export const verifyOTPEndpoint = async ({ email, otp }) => {
   };
 };
 
-/**
- * Resend OTP - same as get OTP
- */
 export const resendOTPEndpoint = async (userId) => {
   return getOTPEndpoint(userId);
 };
 
-/**
- * Get user info
- * GET /api/user/info
- */
 export const getUserInfoEndpoint = async () => {
   const data = await makeRequest(`${API_BASE_URL}/user/info`, {
     method: 'GET',
     auth: true,
   });
-
-  // API returns user object directly
   return data;
 };
 
-/**
- * Logout
- */
 export const logoutEndpoint = () => {
   clearAuth();
   return { success: true };

@@ -1,4 +1,4 @@
-// src/pages/Login/index.jsx
+// src/pages/Login/index.jsx - NO CHANGES
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -13,11 +13,9 @@ export default function Login() {
   const location = useLocation();
   const from = location.state?.from?.pathname || '/dashboard';
 
-  // TanStack Query hooks - updated to check loading state
   const { data: user, isLoading: isUserLoading } = useUser();
   const login = useLogin();
 
-  // Form state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -25,7 +23,6 @@ export default function Login() {
   const [fieldErrors, setFieldErrors] = useState({ email: '', password: '' });
   const [submitError, setSubmitError] = useState('');
 
-  // Redirect if already logged in - only when not loading and user exists
   useEffect(() => {
     if (user && !isUserLoading) {
       navigate(from, { replace: true });
@@ -37,7 +34,6 @@ export default function Login() {
     setSubmitError('');
     setFieldErrors({ email: '', password: '' });
 
-    // Validate
     const result = loginSchema.safeParse({ email, password });
     if (!result.success) {
       const errors = {};
@@ -48,7 +44,6 @@ export default function Login() {
       return;
     }
 
-    // Submit
     try {
       await login.mutateAsync({
         credentials: {
@@ -57,9 +52,7 @@ export default function Login() {
         },
         remember,
       });
-      // Success - user query will update and trigger redirect
     } catch (error) {
-      // Handle specific error types for better UX
       if (error?.status === 401) {
         setSubmitError('Invalid email or password');
       } else {
@@ -73,10 +66,8 @@ export default function Login() {
       hasError ? 'border-red-300' : 'border-gray-300 focus:border-green-500'
     }`;
 
-  // Combined loading state
   const isLoading = login.isPending || isUserLoading;
 
-  // Show loading while checking auth status
   if (isUserLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-[#F7F5F9]">
@@ -88,36 +79,23 @@ export default function Login() {
   return (
     <div className="flex bg-[#F7F5F9] w-full h-screen justify-center overflow-hidden md:px-6 md:py-4">
       <div className="flex max-w-screen-2xl w-full min-h-full rounded-xl overflow-hidden">
-        
-        {/* Left Panel */}
         <LeftPanel />
-
-        {/* Right Panel */}
         <div className="flex flex-1 flex-col items-center p-3 overflow-y-auto">
-          
-          {/* Logo */}
           <div className="w-full mb-4 flex justify-center md:justify-start">
             <img src={logo} alt="Logo" className="h-10 md:h-12" />
           </div>
-
           <div className="w-full max-w-2xl p-5 rounded-xl shadow-none md:shadow-md border-none md:border border-gray-100 bg-white space-y-6">
-            
-            {/* Header */}
             <h1 className="text-2xl sm:text-3xl text-center font-bold text-gray-900">
               Welcome Back
             </h1>
             <p className="text-gray-500 text-center text-sm mt-1 mb-4">
               Sign in to continue sharing expenses.
             </p>
-
-            {/* Error Display */}
             {submitError && (
               <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg text-center">
                 {submitError}
               </div>
             )}
-
-            {/* Social Login */}
             <div className="grid grid-cols-1 gap-2">
               <motion.button
                 whileHover={{ scale: 1.02 }}
@@ -129,7 +107,6 @@ export default function Login() {
               >
                 <span className="text-gray-700 text-sm">Sign in with Google</span>
               </motion.button>
-
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -141,17 +118,12 @@ export default function Login() {
                 <span className="text-gray-700 text-sm">Sign in with Apple</span>
               </motion.button>
             </div>
-
             <div className="flex items-center my-4">
               <div className="flex-grow border-t border-gray-300" />
               <span className="mx-2 text-gray-500 text-sm">Or</span>
               <div className="flex-grow border-t border-gray-300" />
             </div>
-
-            {/* Login Form */}
             <form onSubmit={handleLogin} className="space-y-3">
-              
-              {/* Email */}
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-1 block">
                   Email Address *
@@ -172,8 +144,6 @@ export default function Login() {
                   <p className="text-red-600 text-xs mt-1">{fieldErrors.email}</p>
                 )}
               </div>
-
-              {/* Password */}
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-1 block">
                   Password *
@@ -203,8 +173,6 @@ export default function Login() {
                   <p className="text-red-600 text-xs mt-1">{fieldErrors.password}</p>
                 )}
               </div>
-
-              {/* Remember Me & Forgot Password */}
               <div className="flex justify-between items-center">
                 <label className="flex gap-2 text-sm text-gray-600 cursor-pointer">
                   <input
@@ -222,8 +190,6 @@ export default function Login() {
                   Forgot Password?
                 </Link>
               </div>
-
-              {/* Submit Button */}
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -242,8 +208,6 @@ export default function Login() {
                   'Sign In'
                 )}
               </motion.button>
-
-              {/* Sign Up Link */}
               <p className="text-center text-sm text-gray-600 mt-3">
                 Don't have an account?{' '}
                 <Link

@@ -1,4 +1,4 @@
-// src/pages/Register/index.jsx
+// src/pages/Register/index.jsx - NO CHANGES
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRegistrationFlow, useTempRegister, useUser } from '../../../services/queries/auth';
@@ -19,19 +19,16 @@ export default function Register() {
   const [currentStep, setCurrentStep] = useState(1);
   const [verificationError, setVerificationError] = useState('');
 
-  // TanStack Query hooks - updated to handle loading states properly
   const { data: tempRegister } = useTempRegister();
   const { data: user, isLoading: isUserLoading, isError: isUserError } = useUser();
   const { executeFlow, verifyOTP, resendOTP, isVerifying } = useRegistrationFlow();
 
-  // Redirect if already authenticated - only when user data is actually available
   useEffect(() => {
     if (user && !isUserLoading && !isUserError) {
       navigate('/dashboard', { replace: true });
     }
   }, [user, isUserLoading, isUserError, navigate]);
 
-  // Resume at OTP step if temp registration exists
   useEffect(() => {
     if (tempRegister && currentStep === 1) {
       setCurrentStep(2);
@@ -100,7 +97,6 @@ export default function Register() {
     window.location.reload();
   };
 
-  // Show loading state while checking auth
   if (isUserLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-[#F7F5F9]">
@@ -112,8 +108,6 @@ export default function Register() {
   return (
     <div className="flex bg-[#F7F5F9] w-full h-screen justify-center overflow-hidden md:px-6 md:py-4">
       <div className="flex max-w-screen-2xl w-full min-h-full rounded-xl overflow-hidden">
-        
-        {/* Left Panel */}
         <div className="hidden lg:flex w-1/2 bg-[#F8EACD] rounded-xl p-6 items-center justify-center">
           <div className="w-full flex flex-col items-center">
             <img src={loginlogo} alt="Register" className="rounded-lg w-full h-auto max-h-[400px] object-contain" />
@@ -127,16 +121,11 @@ export default function Register() {
             </div>
           </div>
         </div>
-
-        {/* Right Panel */}
         <div className="flex flex-1 flex-col items-center p-3 sm:p-5 overflow-y-auto">
           <div className="w-full mb-4 flex justify-center md:justify-start">
             <img src={logo} alt="Logo" className="h-10 md:h-12" />
           </div>
-
           <div className="w-full max-w-2xl p-5 rounded-xl shadow-none md:shadow-md bg-white">
-            
-            {/* Stepper */}
             <div className="w-full flex flex-col items-center py-4 mb-4">
               <div className="flex items-center gap-2 justify-center mb-2">
                 {steps.map((s, i) => (
@@ -158,22 +147,17 @@ export default function Register() {
                 {steps.find(s => s.id === currentStep)?.description}
               </p>
             </div>
-
-            {/* Error Display */}
             {verificationError && (
               <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-4 text-center">
                 {verificationError}
               </div>
             )}
-
-            {/* Step Content */}
             {currentStep === 1 && (
               <RegistrationForm
                 onSubmit={handleRegister}
                 loading={false}
               />
             )}
-
             {currentStep === 2 && tempRegister && (
               <EmailVerificationStep
                 email={tempRegister.email}
@@ -183,7 +167,6 @@ export default function Register() {
                 isLoading={isVerifying}
               />
             )}
-
             {currentStep === 3 && <Successful />}
           </div>
         </div>

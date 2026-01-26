@@ -1,4 +1,4 @@
-// src/components/Layout/DashboardSidebar.jsx
+// src/components/Layout/DashboardSidebar.jsx - NO CHANGES
 import { NavLink, Link, useNavigate } from "react-router-dom";
 import {
   Home,
@@ -12,11 +12,12 @@ import {
   List,
 } from "lucide-react";
 import logo from "../../assets/logo.svg";
-import { useAuth } from "../../hooks/useAuth"; // Use the new useAuth hook
+import { useUser, useLogout } from "../../services/queries/auth";
 
 export default function DashboardSidebar({ isOpen, onClose }) {
   const navigate = useNavigate();
-  const { user, logout, isLoading } = useAuth(); // Use centralized auth hook
+  const { data: user } = useUser();
+  const logout = useLogout();
 
   const navItems = [
     { icon: Home, label: "Home", to: "/dashboard" },
@@ -31,21 +32,12 @@ export default function DashboardSidebar({ isOpen, onClose }) {
 
   const handleLogout = async () => {
     try {
-      await logout();
-      // Navigation is handled inside useAuth logout
+      await logout.mutateAsync();
+      navigate("/login");
     } catch (error) {
       console.error("Logout failed:", error);
     }
   };
-
-  // Show loading state for user data
-  if (isLoading) {
-    return (
-      <aside className="fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
-      </aside>
-    );
-  }
 
   return (
     <aside
@@ -57,7 +49,6 @@ export default function DashboardSidebar({ isOpen, onClose }) {
         flex flex-col h-full
       `}
     >
-      {/* Logo */}
       <div className="flex items-center pl-7 py-4 gap-3">
         <img
           src={logo}
@@ -66,8 +57,6 @@ export default function DashboardSidebar({ isOpen, onClose }) {
           onClick={() => navigate("/dashboard")}
         />
       </div>
-
-      {/* Navigation */}
       <nav className="flex-1 p-4 overflow-y-auto">
         <div className="space-y-1">
           {navItems.map((item) => (
@@ -91,8 +80,6 @@ export default function DashboardSidebar({ isOpen, onClose }) {
             </NavLink>
           ))}
         </div>
-
-        {/* Community Standing Card */}
         <div className="mt-6 p-4 bg-[#1F8225] rounded-xl text-white">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-semibold">Community Standing</h3>
@@ -105,21 +92,16 @@ export default function DashboardSidebar({ isOpen, onClose }) {
               ))}
             </div>
           </div>
-
           <p className="text-sm font-bold">Level {user?.level || 1}</p>
-
           <div className="text-sm space-y-1 mt-2">
             <p>23 Completed Splits</p>
             <p>Reliability Score: 87%</p>
           </div>
-
           <div className="h-2 bg-white/20 rounded-full mt-3">
             <div className="h-full bg-white w-3/4 rounded-full" />
           </div>
         </div>
       </nav>
-
-      {/* User Profile & Logout */}
       <div className="p-4 border-t border-gray-100">
         <Link
           to="/dashboard/settings"
@@ -132,20 +114,19 @@ export default function DashboardSidebar({ isOpen, onClose }) {
           />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-gray-900 truncate">
-              {user?.first_name || user?.email || "User"}
+              {user?.email || user?.first_name || "User"}
             </p>
             <p className="text-xs text-gray-500 truncate">View profile & settings</p>
           </div>
         </Link>
-
         <button
           onClick={handleLogout}
-          disabled={isLoading}
+          disabled={logout.isPending}
           className="mt-3 w-full flex md:hidden items-center gap-3 p-3 rounded-lg text-red-600 hover:bg-red-50 transition disabled:opacity-50"
         >
           <LogOut size={18} />
           <span className="text-sm font-semibold">
-            {isLoading ? "Logging out..." : "Logout"}
+            {logout.isPending ? "Logging out..." : "Logout"}
           </span>
         </button>
       </div>

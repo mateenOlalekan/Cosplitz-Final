@@ -8,16 +8,17 @@ import {
   resendOTPEndpoint,
   getUserInfoEndpoint,
   logoutEndpoint,
+  getToken,
 } from "../endpoints/auth";
 
-
+// ============ QUERY KEYS ============
 export const authKeys = {
   all: ['auth'],
   user: () => [...authKeys.all, 'user'],
   tempRegister: () => [...authKeys.all, 'tempRegister'],
 };
 
-
+// ============ STORAGE HELPERS ============
 const saveTempRegister = (data) => {
   if (typeof window === 'undefined') return;
   if (data) localStorage.setItem('tempRegister', JSON.stringify(data));
@@ -30,29 +31,23 @@ const getTempRegister = () => {
   return data ? JSON.parse(data) : null;
 };
 
-const getToken = () => {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-};
-
-
+// ============ QUERIES ============
 
 export const useUser = () => {
   return useQuery({
-    queryKey: userKeys.detail(),
+    queryKey: authKeys.user(),
     queryFn: getUserInfoEndpoint,
     retry: (failureCount, error) => {
-      // Don't retry on 401 Unauthorized
       if (error?.status === 401) return false;
       return failureCount < 3;
     },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     staleTime: 5 * 60 * 1000, 
-    refetchOnWindowFocus: false, 
+    refetchOnWindowFocus: false,
+    enabled: typeof window !== 'undefined' && !!getToken(),
   });
 };
 
-/* Get temp registration data */
 export const useTempRegister = () => {
   return useQuery({
     queryKey: authKeys.tempRegister(),
@@ -64,7 +59,6 @@ export const useTempRegister = () => {
 
 // ============ MUTATIONS ============
 
-/* Login mutation */
 export const useLogin = () => {
   const queryClient = useQueryClient();
   
@@ -72,15 +66,12 @@ export const useLogin = () => {
     mutationFn: ({ credentials, remember }) => 
       loginEndpoint(credentials, remember),
     onSuccess: (data) => {
-      // Immediately set user data to prevent 401 race condition
-      queryClient.setQueryData(userKeys.detail(), data.user);
-      // Then refetch to confirm
-      queryClient.invalidateQueries({ queryKey: userKeys.detail() });
+      queryClient.setQueryData(authKeys.user(), data.user);
+      queryClient.invalidateQueries({ queryKey: authKeys.user() });
     },
   });
 };
 
-/* Verify OTP mutation  */
 export const useVerifyOTP = () => {
   const queryClient = useQueryClient();
 
@@ -94,18 +85,12 @@ export const useVerifyOTP = () => {
   });
 };
 
-/**
- * Resend OTP mutation
- */
 export const useResendOTP = () => {
   return useMutation({
     mutationFn: resendOTPEndpoint,
   });
 };
 
-/**
- * Logout mutation
- */
 export const useLogout = () => {
   const queryClient = useQueryClient();
 
@@ -118,18 +103,13 @@ export const useLogout = () => {
   });
 };
 
-// ============ COMPLETE REGISTRATION FLOW ============
+// ============ REGISTRATION FLOW ============
 
-/**
- * Multi-step registration with proper sequencing
- * Flow: Register → Login → Get OTP
- */
 export const useRegistrationFlow = () => {
   const queryClient = useQueryClient();
-  const verifyOTP = useVerifyOTP();
+  const verifyOTPMutation = useVerifyOTP();
 
   const executeFlow = async (userData) => {
-    // Step 1: Register (no token needed)
     const regData = await registerEndpoint({
       first_name: userData.first_name,
       last_name: userData.last_name,
@@ -138,16 +118,13 @@ export const useRegistrationFlow = () => {
       nationality: userData.nationality,
     });
     
-    // Step 2: Auto-login (stores token)
     await loginEndpoint({
       email: userData.email,
       password: userData.password,
     }, true);
     
-    // Step 3: Request OTP (uses token from login)
     await getOTPEndpoint(regData.userId);
     
-    // Save temp data for verification step
     const tempData = {
       userId: regData.userId,
       email: regData.email,
@@ -155,8 +132,6 @@ export const useRegistrationFlow = () => {
       lastName: regData.lastName,
     };
     saveTempRegister(tempData);
-    
-    // Update query cache
     queryClient.setQueryData(authKeys.tempRegister(), tempData);
     
     return tempData;
@@ -164,8 +139,8 @@ export const useRegistrationFlow = () => {
 
   return {
     executeFlow,
-    verifyOTP: verifyOTP.mutateAsync,
+    verifyOTP: verifyOTPMutation.mutateAsync,
     resendOTP: useResendOTP().mutateAsync,
-    isVerifying: verifyOTP.isPending,
+    isVerifying: verifyOTPMutation.isPending,
   };
 };
