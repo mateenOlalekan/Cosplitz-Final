@@ -1,10 +1,11 @@
-// src/services/endpoints/auth.js - FINAL CORRECTED VERSION
+// src/services/endpoints/auth.js - FIXED OTP ISSUES
 const API_BASE_URL = 'https://cosplitz-backend.onrender.com/api';
 
 const handleApiError = (response, data) => {
   if (!response.ok) {
     // Don't clear auth on 401 during registration flow
-    const isOTPEndpoint = response.url.includes('/otp') || response.url.includes('/verify');
+    // Only clear on non-OTP endpoints
+    const isOTPEndpoint = response.url.includes('/otp/') || response.url.includes('/verify');
     if (response.status === 401 && !isOTPEndpoint) {
       clearAuth();
     }
@@ -154,7 +155,6 @@ export const getOTPEndpoint = async (userId) => {
   return data;
 };
 
-// CORRECTED: Using /verify_otp (underscore, no trailing slash)
 export const verifyOTPEndpoint = async ({ email, otp }) => {
   const data = await makeRequest(`${API_BASE_URL}/verify_otp`, {
     method: 'POST',
