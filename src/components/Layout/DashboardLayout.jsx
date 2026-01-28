@@ -7,6 +7,7 @@ import { useUser } from "../../services/queries/auth";
 
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [hidden, setHidden] = useState(false);
   const location = useLocation();
   
   const { data: user, isLoading } = useUser();
@@ -49,7 +50,7 @@ export default function DashboardLayout() {
       
       <div className="flex-1 flex flex-col overflow-hidden">
         {!isPostOnboarding && (
-          <DashboardHeader onMenuClick={toggleSidebar} />
+          <DashboardHeader onMenuClick={toggleSidebar} hidden={hidden} setHidden={setHidden} />
         )}
         
         <main className="flex-1 overflow-y-auto">

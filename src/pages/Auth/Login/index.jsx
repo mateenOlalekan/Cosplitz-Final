@@ -7,33 +7,38 @@ import logo from '../../../assets/logo.svg';
 import LeftPanel from '../../../components/Home/LeftPanel';
 import { useLogin, useUser } from '../../../services/queries/auth';
 import { loginSchema } from '../../../schemas/authSchemas';
+import { FcGoogle } from "react-icons/fc";
+import { PiAppleLogoBold } from "react-icons/pi";
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [error,setError] = useState("");
   const from = location.state?.from?.pathname || '/dashboard';
-
   const { data: user, isLoading: isUserLoading } = useUser();
   const login = useLogin();
-
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({ email: '', password: '' });
   const [submitError, setSubmitError] = useState('');
-
   useEffect(() => {
     if (user && !isUserLoading) {
       navigate(from, { replace: true });
     }
   }, [user, isUserLoading, navigate, from]);
 
+  const handleComingSoon = (provider) =>{
+    setError(`${provider} sign-in `)
+    setTimeOut(()=>{
+      setError(" ");
+    },2000);
+  };
   const handleLogin = async (e) => {
     e.preventDefault();
     setSubmitError('');
     setFieldErrors({ email: '', password: '' });
-
     const result = loginSchema.safeParse({ email, password });
     if (!result.success) {
       const errors = {};
@@ -48,10 +53,7 @@ export default function Login() {
       await login.mutateAsync({
         credentials: {
           email: email.trim().toLowerCase(),
-          password,
-        },
-        remember,
-      });
+          password,},remember,});
     } catch (error) {
       if (error?.status === 401) {
         setSubmitError('Invalid email or password');
@@ -61,11 +63,7 @@ export default function Login() {
     }
   };
 
-  const inputClass = (hasError) =>
-    `w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors ${
-      hasError ? 'border-red-300' : 'border-gray-300 focus:border-green-500'
-    }`;
-
+  const inputClass = (hasError) =>`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors ${hasError ? 'border-red-300' : 'border-gray-300 focus:border-green-500'}`;
   const isLoading = login.isPending || isUserLoading;
 
   if (isUserLoading) {
@@ -91,9 +89,9 @@ export default function Login() {
             <p className="text-gray-500 text-center text-sm mt-1 mb-4">
               Sign in to continue sharing expenses.
             </p>
-            {submitError && (
-              <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg text-center">
-                {submitError}
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-2 rounded-lg text-center">
+                {error} coming Soon
               </div>
             )}
             <div className="grid grid-cols-1 gap-2">
@@ -101,20 +99,21 @@ export default function Login() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 type="button"
-                onClick={() => alert('Google login coming soon!')}
-                disabled={isLoading}
+                onClick={()=> handleComingSoon("Google")}
                 className="flex items-center justify-center gap-3 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
+                <FcGoogle/>
                 <span className="text-gray-700 text-sm">Sign in with Google</span>
               </motion.button>
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 type="button"
-                onClick={() => alert('Apple login coming soon!')}
-                disabled={isLoading}
+                onClick={()=> handleComingSoon("Apple")}
+
                 className="flex items-center justify-center gap-3 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
+                <PiAppleLogoBold />
                 <span className="text-gray-700 text-sm">Sign in with Apple</span>
               </motion.button>
             </div>

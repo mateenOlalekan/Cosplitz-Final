@@ -248,6 +248,5 @@ export const getDistanceDisplay = (radius) => {
 
 export const handleJoinSplit = async (splitId, e) => {
   e?.stopPropagation();
-  // This is handled in the component now
   return splitId;
 };
