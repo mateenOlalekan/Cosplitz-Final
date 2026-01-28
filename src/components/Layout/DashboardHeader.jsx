@@ -29,7 +29,7 @@ export default function DashboardHeader({ onMenuClick }) {
         <img
           src={logo}
           alt="Company Logo"
-          className="w-20 h-20 object-contain select-none"
+          className="w-24 h-24 object-contain select-none"
           draggable="false"
         />
         <nav aria-label="User menu">
@@ -37,7 +37,7 @@ export default function DashboardHeader({ onMenuClick }) {
         </nav>
       </div>
 
-      <div className="flex gap-3">
+      <div className="flex gap-1">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
           <input
