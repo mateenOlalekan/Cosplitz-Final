@@ -40,7 +40,7 @@ export default function Main() {
             Quick Access Categories
           </h2>
 
-          <div className="grid grid-cols-4 gap-3">
+          <div className="flex gap-3">
             {categories.map((cat, i) => (
               <button
                 key={i}
@@ -57,9 +57,6 @@ export default function Main() {
               </button>
             ))}
           </div>
-        </section>
-      </div>
-
       {/* 🎯 SPECIAL FOR YOU SECTION */}
       <section className="flex flex-col gap-4 px-4 mt-6">
         <h2 className="text-lg font-bold text-gray-900">#SpecialForYou</h2>
@@ -145,6 +142,10 @@ export default function Main() {
           </button>
         </div>
       </section>
+        </section>
+      </div>
+
+
 
       {/* 📊 ACTIVE SPLITS */}
       <div className="p-4">
