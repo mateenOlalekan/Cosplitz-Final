@@ -1,4 +1,4 @@
-// src/services/endpoints/auth.js
+// src/services/endpoints/auth.js - FIXED VERSION
 const API_BASE_URL = 'https://cosplitz-backend.onrender.com/api';
 
 const handleApiError = (response, data) => {
@@ -7,7 +7,24 @@ const handleApiError = (response, data) => {
       clearAuth();
     }
     
-    const errorMessage = data?.message || data?.detail || data?.error || `Request failed (${response.status})`;
+    // Extract error message from various possible formats
+    let errorMessage = 'Request failed';
+    
+    if (data?.message) {
+      errorMessage = data.message;
+    } else if (data?.detail) {
+      errorMessage = data.detail;
+    } else if (data?.error) {
+      errorMessage = data.error;
+    } else if (data?.errors && Array.isArray(data.errors)) {
+      errorMessage = data.errors.join(', ');
+    } else if (data?.email && Array.isArray(data.email)) {
+      // Handle Django-style field errors
+      errorMessage = `Email: ${data.email.join(', ')}`;
+    } else {
+      errorMessage = `Request failed with status ${response.status}`;
+    }
+    
     const error = new Error(errorMessage);
     error.status = response.status;
     error.data = data;
@@ -30,9 +47,19 @@ async function makeRequest(url, options = {}) {
     }
   }
 
-  const response = await fetch(url, { ...options, headers });
-  const data = await response.json().catch(() => null);
-  return handleApiError(response, data);
+  try {
+    const response = await fetch(url, { ...options, headers });
+    const data = await response.json().catch(() => null);
+    return handleApiError(response, data);
+  } catch (error) {
+    // Handle network errors
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      const networkError = new Error('Network error. Please check your internet connection.');
+      networkError.isNetworkError = true;
+      throw networkError;
+    }
+    throw error;
+  }
 }
 
 // ============ TOKEN HELPERS ============

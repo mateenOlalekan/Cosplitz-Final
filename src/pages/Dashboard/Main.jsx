@@ -27,7 +27,7 @@ export default function Main() {
 
   return (
     <>
-      <div className="flex flex-col gap-5 mt-10 md:mt-3 px-4">
+      <div className="flex flex-col gap-5 mt-4 md:mt-3 px-4">
         {/* 📂 QUICK ACCESS CATEGORIES - Hidden when search is focused */}
         <section 
           className={`transition-all duration-500 ease-in-out overflow-hidden ${

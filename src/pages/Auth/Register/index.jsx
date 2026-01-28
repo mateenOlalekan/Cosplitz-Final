@@ -1,4 +1,3 @@
-// src/pages/Register/index.jsx - NO CHANGES
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRegistrationFlow, useTempRegister, useUser } from '../../../services/queries/auth';
@@ -18,16 +17,23 @@ export default function Register() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [verificationError, setVerificationError] = useState('');
+  const [registrationComplete, setRegistrationComplete] = useState(false);
 
   const { data: tempRegister } = useTempRegister();
   const { data: user, isLoading: isUserLoading, isError: isUserError } = useUser();
   const { executeFlow, verifyOTP, resendOTP, isVerifying } = useRegistrationFlow();
 
   useEffect(() => {
-    if (user && !isUserLoading && !isUserError) {
+    if (registrationComplete && user && !isUserLoading && !isUserError) {
       navigate('/dashboard', { replace: true });
     }
-  }, [user, isUserLoading, isUserError, navigate]);
+  }, [registrationComplete, user, isUserLoading, isUserError, navigate]);
+
+  useEffect(() => {
+    if (!tempRegister && user && !isUserLoading && !isUserError && !registrationComplete) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [tempRegister, user, isUserLoading, isUserError, registrationComplete, navigate]);
 
   useEffect(() => {
     if (tempRegister && currentStep === 1) {
@@ -51,7 +57,26 @@ export default function Register() {
       setCurrentStep(2);
       return { success: true };
     } catch (error) {
-      const message = error?.message || 'Registration failed';
+      console.error('Registration error:', error);
+      
+      let message = 'Registration failed. Please try again.';
+      
+      if (error?.message) {
+        const errorMsg = error.message.toLowerCase();
+        
+        if (errorMsg.includes('email') && (errorMsg.includes('already') || errorMsg.includes('exists') || errorMsg.includes('taken'))) {
+          message = 'This email is already registered. Please use a different email or try logging in.';
+        } else if (errorMsg.includes('password')) {
+          message = 'Password does not meet requirements. Please check and try again.';
+        } else if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
+          message = 'Network error. Please check your connection and try again.';
+        } else if (errorMsg.includes('invalid')) {
+          message = 'Invalid registration data. Please check your information.';
+        } else {
+          message = error.message;
+        }
+      }
+      
       setVerificationError(message);
       return { success: false, error: message };
     }
@@ -59,21 +84,35 @@ export default function Register() {
 
   const handleVerifyOTP = async (otp) => {
     setVerificationError('');
-    
     if (!tempRegister?.email) {
       setVerificationError('Session expired. Please register again.');
       return { success: false, error: 'Session expired' };
     }
     
     try {
-      await verifyOTP({ 
-        email: tempRegister.email, 
-        otp 
-      });
+      await verifyOTP({ email: tempRegister.email, otp  });
       setCurrentStep(3);
+      setRegistrationComplete(true);
       return { success: true };
     } catch (error) {
-      const message = error?.message || 'Invalid verification code';
+      console.error('OTP verification error:', error);
+      
+      let message = 'Invalid verification code';
+      
+      if (error?.message) {
+        const errorMsg = error.message.toLowerCase();
+        
+        if (errorMsg.includes('invalid') || errorMsg.includes('incorrect')) {
+          message = 'Invalid verification code. Please check and try again.';
+        } else if (errorMsg.includes('expired')) {
+          message = 'Verification code has expired. Please request a new one.';
+        } else if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
+          message = 'Network error. Please try again.';
+        } else {
+          message = error.message;
+        }
+      }
+      
       setVerificationError(message);
       return { success: false, error: message };
     }
@@ -81,14 +120,18 @@ export default function Register() {
 
   const handleResendOTP = async () => {
     if (!tempRegister?.userId) {
-      return { success: false, error: 'Session expired' };
+      return { success: false, error: 'Session expired. Please register again.' };
     }
     
     try {
       await resendOTP(tempRegister.userId);
+      setVerificationError('');
       return { success: true };
     } catch (error) {
-      return { success: false, error: error?.message || 'Failed to resend code' };
+      console.error('Resend OTP error:', error);
+      
+      const message = error?.message || 'Failed to resend code. Please try again.';
+      return { success: false, error: message };
     }
   };
 
@@ -97,7 +140,7 @@ export default function Register() {
     window.location.reload();
   };
 
-  if (isUserLoading) {
+  if (isUserLoading && !tempRegister) {
     return (
       <div className="flex items-center justify-center h-screen bg-[#F7F5F9]">
         <div className="w-8 h-8 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
