@@ -25,14 +25,16 @@ export default function Register() {
   const { data: user, isLoading: isUserLoading } = useUser({ enabled: hasToken });
   const { executeFlow, verifyOTP, resendOTP, isVerifying } = useRegistrationFlow();
 
-  // 🔴 FIXED: Use correct variable name
+  // 🔴 FIX: Only redirect if user is ALREADY logged in (not during registration)
   useEffect(() => {
-    if (!hasToken) return;
-
-    if (user && !isUserLoading) {
+    // Don't redirect during registration flow
+    if (currentStep !== 1) return;
+    
+    // Only redirect if user is already logged in BEFORE starting registration
+    if (hasToken && user && !isUserLoading) {
       navigate('/dashboard');
     }
-  }, [hasToken, user, isUserLoading, navigate]);
+  }, [hasToken, user, isUserLoading, navigate, currentStep]);
 
   // Auto-advance to OTP step if temp register data exists
   useEffect(() => {
@@ -46,7 +48,7 @@ export default function Register() {
     setVerificationError('');
     setIsProcessing(true);
     
-    // 🟢 FIXED: Convert camelCase to snake_case for API
+    // Convert camelCase to snake_case for API
     const payload = {
       first_name: formData.first_name?.trim() || '',
       last_name: formData.last_name?.trim() || '',
@@ -58,7 +60,7 @@ export default function Register() {
     try {
       await executeFlow(payload);
       setHasToken(true); // Token should be set after auto-login
-      setCurrentStep(2);
+      setCurrentStep(2); // 🔴 FIX: Move to OTP step, NOT dashboard
       return { success: true };
     } catch (error) {
       const message = error?.message || 'Registration failed';
@@ -77,6 +79,7 @@ export default function Register() {
       return { success: false, error: 'Session expired' };
     }
     
+    // 🟢 ADD: Verify we have a token before OTP verification
     const tokenBeforeVerify = getToken();
     if (!tokenBeforeVerify) {
       setVerificationError('Please complete registration first');
@@ -89,13 +92,14 @@ export default function Register() {
         otp 
       });
       
+      // 🟢 ADD: Verify token exists after verification
       const tokenAfterVerify = getToken();
       if (!tokenAfterVerify) {
         throw new Error('Token not set after OTP verification');
       }
       
-      setHasToken(true); 
-      setCurrentStep(3);
+      setHasToken(true);
+      setCurrentStep(3); // 🔴 FIX: Move to success step
       return { success: true };
     } catch (error) {
       const message = error?.message || 'Invalid verification code';
@@ -118,6 +122,7 @@ export default function Register() {
   };
 
   const handleBackToRegistration = () => {
+    // Clear all auth data when going back
     localStorage.removeItem('tempRegister');
     localStorage.removeItem('authToken');
     sessionStorage.removeItem('authToken');
@@ -126,7 +131,7 @@ export default function Register() {
     window.location.reload();
   };
 
-  if (isUserLoading) {
+  if (isUserLoading && currentStep === 1) {
     return (
       <div className="flex items-center justify-center h-screen bg-[#F7F5F9]">
         <div className="w-8 h-8 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
@@ -177,12 +182,14 @@ export default function Register() {
               </p>
             </div>
             
+            {/* Global Error Display */}
             {verificationError && (
               <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-4 text-center">
                 {verificationError}
               </div>
             )}
             
+            {/* Step 1: Registration Form */}
             {currentStep === 1 && (
               <RegistrationForm
                 onSubmit={handleRegister}
@@ -190,6 +197,7 @@ export default function Register() {
               />
             )}
             
+            {/* Step 2: Email Verification */}
             {currentStep === 2 && tempRegister && (
               <EmailVerificationStep
                 email={tempRegister.email}
@@ -200,6 +208,7 @@ export default function Register() {
               />
             )}
             
+            {/* Step 3: Success */}
             {currentStep === 3 && <Successful />}
           </div>
         </div>

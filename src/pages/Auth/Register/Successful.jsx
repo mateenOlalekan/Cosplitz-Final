@@ -10,7 +10,7 @@ export default function Successful() {
   const hasToken = !!getToken();
   const { data: user, isLoading, isError } = useUser({ enabled: hasToken });
 
-  // FIXED: Wait for both token AND user data before redirecting
+  // 🔴 FIXED: Wait for both token AND user data before redirecting
   useEffect(() => {
     if (!hasToken || !user || isLoading) return;
 

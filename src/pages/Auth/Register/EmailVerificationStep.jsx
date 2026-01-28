@@ -87,11 +87,15 @@ export default function EmailVerificationStep({
     try {
       const result = await onVerify(otpCode);
       
+      // 🟢 ADD: Check result and show error
       if (!result.success) {
         setLocalError(result.error || 'Invalid verification code');
         setOtp(['', '', '', '', '', '']);
         inputRefs.current[0]?.focus();
+        return;
       }
+      
+      // If success, UI will automatically move to next step
     } catch (error) {
       setLocalError(error?.message || 'Verification failed');
       setOtp(['', '', '', '', '', '']);

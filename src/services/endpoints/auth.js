@@ -13,10 +13,6 @@ const handleApiError = (response, data) => {
     error.data = data;
     throw error;
   }
-
-  if (!data) {
-    throw new Error('No data received from server');
-  }
   return data;
 };
 
@@ -88,10 +84,12 @@ export const registerEndpoint = async (userData) => {
   });
 
   return {
+    // 🟢 FIX: Return consistent property names
+    id: data?.user?.id,
     userId: data?.user?.id,
     email: data?.user?.email,
-    firstName: data?.user?.first_name,
-    lastName: data?.user?.last_name,
+    first_name: data?.user?.first_name,
+    last_name: data?.user?.last_name,
     username: data?.user?.username,
     message: data?.message || 'Registration successful',
   };
@@ -141,7 +139,7 @@ export const verifyOTPEndpoint = async ({ email, otp }) => {
   }
 
   return {
-    user: data?.user || data?.data,
+    user: data?.user || data?.data || data,
     token: data?.token,
     isVerified: true,
   };
@@ -164,7 +162,6 @@ export const getUserInfoEndpoint = async () => {
     throw error;
   }
 };
-
 
 export const logoutEndpoint = () => {
   clearAuth();

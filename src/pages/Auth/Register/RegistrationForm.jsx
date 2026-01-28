@@ -1,14 +1,16 @@
+// src/pages/Register/RegistrationForm.jsx
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FcGoogle } from 'react-icons/fc';
-import { LiaApple } from "react-icons/lia";
+import { PiAppleLogoBold } from 'react-icons/pi';
 import { Eye, EyeOff, ChevronDown } from 'lucide-react';
 import { registrationSchema } from '../../../schemas/authSchemas';
 import PasswordValidation from './PasswordValidation';
 import { getAllCountries } from '../../../services/countryService';
 
 export default function RegistrationForm({ onSubmit, loading }) {
+  // Form state
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -29,10 +31,12 @@ export default function RegistrationForm({ onSubmit, loading }) {
   const nationalityRef = useRef(null);
   const dropdownRef = useRef(null);
 
+  // Load countries
   useEffect(() => {
     getAllCountries().then(setCountries).catch(console.warn);
   }, []);
 
+  // Click outside to close dropdown
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (
@@ -48,6 +52,7 @@ export default function RegistrationForm({ onSubmit, loading }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Validation
   const validateField = (field, value) => {
     try {
       registrationSchema.shape[field].parse(value);
@@ -69,6 +74,7 @@ export default function RegistrationForm({ onSubmit, loading }) {
     setFieldErrors(prev => ({ ...prev, [field]: errorMsg }));
   };
 
+  // Nationality dropdown
   const handleNationalityChange = (value) => {
     handleChange('nationality', value);
     if (!value.trim()) {
@@ -87,6 +93,7 @@ export default function RegistrationForm({ onSubmit, loading }) {
     setOpen(false);
   };
 
+  // Submit - FIXED: Convert to snake_case for API
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -104,6 +111,7 @@ export default function RegistrationForm({ onSubmit, loading }) {
       return;
     }
 
+    // 🟢 FIX: Convert camelCase to snake_case for API
     const apiFormData = {
       first_name: formData.firstName.trim(),
       last_name: formData.lastName.trim(),
@@ -113,14 +121,25 @@ export default function RegistrationForm({ onSubmit, loading }) {
     };
 
     const res = await onSubmit(apiFormData);
+
     if (!res.success) {
       setSubmitError(res.error || 'Registration failed');
     }
+
     setIsSubmitting(false);
   };
 
-  const inputClass = (hasError) =>`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors ${hasError ? 'border-red-300' : 'border-gray-300 focus:border-green-500'}`;
-  const isFormValid = !Object.values(fieldErrors).some(error => error) && formData.agreeToTerms && formData.firstName && formData.lastName &&  formData.email && formData.password;
+  const inputClass = (hasError) =>
+    `w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors ${
+      hasError ? 'border-red-300' : 'border-gray-300 focus:border-green-500'
+    }`;
+
+  const isFormValid = !Object.values(fieldErrors).some(error => error) && 
+                     formData.agreeToTerms && 
+                     formData.firstName && 
+                     formData.lastName && 
+                     formData.email && 
+                     formData.password;
 
   return (
     <div>
@@ -151,7 +170,7 @@ export default function RegistrationForm({ onSubmit, loading }) {
           onClick={() => alert('Apple signup coming soon!')}
           className="flex items-center justify-center gap-3 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
         >
-          <LiaApple size={20} />
+          <PiAppleLogoBold size={20} />
           <span className="text-gray-700 text-sm">Sign Up with Apple</span>
         </motion.button>
       </div>
