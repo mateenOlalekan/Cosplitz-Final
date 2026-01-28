@@ -33,20 +33,19 @@ const getTempRegister = () => {
 
 // ============ QUERIES ============
 
-export const useUser = () => {
+export const useUser = ({ enabled } = {}) => {
+  const token = getToken();
+
   return useQuery({
     queryKey: authKeys.user(),
     queryFn: getUserInfoEndpoint,
-    retry: (failureCount, error) => {
-      if (error?.status === 401) return false;
-      return failureCount < 3;
-    },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-    staleTime: 5 * 60 * 1000, 
-    refetchOnWindowFocus: false,
-    enabled: typeof window !== 'undefined' && !!getToken(),
+    enabled: Boolean(token) && enabled !== false,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
   });
 };
+
+
 
 export const useTempRegister = () => {
   return useQuery({
@@ -108,33 +107,43 @@ export const useLogout = () => {
 export const useRegistrationFlow = () => {
   const queryClient = useQueryClient();
   const verifyOTPMutation = useVerifyOTP();
+  const loginMutation = useLogin();
 
   const executeFlow = async (userData) => {
-    const regData = await registerEndpoint({
-      first_name: userData.first_name,
-      last_name: userData.last_name,
-      email: userData.email,
-      password: userData.password,
-      nationality: userData.nationality,
-    });
-    
-    await loginEndpoint({
-      email: userData.email,
-      password: userData.password,
-    }, true);
-    
-    await getOTPEndpoint(regData.userId);
-    
-    const tempData = {
-      userId: regData.userId,
-      email: regData.email,
-      firstName: regData.firstName,
-      lastName: regData.lastName,
-    };
-    saveTempRegister(tempData);
-    queryClient.setQueryData(authKeys.tempRegister(), tempData);
-    
-    return tempData;
+    try {
+      const regData = await registerEndpoint({
+        first_name: userData.first_name,
+        last_name: userData.last_name,
+        email: userData.email,
+        password: userData.password,
+        nationality: userData.nationality,
+      });
+      
+      await loginMutation.mutateAsync({
+        credentials: {
+          email: userData.email,
+          password: userData.password,
+        },
+        remember: true,
+      });
+      
+      await getOTPEndpoint(regData.userId);
+      
+      const tempData = {
+        userId: regData.userId,
+        email: regData.email,
+        firstName: regData.firstName,
+        lastName: regData.lastName,
+      };
+      
+      saveTempRegister(tempData);
+      queryClient.setQueryData(authKeys.tempRegister(), tempData);
+      
+      return tempData;
+    } catch (error) {
+      console.error('Registration flow error:', error);
+      throw error;
+    }
   };
 
   return {

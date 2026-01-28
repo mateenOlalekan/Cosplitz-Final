@@ -13,6 +13,10 @@ const handleApiError = (response, data) => {
     error.data = data;
     throw error;
   }
+
+  if (!data) {
+    throw new Error('No data received from server');
+  }
   return data;
 };
 
@@ -148,12 +152,19 @@ export const resendOTPEndpoint = async (userId) => {
 };
 
 export const getUserInfoEndpoint = async () => {
-  const data = await makeRequest(`${API_BASE_URL}/user/info`, {
-    method: 'GET',
-    auth: true,
-  });
-  return data;
+  try {
+    return await makeRequest(`${API_BASE_URL}/user/info`, {
+      method: 'GET',
+      auth: true,
+    });
+  } catch (error) {
+    if (error?.status === 401) {
+      return null; // important: stop crashing UI
+    }
+    throw error;
+  }
 };
+
 
 export const logoutEndpoint = () => {
   clearAuth();

@@ -1,12 +1,13 @@
-// src/pages/Register/index.jsx - NO CHANGES
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useRegistrationFlow, useTempRegister, useUser } from '../../../services/queries/auth';
+import { useRegistrationFlow, useTempRegister, useUser, authKeys } from '../../../services/queries/auth';
 import loginlogo from "../../../assets/login.jpg";
 import logo from "../../../assets/logo.svg";
 import RegistrationForm from './RegistrationForm';
 import EmailVerificationStep from './EmailVerificationStep';
 import Successful from './Successful';
+import {getToken} from "../../../services/endpoints/auth";
 
 const steps = [
   { id: 1, label: 'Account', description: 'Create your account' },
@@ -16,18 +17,21 @@ const steps = [
 
 export default function Register() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [currentStep, setCurrentStep] = useState(1);
   const [verificationError, setVerificationError] = useState('');
-
   const { data: tempRegister } = useTempRegister();
-  const { data: user, isLoading: isUserLoading, isError: isUserError } = useUser();
+  const hasToken = !!getToken();
+  const { data: user, isLoading: isUserLoading } = useUser({ enabled: hasToken });
   const { executeFlow, verifyOTP, resendOTP, isVerifying } = useRegistrationFlow();
 
   useEffect(() => {
-    if (user && !isUserLoading && !isUserError) {
-      navigate('/dashboard', { replace: true });
+    if (!hasToken) return;
+    if (user && !isLoading) {
+      navigate('/dashboard');
     }
-  }, [user, isUserLoading, isUserError, navigate]);
+  }, [hasToken, user, isLoading, navigate]);
+
 
   useEffect(() => {
     if (tempRegister && currentStep === 1) {
@@ -45,7 +49,6 @@ export default function Register() {
       password: formData.password,
       nationality: formData.nationality.trim(),
     };
-
     try {
       await executeFlow(payload);
       setCurrentStep(2);
@@ -56,15 +59,12 @@ export default function Register() {
       return { success: false, error: message };
     }
   };
-
   const handleVerifyOTP = async (otp) => {
     setVerificationError('');
-    
     if (!tempRegister?.email) {
       setVerificationError('Session expired. Please register again.');
       return { success: false, error: 'Session expired' };
     }
-    
     try {
       await verifyOTP({ 
         email: tempRegister.email, 

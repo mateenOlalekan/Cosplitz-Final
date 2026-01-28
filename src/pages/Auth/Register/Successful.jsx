@@ -3,19 +3,24 @@ import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useUser } from '../../../services/queries/auth';
 import Checknow from '../../../assets/Check.svg';
+import { getToken } from '../../../services/endpoints/auth';
 
 export default function Successful() {
   const navigate = useNavigate();
-  const { data: user, isLoading, isError } = useUser();
+  const hasToken = !!getToken();
+  const { data: user, isLoading, isError } = useUser({ enabled: hasToken });
 
-  useEffect(() => {
-    if (user && !isLoading && !isError) {
-      const timer = setTimeout(() => {
-        navigate('/dashboard');
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, [user, isLoading, isError, navigate]);
+useEffect(() => {
+  if (!hasToken) return;
+
+  if (user && !isLoading && !isError) {
+    const timer = setTimeout(() => {
+      navigate('/dashboard');
+    }, 1500);
+    return () => clearTimeout(timer);
+  }
+}, [hasToken, user, isLoading, isError, navigate]);
+
 
   return (
     <div className="flex flex-col items-center text-center py-6">
