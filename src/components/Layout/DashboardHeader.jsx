@@ -37,7 +37,7 @@ export default function DashboardHeader({ onMenuClick }) {
         </nav>
       </div>
 
-      <div className="flex gap-0.5 py-2">
+      <div className="flex gap-0.5 pt-2">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
           <input
@@ -53,7 +53,7 @@ export default function DashboardHeader({ onMenuClick }) {
         </button>       
       </div>
 
-      <div className="hidden md:flex items-center justify-between py-3">
+      <div className="hidden md:flex items-center justify-between py-2">
         <div className="flex items-center gap-1 text-gray-600">
           <MapPin size={16} />
           <span className="text-sm">{user?.location || "Ikeja, Lagos"}</span>
