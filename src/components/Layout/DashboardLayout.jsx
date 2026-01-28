@@ -1,4 +1,4 @@
-// src/components/Layout/DashboardLayout.jsx - NO CHANGES
+// src/components/Layout/DashboardLayout.jsx
 import { useState, useEffect, useCallback } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import DashboardSidebar from "./DashboardSidebar";
@@ -54,7 +54,7 @@ export default function DashboardLayout() {
         )}
         
         <main className="flex-1 overflow-y-auto">
-          <Outlet />
+          <Outlet context={{ hidden }} />
         </main>
       </div>
     </div>
