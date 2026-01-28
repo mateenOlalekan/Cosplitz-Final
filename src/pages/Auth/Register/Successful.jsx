@@ -10,17 +10,17 @@ export default function Successful() {
   const hasToken = !!getToken();
   const { data: user, isLoading, isError } = useUser({ enabled: hasToken });
 
-useEffect(() => {
-  if (!hasToken) return;
+  // FIXED: Wait for both token AND user data before redirecting
+  useEffect(() => {
+    if (!hasToken || !user || isLoading) return;
 
-  if (user && !isLoading && !isError) {
-    const timer = setTimeout(() => {
-      navigate('/dashboard');
-    }, 1500);
-    return () => clearTimeout(timer);
-  }
-}, [hasToken, user, isLoading, isError, navigate]);
-
+    if (user && !isError) {
+      const timer = setTimeout(() => {
+        navigate('/dashboard');
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [hasToken, user, isLoading, isError, navigate]);
 
   return (
     <div className="flex flex-col items-center text-center py-6">
@@ -38,7 +38,12 @@ useEffect(() => {
         disabled={isLoading}
         className="w-full mt-6 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white py-3 rounded-lg font-semibold transition-colors"
       >
-        {isLoading ? 'Loading...' : 'Continue to Dashboard'}
+        {isLoading ? (
+          <span className="flex items-center justify-center gap-2">
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            Loading...
+          </span>
+        ) : 'Continue to Dashboard'}
       </motion.button>
     </div>
   );

@@ -1,13 +1,12 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useRegistrationFlow, useTempRegister, useUser, authKeys } from '../../../services/queries/auth';
+import { useRegistrationFlow, useTempRegister, useUser } from '../../../services/queries/auth';
 import loginlogo from "../../../assets/login.jpg";
 import logo from "../../../assets/logo.svg";
 import RegistrationForm from './RegistrationForm';
 import EmailVerificationStep from './EmailVerificationStep';
 import Successful from './Successful';
-import {getToken} from "../../../services/endpoints/auth";
+import { getToken } from "../../../services/endpoints/auth";
 
 const steps = [
   { id: 1, label: 'Account', description: 'Create your account' },
@@ -17,59 +16,85 @@ const steps = [
 
 export default function Register() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const [currentStep, setCurrentStep] = useState(1);
   const [verificationError, setVerificationError] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [hasToken, setHasToken] = useState(!!getToken());
+  
   const { data: tempRegister } = useTempRegister();
-  const hasToken = !!getToken();
   const { data: user, isLoading: isUserLoading } = useUser({ enabled: hasToken });
   const { executeFlow, verifyOTP, resendOTP, isVerifying } = useRegistrationFlow();
 
+  // 🔴 FIXED: Use correct variable name
   useEffect(() => {
     if (!hasToken) return;
-    if (user && !isLoading) {
+
+    if (user && !isUserLoading) {
       navigate('/dashboard');
     }
-  }, [hasToken, user, isLoading, navigate]);
+  }, [hasToken, user, isUserLoading, navigate]);
 
-
+  // Auto-advance to OTP step if temp register data exists
   useEffect(() => {
     if (tempRegister && currentStep === 1) {
       setCurrentStep(2);
+      setHasToken(true); // We should have token from auto-login
     }
   }, [tempRegister, currentStep]);
 
   const handleRegister = async (formData) => {
     setVerificationError('');
+    setIsProcessing(true);
     
+    // 🟢 FIXED: Convert camelCase to snake_case for API
     const payload = {
-      first_name: formData.firstName.trim(),
-      last_name: formData.lastName.trim(),
-      email: formData.email.toLowerCase().trim(),
-      password: formData.password,
-      nationality: formData.nationality.trim(),
+      first_name: formData.first_name?.trim() || '',
+      last_name: formData.last_name?.trim() || '',
+      email: (formData.email || '').toLowerCase().trim(),
+      password: formData.password || '',
+      nationality: formData.nationality?.trim() || '',
     };
+    
     try {
       await executeFlow(payload);
+      setHasToken(true); // Token should be set after auto-login
       setCurrentStep(2);
       return { success: true };
     } catch (error) {
       const message = error?.message || 'Registration failed';
       setVerificationError(message);
       return { success: false, error: message };
+    } finally {
+      setIsProcessing(false);
     }
   };
+
   const handleVerifyOTP = async (otp) => {
     setVerificationError('');
+    
     if (!tempRegister?.email) {
       setVerificationError('Session expired. Please register again.');
       return { success: false, error: 'Session expired' };
     }
+    
+    const tokenBeforeVerify = getToken();
+    if (!tokenBeforeVerify) {
+      setVerificationError('Please complete registration first');
+      return { success: false, error: 'No authentication token' };
+    }
+    
     try {
       await verifyOTP({ 
         email: tempRegister.email, 
         otp 
       });
+      
+      const tokenAfterVerify = getToken();
+      if (!tokenAfterVerify) {
+        throw new Error('Token not set after OTP verification');
+      }
+      
+      setHasToken(true); 
       setCurrentStep(3);
       return { success: true };
     } catch (error) {
@@ -94,6 +119,10 @@ export default function Register() {
 
   const handleBackToRegistration = () => {
     localStorage.removeItem('tempRegister');
+    localStorage.removeItem('authToken');
+    sessionStorage.removeItem('authToken');
+    localStorage.removeItem('userInfo');
+    setHasToken(false);
     window.location.reload();
   };
 
@@ -147,17 +176,20 @@ export default function Register() {
                 {steps.find(s => s.id === currentStep)?.description}
               </p>
             </div>
+            
             {verificationError && (
               <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-4 text-center">
                 {verificationError}
               </div>
             )}
+            
             {currentStep === 1 && (
               <RegistrationForm
                 onSubmit={handleRegister}
-                loading={false}
+                loading={isProcessing}
               />
             )}
+            
             {currentStep === 2 && tempRegister && (
               <EmailVerificationStep
                 email={tempRegister.email}
@@ -167,6 +199,7 @@ export default function Register() {
                 isLoading={isVerifying}
               />
             )}
+            
             {currentStep === 3 && <Successful />}
           </div>
         </div>

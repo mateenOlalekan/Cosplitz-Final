@@ -15,7 +15,7 @@ export default function EmailVerificationStep({
   
   const inputRefs = useRef([]);
 
-  // Countdown timer
+  // Countdown timer - FIXED: Proper cleanup
   useEffect(() => {
     if (timer <= 0) return;
     
@@ -84,32 +84,42 @@ export default function EmailVerificationStep({
       return;
     }
 
-    const result = await onVerify(otpCode);
-    
-    if (!result.success) {
-      setLocalError(result.error || 'Invalid verification code');
+    try {
+      const result = await onVerify(otpCode);
+      
+      if (!result.success) {
+        setLocalError(result.error || 'Invalid verification code');
+        setOtp(['', '', '', '', '', '']);
+        inputRefs.current[0]?.focus();
+      }
+    } catch (error) {
+      setLocalError(error?.message || 'Verification failed');
       setOtp(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
     }
   };
 
   const handleResend = async () => {
-    if (timer > 0 || resendLoading) return;
+    if (timer > 0 || resendLoading || isLoading) return;
     
     setResendLoading(true);
     setLocalError('');
     
-    const result = await onResend();
-    
-    if (result.success) {
-      setTimer(180);
-      setOtp(['', '', '', '', '', '']);
-      inputRefs.current[0]?.focus();
-    } else {
-      setLocalError(result.error || 'Failed to resend code');
+    try {
+      const result = await onResend();
+      
+      if (result.success) {
+        setTimer(180);
+        setOtp(['', '', '', '', '', '']);
+        inputRefs.current[0]?.focus();
+      } else {
+        setLocalError(result.error || 'Failed to resend code');
+      }
+    } catch (error) {
+      setLocalError(error?.message || 'Failed to resend code');
+    } finally {
+      setResendLoading(false);
     }
-    
-    setResendLoading(false);
   };
 
   const formatTime = (seconds) => {

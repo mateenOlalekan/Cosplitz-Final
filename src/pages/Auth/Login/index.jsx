@@ -1,6 +1,7 @@
-// src/pages/Login/index.jsx - NO CHANGES
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { FcGoogle } from 'react-icons/fc';
+import { LiaApple } from 'react-icons/lia';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff } from 'lucide-react';
 import logo from '../../../assets/logo.svg';
@@ -33,7 +34,6 @@ export default function Login() {
     e.preventDefault();
     setSubmitError('');
     setFieldErrors({ email: '', password: '' });
-
     const result = loginSchema.safeParse({ email, password });
     if (!result.success) {
       const errors = {};
@@ -61,13 +61,8 @@ export default function Login() {
     }
   };
 
-  const inputClass = (hasError) =>
-    `w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors ${
-      hasError ? 'border-red-300' : 'border-gray-300 focus:border-green-500'
-    }`;
-
+  const inputClass = (hasError) =>`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-colors ${hasError ? 'border-red-300' : 'border-gray-300 focus:border-green-500'}`;
   const isLoading = login.isPending || isUserLoading;
-
   if (isUserLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-[#F7F5F9]">
@@ -96,26 +91,27 @@ export default function Login() {
                 {submitError}
               </div>
             )}
-            <div className="grid grid-cols-1 gap-2">
+            <div className="grid grid-cols-1 gap-2 mb-3">
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 type="button"
-                onClick={() => alert('Google login coming soon!')}
-                disabled={isLoading}
-                className="flex items-center justify-center gap-3 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                onClick={() => alert('Google signup coming soon!')}
+                className="flex items-center justify-center gap-3 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
-                <span className="text-gray-700 text-sm">Sign in with Google</span>
+                <FcGoogle size={20} />
+                <span className="text-gray-700 text-sm">Sign Up with Google</span>
               </motion.button>
+              
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 type="button"
-                onClick={() => alert('Apple login coming soon!')}
-                disabled={isLoading}
-                className="flex items-center justify-center gap-3 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                onClick={() => alert('Apple signup coming soon!')}
+                className="flex items-center justify-center gap-3 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
-                <span className="text-gray-700 text-sm">Sign in with Apple</span>
+                <LiaApple size={20} />
+                <span className="text-gray-700 text-sm">Sign Up with Apple</span>
               </motion.button>
             </div>
             <div className="flex items-center my-4">
