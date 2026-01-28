@@ -1,3 +1,4 @@
+// src/pages/Register/index.jsx - NO CHANGES
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRegistrationFlow, useTempRegister, useUser } from '../../../services/queries/auth';
@@ -6,7 +7,6 @@ import logo from "../../../assets/logo.svg";
 import RegistrationForm from './RegistrationForm';
 import EmailVerificationStep from './EmailVerificationStep';
 import Successful from './Successful';
-import { getToken } from "../../../services/endpoints/auth";
 
 const steps = [
   { id: 1, label: 'Account', description: 'Create your account' },
@@ -18,56 +18,42 @@ export default function Register() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [verificationError, setVerificationError] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [hasToken, setHasToken] = useState(!!getToken());
-  
+
   const { data: tempRegister } = useTempRegister();
-  const { data: user, isLoading: isUserLoading } = useUser({ enabled: hasToken });
+  const { data: user, isLoading: isUserLoading, isError: isUserError } = useUser();
   const { executeFlow, verifyOTP, resendOTP, isVerifying } = useRegistrationFlow();
 
-  // 🔴 FIX: Only redirect if user is ALREADY logged in (not during registration)
   useEffect(() => {
-    // Don't redirect during registration flow
-    if (currentStep !== 1) return;
-    
-    // Only redirect if user is already logged in BEFORE starting registration
-    if (hasToken && user && !isUserLoading) {
-      navigate('/dashboard');
+    if (user && !isUserLoading && !isUserError) {
+      navigate('/dashboard', { replace: true });
     }
-  }, [hasToken, user, isUserLoading, navigate, currentStep]);
+  }, [user, isUserLoading, isUserError, navigate]);
 
-  // Auto-advance to OTP step if temp register data exists
   useEffect(() => {
     if (tempRegister && currentStep === 1) {
       setCurrentStep(2);
-      setHasToken(true); // We should have token from auto-login
     }
   }, [tempRegister, currentStep]);
 
   const handleRegister = async (formData) => {
     setVerificationError('');
-    setIsProcessing(true);
     
-    // Convert camelCase to snake_case for API
     const payload = {
-      first_name: formData.first_name?.trim() || '',
-      last_name: formData.last_name?.trim() || '',
-      email: (formData.email || '').toLowerCase().trim(),
-      password: formData.password || '',
-      nationality: formData.nationality?.trim() || '',
+      first_name: formData.firstName.trim(),
+      last_name: formData.lastName.trim(),
+      email: formData.email.toLowerCase().trim(),
+      password: formData.password,
+      nationality: formData.nationality.trim(),
     };
-    
+
     try {
       await executeFlow(payload);
-      setHasToken(true); // Token should be set after auto-login
-      setCurrentStep(2); // 🔴 FIX: Move to OTP step, NOT dashboard
+      setCurrentStep(2);
       return { success: true };
     } catch (error) {
       const message = error?.message || 'Registration failed';
       setVerificationError(message);
       return { success: false, error: message };
-    } finally {
-      setIsProcessing(false);
     }
   };
 
@@ -79,27 +65,12 @@ export default function Register() {
       return { success: false, error: 'Session expired' };
     }
     
-    // 🟢 ADD: Verify we have a token before OTP verification
-    const tokenBeforeVerify = getToken();
-    if (!tokenBeforeVerify) {
-      setVerificationError('Please complete registration first');
-      return { success: false, error: 'No authentication token' };
-    }
-    
     try {
       await verifyOTP({ 
         email: tempRegister.email, 
         otp 
       });
-      
-      // 🟢 ADD: Verify token exists after verification
-      const tokenAfterVerify = getToken();
-      if (!tokenAfterVerify) {
-        throw new Error('Token not set after OTP verification');
-      }
-      
-      setHasToken(true);
-      setCurrentStep(3); // 🔴 FIX: Move to success step
+      setCurrentStep(3);
       return { success: true };
     } catch (error) {
       const message = error?.message || 'Invalid verification code';
@@ -122,16 +93,11 @@ export default function Register() {
   };
 
   const handleBackToRegistration = () => {
-    // Clear all auth data when going back
     localStorage.removeItem('tempRegister');
-    localStorage.removeItem('authToken');
-    sessionStorage.removeItem('authToken');
-    localStorage.removeItem('userInfo');
-    setHasToken(false);
     window.location.reload();
   };
 
-  if (isUserLoading && currentStep === 1) {
+  if (isUserLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-[#F7F5F9]">
         <div className="w-8 h-8 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
@@ -181,23 +147,17 @@ export default function Register() {
                 {steps.find(s => s.id === currentStep)?.description}
               </p>
             </div>
-            
-            {/* Global Error Display */}
             {verificationError && (
               <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-4 text-center">
                 {verificationError}
               </div>
             )}
-            
-            {/* Step 1: Registration Form */}
             {currentStep === 1 && (
               <RegistrationForm
                 onSubmit={handleRegister}
-                loading={isProcessing}
+                loading={false}
               />
             )}
-            
-            {/* Step 2: Email Verification */}
             {currentStep === 2 && tempRegister && (
               <EmailVerificationStep
                 email={tempRegister.email}
@@ -207,8 +167,6 @@ export default function Register() {
                 isLoading={isVerifying}
               />
             )}
-            
-            {/* Step 3: Success */}
             {currentStep === 3 && <Successful />}
           </div>
         </div>

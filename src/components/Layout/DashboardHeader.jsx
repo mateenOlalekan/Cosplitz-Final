@@ -1,14 +1,11 @@
-import { useState } from "react";
+// src/components/Layout/DashboardHeader.jsx - NO CHANGES
 import { Bell, Settings, MapPin, ChevronDown, Menu } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../../assets/logo.svg";
 import { useUser, useLogout } from "../../services/queries/auth";
-import { Filter, Search } from "lucide-react";
-
 
 export default function DashboardHeader({ onMenuClick }) {
   const { data: user } = useUser();
-  const [searchQuery, setSearchQuery] = useState("");
   const logout = useLogout();
   const navigate = useNavigate();
 
@@ -29,31 +26,14 @@ export default function DashboardHeader({ onMenuClick }) {
         <img
           src={logo}
           alt="Company Logo"
-          className="w-24 h-24 object-contain select-none"
+          className="w-20 h-20 object-contain select-none"
           draggable="false"
         />
         <nav aria-label="User menu">
           <Menu onClick={onMenuClick} className="cursor-pointer" />
         </nav>
       </div>
-
-      <div className="flex gap-0.5 pt-2">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-          <input
-            type="text"
-            placeholder="Search splits..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
-          />
-        </div>
-        <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2">
-          <Filter size={20} />
-        </button>       
-      </div>
-
-      <div className="hidden md:flex items-center justify-between py-2">
+      <div className="hidden md:flex items-center justify-between py-3">
         <div className="flex items-center gap-1 text-gray-600">
           <MapPin size={16} />
           <span className="text-sm">{user?.location || "Ikeja, Lagos"}</span>

@@ -84,12 +84,10 @@ export const registerEndpoint = async (userData) => {
   });
 
   return {
-    // 🟢 FIX: Return consistent property names
-    id: data?.user?.id,
     userId: data?.user?.id,
     email: data?.user?.email,
-    first_name: data?.user?.first_name,
-    last_name: data?.user?.last_name,
+    firstName: data?.user?.first_name,
+    lastName: data?.user?.last_name,
     username: data?.user?.username,
     message: data?.message || 'Registration successful',
   };
@@ -139,7 +137,7 @@ export const verifyOTPEndpoint = async ({ email, otp }) => {
   }
 
   return {
-    user: data?.user || data?.data || data,
+    user: data?.user || data?.data,
     token: data?.token,
     isVerified: true,
   };
@@ -150,17 +148,11 @@ export const resendOTPEndpoint = async (userId) => {
 };
 
 export const getUserInfoEndpoint = async () => {
-  try {
-    return await makeRequest(`${API_BASE_URL}/user/info`, {
-      method: 'GET',
-      auth: true,
-    });
-  } catch (error) {
-    if (error?.status === 401) {
-      return null; // important: stop crashing UI
-    }
-    throw error;
-  }
+  const data = await makeRequest(`${API_BASE_URL}/user/info`, {
+    method: 'GET',
+    auth: true,
+  });
+  return data;
 };
 
 export const logoutEndpoint = () => {

@@ -93,7 +93,7 @@ export default function RegistrationForm({ onSubmit, loading }) {
     setOpen(false);
   };
 
-  // Submit - FIXED: Convert to snake_case for API
+  // Submit
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -111,16 +111,7 @@ export default function RegistrationForm({ onSubmit, loading }) {
       return;
     }
 
-    // 🟢 FIX: Convert camelCase to snake_case for API
-    const apiFormData = {
-      first_name: formData.firstName.trim(),
-      last_name: formData.lastName.trim(),
-      email: formData.email.toLowerCase().trim(),
-      password: formData.password,
-      nationality: formData.nationality.trim(),
-    };
-
-    const res = await onSubmit(apiFormData);
+    const res = await onSubmit(formData);
 
     if (!res.success) {
       setSubmitError(res.error || 'Registration failed');

@@ -33,16 +33,18 @@ const getTempRegister = () => {
 
 // ============ QUERIES ============
 
-export const useUser = ({ enabled } = {}) => {
-  const token = getToken();
-
+export const useUser = () => {
   return useQuery({
     queryKey: authKeys.user(),
     queryFn: getUserInfoEndpoint,
-    enabled: Boolean(token) && enabled !== false,
-    staleTime: 5 * 60 * 1000,
-    retry: false,
-    initialData: undefined,
+    retry: (failureCount, error) => {
+      if (error?.status === 401) return false;
+      return failureCount < 3;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    staleTime: 5 * 60 * 1000, 
+    refetchOnWindowFocus: false,
+    enabled: typeof window !== 'undefined' && !!getToken(),
   });
 };
 
@@ -75,22 +77,10 @@ export const useVerifyOTP = () => {
 
   return useMutation({
     mutationFn: verifyOTPEndpoint,
-    onSuccess: async (data) => {
+    onSuccess: (data) => {
       saveTempRegister(null);
       queryClient.removeQueries({ queryKey: authKeys.tempRegister() });
-      if (!data.user) {
-        try {
-          const userInfo = await getUserInfoEndpoint();
-          queryClient.setQueryData(authKeys.user(), userInfo);
-        } catch (error) {
-          console.error('Failed to fetch user info after OTP:', error);
-          if (data.user) {
-            queryClient.setQueryData(authKeys.user(), data.user);
-          }
-        }
-      } else {
-        queryClient.setQueryData(authKeys.user(), data.user);
-      }
+      queryClient.setQueryData(authKeys.user(), data.user);
     },
   });
 };
@@ -120,47 +110,31 @@ export const useRegistrationFlow = () => {
   const verifyOTPMutation = useVerifyOTP();
 
   const executeFlow = async (userData) => {
-    try {
-      const regData = await registerEndpoint({
-        first_name: userData.first_name,
-        last_name: userData.last_name,
-        email: userData.email,
-        password: userData.password,
-        nationality: userData.nationality,
-      });
-      
-      // 🟢 FIX: Auto-login with verification
-      const loginResult = await loginEndpoint({
-        email: userData.email,
-        password: userData.password,
-      }, true);
-      
-      // 🟢 ADD: Verify token was set
-      const tokenAfterLogin = getToken();
-      if (!tokenAfterLogin) {
-        throw new Error('Auto-login failed: No token received');
-      }
-      
-      // 🟢 FIX: Use correct property name
-      await getOTPEndpoint(regData.id || regData.userId);
-      
-      const tempData = {
-        // 🟢 FIX: Use correct property names
-        userId: regData.id || regData.userId,
-        email: userData.email,
-        firstName: userData.first_name,
-        lastName: userData.last_name,
-      };
-      
-      saveTempRegister(tempData);
-      queryClient.setQueryData(authKeys.tempRegister(), tempData);
-      
-      return tempData;
-    } catch (error) {
-      saveTempRegister(null);
-      queryClient.removeQueries({ queryKey: authKeys.tempRegister() });
-      throw error;
-    }
+    const regData = await registerEndpoint({
+      first_name: userData.first_name,
+      last_name: userData.last_name,
+      email: userData.email,
+      password: userData.password,
+      nationality: userData.nationality,
+    });
+    
+    await loginEndpoint({
+      email: userData.email,
+      password: userData.password,
+    }, true);
+    
+    await getOTPEndpoint(regData.userId);
+    
+    const tempData = {
+      userId: regData.userId,
+      email: regData.email,
+      firstName: regData.firstName,
+      lastName: regData.lastName,
+    };
+    saveTempRegister(tempData);
+    queryClient.setQueryData(authKeys.tempRegister(), tempData);
+    
+    return tempData;
   };
 
   return {
