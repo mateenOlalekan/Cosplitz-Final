@@ -1,11 +1,10 @@
-// src/services/endpoints/auth.js - FIXED OTP ISSUES
+// src/services/endpoints/auth.js - FINAL CORRECTED VERSION
 const API_BASE_URL = 'https://cosplitz-backend.onrender.com/api';
 
 const handleApiError = (response, data) => {
   if (!response.ok) {
     // Don't clear auth on 401 during registration flow
-    // Only clear on non-OTP endpoints
-    const isOTPEndpoint = response.url.includes('/otp/') || response.url.includes('/verify');
+    const isOTPEndpoint = response.url.includes('/otp') || response.url.includes('/verify');
     if (response.status === 401 && !isOTPEndpoint) {
       clearAuth();
     }
@@ -155,30 +154,13 @@ export const getOTPEndpoint = async (userId) => {
   return data;
 };
 
-// FIXED: Changed endpoint from /verify_otp/ to /verify-otp/
+// CORRECTED: Using /verify_otp (underscore, no trailing slash)
 export const verifyOTPEndpoint = async ({ email, otp }) => {
-  // Try both possible endpoint formats
-  let data;
-  
-  try {
-    // Try with hyphen first (RESTful convention)
-    data = await makeRequest(`${API_BASE_URL}/verify-otp/`, {
-      method: 'POST',
-      body: JSON.stringify({ email, otp }),
-      auth: true,
-    });
-  } catch (error) {
-    if (error?.status === 404) {
-      // If 404, try with underscore
-      data = await makeRequest(`${API_BASE_URL}/verify_otp/`, {
-        method: 'POST',
-        body: JSON.stringify({ email, otp }),
-        auth: true,
-      });
-    } else {
-      throw error;
-    }
-  }
+  const data = await makeRequest(`${API_BASE_URL}/verify_otp`, {
+    method: 'POST',
+    body: JSON.stringify({ email, otp }),
+    auth: true,
+  });
 
   if (data?.token) {
     setToken(data.token, true);
