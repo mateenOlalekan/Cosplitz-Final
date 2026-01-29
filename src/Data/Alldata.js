@@ -2,8 +2,6 @@
 import ticket from "../assets/ticket.jpg";
 import shop from "../assets/shop.jpg";
 import car from "../assets/car.jpg";
-
-// icons
 import {
   UtensilsCrossed,
   Users,
@@ -28,9 +26,6 @@ import {
   Truck,
 } from "lucide-react";
 
-/* ------------------------------------------------------------------
-   DEALS
-------------------------------------------------------------------- */
 export const deals = [
   {
     id: "deal-transport-1",

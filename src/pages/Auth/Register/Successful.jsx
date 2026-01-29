@@ -8,11 +8,12 @@ export default function Successful() {
   const [isNavigating, setIsNavigating] = useState(false);
 
   const handleContinue = () => {
-    console.log('Continue to Dashboard clicked');
+    console.log('Continue to Pre-Onboarding clicked');
     setIsNavigating(true);
+    
     setTimeout(() => {
-      console.log('Navigating to dashboard...');
-      navigate('/dashboard');
+      console.log('Navigating to /dashboard/pre-onboard');
+      navigate('/dashboard/pre-onboard');
     }, 300);
   };
 
@@ -37,10 +38,10 @@ export default function Successful() {
         {isNavigating ? (
           <span className="flex items-center justify-center gap-2">
             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            Loading Dashboard...
+            Loading Setup...
           </span>
         ) : (
-          'Continue to Dashboard'
+          'Continue to Setup'
         )}
       </motion.button>
     </div>

@@ -51,38 +51,44 @@ function PublicOnly({ children }) {
   return children;
 }
 
-
-
 export default function App() {
   return (
     <>
       <Suspense fallback={<LoadingScreen />}>
         <Routes>
+          {/* Public Routes */}
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<PublicOnly><Login /></PublicOnly>}/>
           <Route path="/register" element={<PublicOnly><Register /></PublicOnly>}/>
           <Route path="/forgot-password" element={<ForgetPassword />} />
-          <Route path="/pre-onboard" element={<PreOnboard />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/password-reset-success" element={<PasswordResetSuccess />} />
 
+          {/* Protected Routes */}
           <Route element={<AuthGuard />}>
             <Route path="/dashboard" element={<DashboardLayout />}>
               <Route index element={<MainOverview />} />
+              
+              {/* Pre-onboarding and Post-onboarding */}
+              <Route path="pre-onboard" element={<PreOnboard />} />
+              <Route path="post-onboarding" element={<PostOnboard />} />
+              
+              {/* Main Dashboard Routes */}
               <Route path="messages" element={<Messages />} />
               <Route path="analytics" element={<Analytics />} />
               <Route path="payment" element={<Payment />} />
               <Route path="wallet" element={<Wallet />} />
               <Route path="notification" element={<Notification />} />
               <Route path="kyc-flow" element={<KYCFlow />} />
-              <Route path="post-onboarding" element={<PostOnboard />} />
               
+              {/* Splits Routes */}
               <Route path="allsplits" element={<AllSplitsPage />} />
               <Route path="mysplitz" element={<MySplitz />} />
               <Route path="create-splitz" element={<CreateSplitz />} />
               <Route path="splitz-details/:id" element={<SplitzDetail />} />
               <Route path="splitz-success" element={<SplitzSuccessful />} />
 
+              {/* Settings Routes */}
               <Route path="settings" element={<DashboardSettingLayout />}>
                 <Route index element={<MyProfile />} />
                 <Route path="profile" element={<MyProfile />} />
@@ -94,6 +100,7 @@ export default function App() {
             </Route>
           </Route>
 
+          {/* 404 Not Found */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
