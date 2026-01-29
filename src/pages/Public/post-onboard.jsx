@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft } from "lucide-react";
 import { lazy} from "react";
-import steps from "../../Data/Alldata";
+import {steps} from "../../Data/Alldata";
 const Loading = lazy(() => import("../Public/LoadingScreen"));
 const IconComponent = ({ IconType }) => (
   <IconType className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
