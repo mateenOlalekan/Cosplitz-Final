@@ -23,11 +23,11 @@ export default function Register() {
   const { data: user, isLoading: isUserLoading, isError: isUserError } = useUser();
   const { executeFlow, verifyOTP, resendOTP, isVerifying } = useRegistrationFlow();
 
-  useEffect(() => {
-    if (registrationComplete && user && !isUserLoading && !isUserError) {
-      navigate('/dashboard', { replace: true });
-    }
-  }, [registrationComplete, user, isUserLoading, isUserError, navigate]);
+// Let the success page handle the redirect
+useEffect(() => {
+  if (registrationComplete && currentStep === 3 && user && !isUserLoading && !isUserError) {
+  }
+}, [registrationComplete, currentStep, user, isUserLoading, isUserError]);
 
   useEffect(() => {
     if (!tempRegister && user && !isUserLoading && !isUserError && !registrationComplete) {

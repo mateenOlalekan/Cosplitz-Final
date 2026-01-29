@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect,useState } from 'react';
 import { useUser } from '../../../services/queries/auth';
 import Checknow from '../../../assets/Check.svg';
 
@@ -8,15 +8,14 @@ export default function Successful() {
   const navigate = useNavigate();
   const { data: user, isLoading, isError } = useUser();
 
-  useEffect(() => {
-    if (user && !isLoading && !isError) {
-      const timer = setTimeout(() => {
-        navigate('/dashboard');
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, [user, isLoading, isError, navigate]);
+const [isNavigating, setIsNavigating] = useState(false);
 
+const handleContinue = () => {
+  setIsNavigating(true);
+  setTimeout(() => {
+    navigate('/dashboard');  // Only when user clicks!
+  }, 300);
+};
   return (
     <div className="flex flex-col items-center text-center py-6">
       <img src={Checknow} alt="Success" className="w-24 h-24 mb-4" />
@@ -29,7 +28,7 @@ export default function Successful() {
       <motion.button
         whileHover={{ scale: 1.03 }}
         whileTap={{ scale: 0.97 }}
-        onClick={() => navigate('/dashboard')}
+        onClick={handleContinue}
         disabled={isLoading}
         className="w-full mt-6 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white py-3 rounded-lg font-semibold transition-colors"
       >
