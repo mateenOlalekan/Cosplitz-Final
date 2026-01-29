@@ -1,105 +1,23 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft } from "lucide-react";
-import {  UtensilsCrossed,  Users,  DollarSign,
-  Zap,  Clock,  TrendingUp,  BookOpen,  Globe,  Briefcase,  MapPin,  Lock,  Eye,  Check, Plane,  Wrench,  Lightbulb,  FileInput,  Package,
-  Headphones,  Hotel,  Truck,} from "lucide-react";
 import { lazy} from "react";
-
+import steps from "../../Data/Alldata";
 const Loading = lazy(() => import("../Public/LoadingScreen"));
-
-const steps = [
-  {
-    title: "What are you most interested in splitting?",
-    description:
-      "Select all the categories that apply to help us find you relevant splits nearby.",
-    type: "multiple",
-    options: [
-      { id: "groceries", label: "Groceries", icon: UtensilsCrossed },
-      { id: "rosca", label: "ROSCA (Esusu)", icon: Briefcase },
-      { id: "car", label: "Car/Transport", icon: Truck },
-      { id: "accommodation", label: "Accommodation", icon: Hotel },
-      { id: "study", label: "Study Materials", icon: BookOpen },
-      { id: "bills", label: "Utility Bills", icon: FileInput },
-      { id: "bulk", label: "Bulk Purchase", icon: Package },
-      { id: "subscriptions", label: "Subscriptions", icon: Headphones },
-    ],
-    input: "Other Interests",
-    placeholder: "e.g. Pet supplies, Gym memberships",
-  },
-  {
-    title: "What is your current situation?",
-    description: "This helps us match you with relevant hyperlocal opportunities.",
-    type: "single",
-    options: [
-      { id: "student", label: "Student", icon: BookOpen },
-      { id: "immigrant", label: "New Immigrant", icon: Globe },
-      { id: "traveler", label: "Traveler/Nomad", icon: Plane },
-      { id: "professional", label: "Working Professional", icon: Briefcase },
-      { id: "micro", label: "Micro Business", icon: Lightbulb },
-      { id: "handymen", label: "Handyman", icon: Wrench },
-      { id: "events", label: "Event Planner", icon: Zap },
-      { id: "religious", label: "Religious Group", icon: Users },
-    ],
-    input: "Other (if none apply):",
-    placeholder: "e.g. Freelancer, Retiree",
-  },
-  {
-    title: "What is most important to you when splitting costs?",
-    description: "Choose your top 2 priorities.",
-    type: "multiple-limited",
-    limit: 2,
-    options: [
-      { id: "saving", label: "Saving Money", icon: DollarSign },
-      { id: "convenience", label: "Convenience", icon: Clock },
-      { id: "trust", label: "Trust / Reliability", icon: Check },
-      { id: "location", label: "Nearby Location", icon: MapPin },
-      { id: "flexibility", label: "Flexibility", icon: Zap },
-      { id: "security", label: "Security", icon: Lock },
-      { id: "transparency", label: "Transparency", icon: Eye },
-      { id: "selection", label: "Flexible Selection", icon: TrendingUp },
-    ],
-    input: "Other (if none apply):",
-    placeholder: "e.g. Speed, Fairness",
-  },
-  {
-    title: "What is your top goal for using Co-splitz?",
-    description: "We'll customize your dashboard based on this motivation.",
-    type: "single",
-    options: [
-      { id: "save", label: "Save Money", icon: DollarSign },
-      { id: "meet", label: "Meet People", icon: Users },
-      { id: "simplify", label: "Simplify Payments", icon: TrendingUp },
-      { id: "share", label: "Share Resources", icon: Zap },
-      { id: "crowdfunding", label: "Crowdfunding", icon: Lightbulb },
-      { id: "time", label: "Time Saving", icon: Clock },
-    ],
-    input: "Other (if none apply):",
-    placeholder: "e.g. Collaboration",
-  },
-];
-
 const IconComponent = ({ IconType }) => (
   <IconType className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
 );
 
 export default function CoSplitzOnboarding() {
   const navigate = useNavigate();
-
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-
-  const [selections, setSelections] = useState(
-    steps.map(() => ({ selected: [], other: "" }))
-  );
+  const [selections, setSelections] = useState(steps.map(() => ({ selected: [], other: "" })));
 
   const step = steps[currentStep];
   const { selected, other } = selections[currentStep];
-
-  const toggleSelection = (id) => {
-    const newSelections = [...selections];
+  const toggleSelection = (id) => {const newSelections = [...selections];
     let newSelected = [...selected];
-
     if (step.type === "single") {
       newSelected = [id];
     } else if (step.type === "multiple-limited") {
@@ -136,22 +54,15 @@ export default function CoSplitzOnboarding() {
       setCurrentStep((s) => s + 1);
     } else {
       setIsLoading(true);
-      setTimeout(() => navigate("/kyc-flow"), 1500);
-    }
+      setTimeout(() => navigate("/kyc-flow"), 1500);}
   };
 
-  const handleBack = () => {
-    if (currentStep > 0) setCurrentStep((s) => s - 1);
-  };
+  const handleBack = () => {if (currentStep > 0) setCurrentStep((s) => s - 1);};
 
   const progress = ((currentStep + 1) / steps.length) * 100;
 
   if (isLoading) {
-    return (
-     <>
-     <Loading/>
-     </>
-    );
+    return (<><Loading/></>);
   }
 
   return (
@@ -159,7 +70,6 @@ export default function CoSplitzOnboarding() {
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
         <div className="max-w-xl mx-auto flex flex-col h-full">
 
-          {/* Header */}
           <div className="mb-4">
             {currentStep > 0 && (
               <button

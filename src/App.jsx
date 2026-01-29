@@ -1,8 +1,6 @@
-// src/App.jsx - NO CHANGES
 import "./App.css";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Suspense, lazy } from "react";
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useUser } from "./services/queries/auth";
 import AuthGuard from "./components/Layout/AuthGuard";
 

@@ -1,38 +1,47 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { useEffect,useState } from 'react';
-import { useUser } from '../../../services/queries/auth';
+import { useState } from 'react';
 import Checknow from '../../../assets/Check.svg';
 
 export default function Successful() {
   const navigate = useNavigate();
-  const { data: user, isLoading, isError } = useUser();
+  const [isNavigating, setIsNavigating] = useState(false);
 
-const [isNavigating, setIsNavigating] = useState(false);
+  const handleContinue = () => {
+    console.log('Continue to Dashboard clicked');
+    setIsNavigating(true);
+    setTimeout(() => {
+      console.log('Navigating to dashboard...');
+      navigate('/dashboard');
+    }, 300);
+  };
 
-const handleContinue = () => {
-  setIsNavigating(true);
-  setTimeout(() => {
-    navigate('/dashboard');  // Only when user clicks!
-  }, 300);
-};
   return (
     <div className="flex flex-col items-center text-center py-6">
       <img src={Checknow} alt="Success" className="w-24 h-24 mb-4" />
       <h2 className="text-2xl font-bold text-gray-800">Email Verified Successfully!</h2>
       <p className="text-gray-600 mt-2 max-w-sm">
-        {isLoading 
-          ? 'Loading your dashboard...' 
-          : "Your email has been verified. Let's set up your profile!"}
+        Your email has been verified. Let's set up your profile and start sharing expenses!
       </p>
       <motion.button
-        whileHover={{ scale: 1.03 }}
-        whileTap={{ scale: 0.97 }}
+        whileHover={{ scale: isNavigating ? 1 : 1.03 }}
+        whileTap={{ scale: isNavigating ? 1 : 0.97 }}
         onClick={handleContinue}
-        disabled={isLoading}
-        className="w-full mt-6 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white py-3 rounded-lg font-semibold transition-colors"
+        disabled={isNavigating}
+        className={`w-full mt-6 text-white py-3 rounded-lg font-semibold transition-all ${
+          isNavigating 
+            ? 'bg-green-400 cursor-not-allowed' 
+            : 'bg-green-600 hover:bg-green-700'
+        }`}
       >
-        {isLoading ? 'Loading...' : 'Continue to Dashboard'}
+        {isNavigating ? (
+          <span className="flex items-center justify-center gap-2">
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            Loading Dashboard...
+          </span>
+        ) : (
+          'Continue to Dashboard'
+        )}
       </motion.button>
     </div>
   );
