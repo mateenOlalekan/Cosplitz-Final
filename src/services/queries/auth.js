@@ -1,24 +1,12 @@
-// src/services/queries/auth.js
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  registerEndpoint,
-  loginEndpoint,
-  getOTPEndpoint,
-  verifyOTPEndpoint,
-  resendOTPEndpoint,
-  getUserInfoEndpoint,
-  logoutEndpoint,
-  getToken,
-} from "../endpoints/auth";
+import {  registerEndpoint, loginEndpoint,  getOTPEndpoint,  verifyOTPEndpoint,  resendOTPEndpoint,  getUserInfoEndpoint,  logoutEndpoint,  getToken,} from "../endpoints/auth";
 
-// ============ QUERY KEYS ============
 export const authKeys = {
   all: ['auth'],
   user: () => [...authKeys.all, 'user'],
   tempRegister: () => [...authKeys.all, 'tempRegister'],
 };
 
-// ============ STORAGE HELPERS ============
 const saveTempRegister = (data) => {
   if (typeof window === 'undefined') return;
   if (data) localStorage.setItem('tempRegister', JSON.stringify(data));
@@ -30,8 +18,6 @@ const getTempRegister = () => {
   const data = localStorage.getItem('tempRegister');
   return data ? JSON.parse(data) : null;
 };
-
-// ============ QUERIES ============
 
 export const useUser = () => {
   return useQuery({
@@ -57,8 +43,6 @@ export const useTempRegister = () => {
   });
 };
 
-// ============ MUTATIONS ============
-
 export const useLogin = () => {
   const queryClient = useQueryClient();
   
@@ -74,14 +58,18 @@ export const useLogin = () => {
 
 export const useVerifyOTP = () => {
   const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: verifyOTPEndpoint,
     onSuccess: (data) => {
+      console.log('OTP Verification successful, updating cache with user:', data.user);
       saveTempRegister(null);
       queryClient.removeQueries({ queryKey: authKeys.tempRegister() });
       queryClient.setQueryData(authKeys.user(), data.user);
-    },
+      queryClient.invalidateQueries({ queryKey: authKeys.user() });
+      console.log('User cache updated, AuthGuard should now allow access');},
+    onError: (error) => {
+      console.error('OTP Verification failed:', error);
+    }
   });
 };
 
@@ -93,7 +81,6 @@ export const useResendOTP = () => {
 
 export const useLogout = () => {
   const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: logoutEndpoint,
     onSuccess: () => {
@@ -103,13 +90,12 @@ export const useLogout = () => {
   });
 };
 
-// ============ REGISTRATION FLOW ============
-
 export const useRegistrationFlow = () => {
   const queryClient = useQueryClient();
   const verifyOTPMutation = useVerifyOTP();
 
   const executeFlow = async (userData) => {
+    console.log('Starting registration flow...');
     const regData = await registerEndpoint({
       first_name: userData.first_name,
       last_name: userData.last_name,
@@ -118,13 +104,16 @@ export const useRegistrationFlow = () => {
       nationality: userData.nationality,
     });
     
+    console.log('Registration successful, logging in...');
+    
     await loginEndpoint({
       email: userData.email,
       password: userData.password,
     }, true);
     
+    console.log('Login successful, requesting OTP...');
     await getOTPEndpoint(regData.userId);
-    
+    console.log('OTP sent');
     const tempData = {
       userId: regData.userId,
       email: regData.email,
@@ -133,10 +122,8 @@ export const useRegistrationFlow = () => {
     };
     saveTempRegister(tempData);
     queryClient.setQueryData(authKeys.tempRegister(), tempData);
-    
     return tempData;
   };
-
   return {
     executeFlow,
     verifyOTP: verifyOTPMutation.mutateAsync,
