@@ -1,10 +1,9 @@
-// src/components/Layout/DashboardLayout.jsx
+// src/components/Layout/DashboardLayout.jsx - UPDATED
 import { useState, useEffect, useCallback } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import DashboardSidebar from "./DashboardSidebar";
 import DashboardHeader from "./DashboardHeader";
 import { useUser } from "../../services/queries/auth";
-import Loading from "../Home/Loading";
 
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -13,11 +12,9 @@ export default function DashboardLayout() {
   
   const { data: user, isLoading } = useUser();
 
-  const isPostOnboarding = location.pathname.includes("/dashboard/post-onboarding");
+  const isOnboardingPage = location.pathname.includes("/dashboard/pre-onboard") || 
+                          location.pathname.includes("/dashboard/post-onboarding");
 
-  // if (!isLoading && !user && !isPostOnboarding) {
-  //   return <Navigate to="/login" replace />;
-  // }
 
   useEffect(() => {
     const handleResize = () => {
@@ -36,17 +33,22 @@ export default function DashboardLayout() {
   }, []);
 
   if (isLoading) {
-    return <Loading/>
+    return (
+      <div className="flex items-center justify-center h-screen bg-[#F7F5F9]">
+        <div className="w-8 h-8 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
   }
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#F7F5F9]">
-      {!isPostOnboarding && (
+      {/* Hide sidebar and header on onboarding pages */}
+      {!isOnboardingPage && (
         <DashboardSidebar isOpen={sidebarOpen} onClose={closeSidebar} />
       )}
       
       <div className="flex-1 flex flex-col overflow-hidden">
-        {!isPostOnboarding && (
+        {!isOnboardingPage && (
           <DashboardHeader onMenuClick={toggleSidebar} hidden={hidden} setHidden={setHidden} />
         )}
         
