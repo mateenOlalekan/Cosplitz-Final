@@ -15,9 +15,9 @@ export default function DashboardLayout() {
 
   const isPostOnboarding = location.pathname.includes("/dashboard/post-onboarding");
 
-  if (!isLoading && !user && !isPostOnboarding) {
-    return <Navigate to="/login" replace />;
-  }
+  // if (!isLoading && !user && !isPostOnboarding) {
+  //   return <Navigate to="/login" replace />;
+  // }
 
   useEffect(() => {
     const handleResize = () => {
