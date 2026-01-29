@@ -8,13 +8,11 @@ export default function Successful() {
   const [isNavigating, setIsNavigating] = useState(false);
 
   const handleContinue = () => {
-    console.log('Continue to Pre-Onboarding clicked');
+    console.log('Continue to Post-Onboarding clicked');
     setIsNavigating(true);
     
-    setTimeout(() => {
-      console.log('Navigating to /dashboard/pre-onboard');
-      navigate('/dashboard/pre-onboard');
-    }, 300);
+    // Navigate immediately to post-onboarding
+    navigate('/dashboard/post-onboarding');
   };
 
   return (
@@ -41,7 +39,7 @@ export default function Successful() {
             Loading Setup...
           </span>
         ) : (
-          'Continue to Setup'
+          'Continue Setup'
         )}
       </motion.button>
     </div>
