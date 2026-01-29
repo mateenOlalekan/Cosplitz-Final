@@ -12,8 +12,7 @@ export default function DashboardLayout() {
   
   const { data: user, isLoading } = useUser();
 
-  const isOnboardingPage = location.pathname.includes("/dashboard/pre-onboard") || 
-                          location.pathname.includes("/dashboard/post-onboarding");
+  const isOnboardingPage = location.pathname.includes("/dashboard/post-onboarding");
 
 
   useEffect(() => {
