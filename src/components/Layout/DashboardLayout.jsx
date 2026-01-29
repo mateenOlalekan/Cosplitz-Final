@@ -1,4 +1,3 @@
-// src/components/Layout/DashboardLayout.jsx - FIXED FOR ONBOARDING PAGES
 import { useState, useEffect, useCallback } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import DashboardSidebar from "./DashboardSidebar";
@@ -12,7 +11,6 @@ export default function DashboardLayout() {
   
   const { data: user, isLoading } = useUser();
 
-  // Check if we're on ANY onboarding page (pre-onboard or post-onboarding)
   const isOnboardingPage = location.pathname.includes("/dashboard/pre-onboard") || 
                           location.pathname.includes("/dashboard/post-onboarding");
 
@@ -42,13 +40,11 @@ export default function DashboardLayout() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#F7F5F9]">
-      {/* Hide sidebar on onboarding pages */}
       {!isOnboardingPage && (
         <DashboardSidebar isOpen={sidebarOpen} onClose={closeSidebar} />
       )}
       
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Hide header on onboarding pages */}
         {!isOnboardingPage && (
           <DashboardHeader onMenuClick={toggleSidebar} hidden={hidden} setHidden={setHidden} />
         )}

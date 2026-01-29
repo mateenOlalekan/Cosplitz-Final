@@ -18,25 +18,19 @@ export default function Register() {
   const [currentStep, setCurrentStep] = useState(1);
   const [verificationError, setVerificationError] = useState('');
   const [registrationComplete, setRegistrationComplete] = useState(false);
-
   const { data: tempRegister } = useTempRegister();
   const { data: user, isLoading: isUserLoading, isError: isUserError } = useUser();
   const { executeFlow, verifyOTP, resendOTP, isVerifying } = useRegistrationFlow();
-
-// Let the success page handle the redirect
-useEffect(() => {
-  if (registrationComplete && currentStep === 3 && user && !isUserLoading && !isUserError) {
-  }
-}, [registrationComplete, currentStep, user, isUserLoading, isUserError]);
-
   useEffect(() => {
-    if (!tempRegister && user && !isUserLoading && !isUserError && !registrationComplete) {
+    if (user && !isUserLoading && !isUserError && !tempRegister && currentStep === 1 && !registrationComplete) {
+      console.log('User already logged in, redirecting to dashboard');
       navigate('/dashboard', { replace: true });
     }
-  }, [tempRegister, user, isUserLoading, isUserError, registrationComplete, navigate]);
+  }, [user, isUserLoading, isUserError, tempRegister, currentStep, registrationComplete, navigate]);
 
   useEffect(() => {
     if (tempRegister && currentStep === 1) {
+      console.log('Restoring registration at step 2');
       setCurrentStep(2);
     }
   }, [tempRegister, currentStep]);
@@ -53,7 +47,9 @@ useEffect(() => {
     };
 
     try {
+      console.log('Starting registration flow...');
       await executeFlow(payload);
+      console.log('Registration flow complete, moving to step 2');
       setCurrentStep(2);
       return { success: true };
     } catch (error) {
@@ -84,15 +80,24 @@ useEffect(() => {
 
   const handleVerifyOTP = async (otp) => {
     setVerificationError('');
+    
     if (!tempRegister?.email) {
       setVerificationError('Session expired. Please register again.');
       return { success: false, error: 'Session expired' };
     }
     
     try {
-      await verifyOTP({ email: tempRegister.email, otp  });
-      setCurrentStep(3);
+      console.log('Verifying OTP...');
+      await verifyOTP({ email: tempRegister.email, otp });
+      
+      console.log('OTP verified successfully!');
+      console.log('Setting registrationComplete = true');
+      console.log('Moving to step 3 (Success page)');
+      
+      // CRITICAL: Set registrationComplete FIRST, then change step
       setRegistrationComplete(true);
+      setCurrentStep(3);
+      
       return { success: true };
     } catch (error) {
       console.error('OTP verification error:', error);
@@ -124,8 +129,10 @@ useEffect(() => {
     }
     
     try {
+      console.log('Resending OTP...');
       await resendOTP(tempRegister.userId);
       setVerificationError('');
+      console.log('OTP resent successfully');
       return { success: true };
     } catch (error) {
       console.error('Resend OTP error:', error);
@@ -136,6 +143,7 @@ useEffect(() => {
   };
 
   const handleBackToRegistration = () => {
+    console.log('Going back to registration, clearing data...');
     localStorage.removeItem('tempRegister');
     window.location.reload();
   };

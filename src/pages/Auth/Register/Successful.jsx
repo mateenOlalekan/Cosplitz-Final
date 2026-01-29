@@ -10,8 +10,6 @@ export default function Successful() {
   const handleContinue = () => {
     console.log('Continue to Post-Onboarding clicked');
     setIsNavigating(true);
-    
-    // Navigate immediately to post-onboarding
     navigate('/dashboard/post-onboarding');
   };
 

@@ -45,7 +45,7 @@ function PublicOnly({ children }) {
   if (isLoading) return <LoadingScreen />;
   
   if (user) {
-    return <Navigate to="/dashboard/post-onboard" replace state={{ from: location }} />;
+    return <Navigate to="/dashboard" replace state={{ from: location }} />;
   }
   
   return children;
