@@ -59,11 +59,7 @@ export default function Wallet() {
             </p>
 
             <h1 className="text-3xl font-bold text-center">$500.30</h1>
-
-            <p className="text-sm text-green-200 text-center">
-              $58.00 Pending
-            </p>
-
+            <p className="text-sm text-green-200 text-center"> $58.00 Pending</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
               <div className="bg-white rounded-xl p-4 text-gray-800 space-y-1">
                 <div className="flex items-center gap-2">
@@ -76,7 +72,6 @@ export default function Wallet() {
                 </div>
                 <p className="text-lg font-semibold">$1500.39</p>
               </div>
-
               <div className="bg-white rounded-xl p-4 text-gray-800 space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
@@ -96,8 +91,6 @@ export default function Wallet() {
             </button>
           </div>
         </div>
-
-        {/* Payment Methods */}
         <div className="bg-white rounded-2xl p-6 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-2">
             <h2 className="text-lg text-green-600 font-semibold">Payment Methods</h2>
@@ -108,7 +101,6 @@ export default function Wallet() {
           </div>
 
           <div className="space-y-3">
-
             <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-gray-200 rounded-xl gap-3">
               <div className="flex items-center gap-3">
                 <img src={paymenticon} className="w-10 h-10" />
@@ -129,17 +121,12 @@ export default function Wallet() {
                 </div>
               </div>
             </div>
-
           </div>
         </div>
-
-        {/* Transaction History */}
         <div className="bg-white rounded-2xl py-6 px-4 space-y-4">
           <h2 className="text-lg font-semibold">
             Transaction History
           </h2>
-
-          {/* Tabs - Button Style Navigation with Gray Background */}
           <div className="w-full bg-gray-100 p-1 rounded-xl ">
             <div className="flex justify-between gap-1">
               {tabs.map((tab) => (
@@ -147,39 +134,30 @@ export default function Wallet() {
                   key={tab}
                   onClick={() => setActiveTab(tab)}
                   className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-                    activeTab === tab
-                      ? "bg-white text-green-600 shadow-sm"
-                      : "text-gray-600 hover:text-gray-800 hover:bg-gray-200"
-                  }`}
-                >
+                    activeTab === tab  ? "bg-white text-green-600 shadow-sm" : "text-gray-600 hover:text-gray-800 hover:bg-gray-200"
+                  }`}>
                   {tab}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Transactions */}
+
           <div className="space-y-4 pt-2">
             {filteredTransactions.map((tx, index) => (
               <div
                 key={index}
-                className="flex w-full justify-between items-start py-3 border-b last:border-none"
-              >
+                className="flex w-full justify-between items-start py-3 border-b last:border-none">
                 <div>
                   <p className="font-medium">{tx.title}</p>
                   <p className="text-sm text-gray-500">{tx.meta}</p>
-                  {tx.sub && (
-                    <p className="text-sm text-gray-400">
-                      {tx.sub}
-                    </p>
-                  )}
+                  {tx.sub && (<p className="text-sm text-gray-400">{tx.sub}</p>)}
                 </div>
                 <p
                   className={`font-medium ${
                     tx.amount.startsWith("+")
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
+                      ? "text-green-600": "text-red-600"
+                         }`}
                 >
                   {tx.amount}
                 </p>

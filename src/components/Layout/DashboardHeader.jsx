@@ -1,23 +1,15 @@
 // src/components/Layout/DashboardHeader.jsx
-import {
-  Bell,
-  Settings,
-  MapPin,
-  ChevronDown,
-  Menu,
-  Search,
-  Filter,
-} from "lucide-react";
+import { Bell, Settings, MapPin, ChevronDown, Menu, Filter, Search } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../../assets/logo.svg";
 import { useUser, useLogout } from "../../services/queries/auth";
 import { useState } from "react";
 
-export default function DashboardHeader({ onMenuClick, onSearchFocus, onSearchBlur }) {
-  const [searchQuery, setSearchQuery] = useState("");
+export default function DashboardHeader({ onMenuClick, hidden, setHidden }) {
   const { data: user } = useUser();
   const logout = useLogout();
   const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleLogout = async () => {
     try {
@@ -31,119 +23,85 @@ export default function DashboardHeader({ onMenuClick, onSearchFocus, onSearchBl
   if (!user) return null;
 
   return (
-    <header className="sticky top-0 z-30 bg-white border-b border-gray-200">
-      <div className="px-4 sm:px-6 lg:px-8 pt-2">
-        {/* Mobile Header */}
-        <div className="flex items-center justify-between md:hidden">
-          <img
-            src={logo}
-            alt="Company Logo"
-            className="w-32 h-32 object-contain select-none"
-            draggable="false"
-          />
+    <header className="bg-white border-b border-gray-200 z-30 px-4 sm:px-6 lg:px-8">
+      {/* Mobile Header */}
+      <div className="flex items-center justify-between md:hidden h-14" role="banner">
+        <img 
+          src={logo} 
+          alt="Company Logo"  
+          className="h-7 w-auto object-contain select-none" 
+          draggable="false"
+        />
+        <nav aria-label="User menu">
           <button 
-            onClick={onMenuClick} 
-            aria-label="Open menu"
+            onClick={onMenuClick}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            aria-label="Open menu"
           >
-            <Menu className="w-6 h-6 text-gray-700" />
+            <Menu size={24} className="text-gray-700" />
           </button>
+        </nav>
+      </div>
+
+      {/* Search Bar - Mobile & Tablet */}
+      <div className="flex gap-3 py-3 md:py-4">
+        <div className="flex-1 relative">
+          <Search 
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" 
+            size={18} 
+          />
+          <input
+            type="text"
+            placeholder="Search splits..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => setHidden(true)}
+            onBlur={() => setHidden(false)}
+            className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
+          />
+        </div>
+        <button className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2 transition-colors">
+          <Filter size={18} className="text-gray-600" />
+          <span className="hidden sm:inline text-sm font-medium text-gray-700">Filter</span>
+        </button>
+      </div>
+
+      {/* Desktop Header */}
+      <div className="hidden md:flex items-center justify-between py-3">
+        <div className="flex items-center gap-1.5 text-gray-600">
+          <MapPin size={16} className="text-gray-500" />
+          <span className="text-sm font-medium">{user?.location || "Ikeja, Lagos"}</span>
+          <ChevronDown size={14} className="text-gray-400" />
         </div>
 
-        {/* Search and Filter Row */}
-        <div className="flex gap-3 ">
-          <div className="relative flex-1">
-            <Search
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
-              size={18}
-            />
-            <input
-              type="text"
-              placeholder="Search splits..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={onSearchFocus}  // ✅ Trigger hide
-              onBlur={onSearchBlur}    // ✅ Trigger show
-              className="
-                w-full
-                pl-11 pr-4 py-3
-                border border-gray-300 rounded-lg
-                focus:ring-2 focus:ring-green-500
-                focus:border-green-500
-                outline-none
-                text-sm
-                hover:border-gray-400
-                transition-colors
-              "
-            />
+        <div className="flex items-center gap-5">
+          <div className="text-sm text-gray-600">
+            Welcome,{" "}
+            <span className="font-semibold text-gray-900">{user?.first_name || user?.email || "User"}</span>
           </div>
 
-          <button
-            className="
-              inline-flex items-center justify-center
-              gap-2
-              px-4 py-3
-              border border-gray-300 rounded-lg
-              hover:bg-gray-50 hover:border-gray-400
-              text-sm
-              transition-colors
-              whitespace-nowrap
-              min-w-[56px]
-            "
-            aria-label="Filter"
-          >
-            <Filter size={18} />
-          </button>
-        </div>
+          <div className="flex items-center gap-1">
+            <Link
+              to="/dashboard/notifications"
+              className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              aria-label="Notifications"
+            >
+              <Bell size={18} className="text-gray-600" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
+            </Link>
 
-        {/* Desktop Header */}
-        <div className="hidden md:flex items-center justify-between mt-5">
-          <div className="flex items-center gap-3 text-gray-600 text-sm">
-            <MapPin size={16} className="text-gray-500" />
-            <span>{user?.location || "Ikeja, Lagos"}</span>
-            <ChevronDown size={16} className="text-gray-500" />
-          </div>
-
-          <div className="flex items-center gap-5">
-            <span className="text-sm text-gray-600">
-              Welcome,{" "}
-              <span className="font-medium text-gray-900">
-                {user?.first_name || user?.email || "User"}
-              </span>
-            </span>
-
-            <div className="flex items-center gap-2">
-              <Link
-                to="/dashboard/notifications"
-                className="relative p-2.5 rounded-lg hover:bg-gray-100 transition-colors"
-                aria-label="Notifications"
-              >
-                <Bell size={18} className="text-gray-600" />
-                <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border border-white" />
-              </Link>
-
-              <Link
-                to="/dashboard/settings"
-                className="p-2.5 rounded-lg hover:bg-gray-100 transition-colors"
-                aria-label="Settings"
-              >
-                <Settings size={18} className="text-gray-600" />
-              </Link>
-            </div>
+            <Link
+              to="/dashboard/settings"
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              aria-label="Settings"
+            >
+              <Settings size={18} className="text-gray-600" />
+            </Link>
 
             <button
               onClick={handleLogout}
               disabled={logout.isPending}
-              className="
-                px-4 py-2
-                text-sm text-red-600
-                hover:text-red-700 hover:bg-red-50
-                rounded-lg
-                transition-colors
-                disabled:opacity-50
-                whitespace-nowrap
-                border border-transparent hover:border-red-100
-              "
+              className="ml-2 px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {logout.isPending ? "Logging out..." : "Logout"}
             </button>

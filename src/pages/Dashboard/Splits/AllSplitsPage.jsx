@@ -1,5 +1,6 @@
+// src/pages/Dashboard/Splits/AllSplitsPage.jsx
 import { useState } from "react";
-import { Search, Filter, Users, X, Sliders } from "lucide-react";
+import { Search, Filter, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import * as splits from "../../../services/queries/split";
 import { 
@@ -8,41 +9,16 @@ import {
   getBadgeText, 
   getDistanceDisplay, 
   getTimeLeft, 
-  parsePrice,
-  filterSplits 
+  parsePrice 
 } from "../../../utils/splitsUtils";
 import { Heart, Share2, Clock, MapPin } from "lucide-react";
 
-const categories = [
-  { value: "all", label: "All Categories" },
-  { value: "Food & Groceries", label: "Food & Groceries" },
-  { value: "Transportation", label: "Transportation" },
-  { value: "Events & Tickets", label: "Events & Tickets" },
-  { value: "Utilities", label: "Utilities" },
-  { value: "Entertainment", label: "Entertainment" },
-  { value: "Housing", label: "Housing" },
-];
-
-const distanceOptions = [
-  { value: "All", label: "All Distances" },
-  { value: "5km", label: "Within 5km" },
-  { value: "10km", label: "Within 10km" },
-  { value: "25km", label: "Within 25km" },
-  { value: "50km", label: "Within 50km" },
-];
+const tabFilters = ["All Active", "Near You", "Ending Soon", "Most Popular"];
 
 function AllSplitsPage() {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState("All Active");
   const [searchQuery, setSearchQuery] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
-  
-  // Filter states
-  const [filters, setFilters] = useState({
-    category: "all",
-    distance: "All",
-    priceRange: [0, 50000],
-    searchQuery: "",
-  });
 
   const { data: splitsData = [], isLoading } = splits.useSplits();
 
@@ -54,38 +30,15 @@ function AllSplitsPage() {
     }
   };
 
-  const handlePriceChange = (index, value) => {
-    const newValue = [...filters.priceRange];
-    newValue[index] = parseInt(value) || 0;
-
-    if (index === 0 && newValue[0] > newValue[1]) newValue[1] = newValue[0];
-    if (index === 1 && newValue[1] < newValue[0]) newValue[0] = newValue[1];
-
-    setFilters((prev) => ({ ...prev, priceRange: newValue }));
-  };
-
-  const handleSearchChange = (e) => {
-    const query = e.target.value;
-    setSearchQuery(query);
-    setFilters((prev) => ({ ...prev, searchQuery: query }));
-  };
-
-  const clearFilters = () => {
-    setFilters({
-      category: "all",
-      distance: "All",
-      priceRange: [0, 50000],
-      searchQuery: "",
-    });
-    setSearchQuery("");
-  };
-
-  const filteredSplits = filterSplits(splitsData, filters);
-
-  const activeFilterCount = 
-    (filters.category !== "all" ? 1 : 0) +
-    (filters.distance !== "All" ? 1 : 0) +
-    (filters.priceRange[0] !== 0 || filters.priceRange[1] !== 50000 ? 1 : 0);
+  const filteredSplits = splitsData.filter(split => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      split.title?.toLowerCase().includes(query) ||
+      split.category?.toLowerCase().includes(query) ||
+      split.location?.toLowerCase().includes(query)
+    );
+  });
 
   return (
     <div className="p-4 md:p-6">
@@ -102,199 +55,42 @@ function AllSplitsPage() {
             type="text"
             placeholder="Search splits..."
             value={searchQuery}
-            onChange={handleSearchChange}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
           />
         </div>
-        <button 
-          className="px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2 relative"
-          onClick={() => setShowFilters(!showFilters)}
-        >
-          <Sliders size={20} />
-          <span className="hidden sm:inline">Filters</span>
-          {activeFilterCount > 0 && (
-            <span className="absolute -top-2 -right-2 bg-green-600 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
-              {activeFilterCount}
-            </span>
-          )}
+        <button className="px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2">
+          <Filter size={20} />
+          <span className="hidden sm:inline">Filter</span>
         </button>
       </div>
 
-      {/* Filter Panel */}
-      {showFilters && (
-        <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6 shadow-sm">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
-            <button
-              onClick={() => setShowFilters(false)}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <X size={20} />
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            {/* Category Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Category
-              </label>
-              <select
-                value={filters.category}
-                onChange={(e) => setFilters({ ...filters, category: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
-              >
-                {categories.map((cat) => (
-                  <option key={cat.value} value={cat.value}>
-                    {cat.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Distance Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Distance
-              </label>
-              <select
-                value={filters.distance}
-                onChange={(e) => setFilters({ ...filters, distance: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
-              >
-                {distanceOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Price Range Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Price Range
-              </label>
-              <div className="space-y-3">
-                <div className="flex items-center gap-4">
-                  <div className="flex-1">
-                    <label className="text-xs text-gray-600 mb-1 block">Min</label>
-                    <input
-                      type="number"
-                      value={filters.priceRange[0]}
-                      onChange={(e) => handlePriceChange(0, e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
-                      min="0"
-                      max={filters.priceRange[1]}
-                    />
-                  </div>
-                  <span className="text-gray-400 mt-5">-</span>
-                  <div className="flex-1">
-                    <label className="text-xs text-gray-600 mb-1 block">Max</label>
-                    <input
-                      type="number"
-                      value={filters.priceRange[1]}
-                      onChange={(e) => handlePriceChange(1, e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
-                      min={filters.priceRange[0]}
-                      max="100000"
-                    />
-                  </div>
-                </div>
-                
-                {/* Price Slider */}
-                <div className="space-y-2">
-                  <input
-                    type="range"
-                    min="0"
-                    max="50000"
-                    step="1000"
-                    value={filters.priceRange[0]}
-                    onChange={(e) => handlePriceChange(0, e.target.value)}
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-600"
-                  />
-                  <input
-                    type="range"
-                    min="0"
-                    max="50000"
-                    step="1000"
-                    value={filters.priceRange[1]}
-                    onChange={(e) => handlePriceChange(1, e.target.value)}
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-600"
-                  />
-                </div>
-                
-                <div className="flex justify-between text-sm text-gray-600">
-                  <span>{formatPrice(filters.priceRange[0])}</span>
-                  <span>{formatPrice(filters.priceRange[1])}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Filter Actions */}
-            <div className="flex gap-3 pt-4 border-t">
-              <button
-                onClick={clearFilters}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Clear All
-              </button>
-              <button
-                onClick={() => setShowFilters(false)}
-                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-              >
-                Apply Filters
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Active Filters Display */}
-      {activeFilterCount > 0 && (
-        <div className="flex flex-wrap gap-2 mb-4">
-          {filters.category !== "all" && (
-            <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
-              {categories.find(c => c.value === filters.category)?.label}
-              <button
-                onClick={() => setFilters({ ...filters, category: "all" })}
-                className="hover:text-green-900"
-              >
-                <X size={14} />
-              </button>
-            </span>
-          )}
-          {filters.distance !== "All" && (
-            <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
-              {distanceOptions.find(d => d.value === filters.distance)?.label}
-              <button
-                onClick={() => setFilters({ ...filters, distance: "All" })}
-                className="hover:text-green-900"
-              >
-                <X size={14} />
-              </button>
-            </span>
-          )}
-          {(filters.priceRange[0] !== 0 || filters.priceRange[1] !== 50000) && (
-            <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
-              {formatPrice(filters.priceRange[0])} - {formatPrice(filters.priceRange[1])}
-              <button
-                onClick={() => setFilters({ ...filters, priceRange: [0, 50000] })}
-                className="hover:text-green-900"
-              >
-                <X size={14} />
-              </button>
-            </span>
-          )}
-        </div>
-      )}
+      {/* Tab Filters */}
+      <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+        {tabFilters.map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+              activeTab === tab
+                ? "bg-green-600 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
 
       {/* Active Splits Section */}
       <section>
         <div className="flex justify-between items-center my-4">
           <h2 className="text-lg font-semibold text-gray-900">
-            {filteredSplits.length} Active Split{filteredSplits.length !== 1 ? 's' : ''}
+            Active Nearby Splits
           </h2>
+          <button className="text-green-600 text-sm font-medium hover:text-green-700">
+            View All
+          </button>
         </div>
 
         {/* Splits Grid */}
@@ -321,8 +117,7 @@ function AllSplitsPage() {
               return (
                 <div
                   key={split.id}
-                  className="bg-[#F3F3F3] rounded-xl shadow-sm hover:shadow-md transition-all duration-300 p-1.5 border border-gray-100 cursor-pointer"
-                  onClick={() => navigate(`/dashboard/splitz-details/${split.id}`)}
+                  className="bg-[#F3F3F3] rounded-xl shadow-sm hover:shadow-md transition-all duration-300 p-1.5 border border-gray-100"
                 >
                   {/* Image Section */}
                   <div className="relative">
@@ -345,7 +140,6 @@ function AllSplitsPage() {
                       <button
                         className="bg-black/60 p-1.5 rounded-full hover:bg-white transition-all duration-200"
                         aria-label="Add to favorites"
-                        onClick={(e) => e.stopPropagation()}
                       >
                         <Heart
                           size={16}
@@ -355,7 +149,6 @@ function AllSplitsPage() {
                       <button
                         className="bg-black/60 p-1.5 rounded-full hover:bg-white transition-all duration-200"
                         aria-label="Share"
-                        onClick={(e) => e.stopPropagation()}
                       >
                         <Share2
                           size={16}
@@ -435,11 +228,11 @@ function AllSplitsPage() {
                 <Users size={24} className="text-gray-400" />
               </div>
               <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                No Splits Found
+                No Active Splits Found
               </h3>
               <p className="text-gray-500 mb-4">
-                {searchQuery || activeFilterCount > 0
-                  ? "No splits match your filters. Try adjusting your search."
+                {searchQuery 
+                  ? "No splits match your search."
                   : "There are currently no active splits in your area."}
               </p>
               <button

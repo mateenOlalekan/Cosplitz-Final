@@ -1,11 +1,37 @@
-// src/services/endpoints/auth.js
-// FIXED - Improved error handling and token management
-
 const API_BASE_URL = 'https://cosplitz-backend.onrender.com/api';
 
 const handleApiError = (response, data) => {
   if (!response.ok) {
-    const errorMessage = data?.message || data?.detail || data?.error || `Request failed (${response.status})`;
+    const isOTPEndpoint = response.url.includes('/otp') || response.url.includes('/verify');
+    if (response.status === 401 && !isOTPEndpoint) {
+      clearAuth();
+    }
+    let errorMessage = 'Request failed';
+    if (data?.message) {
+      errorMessage = data.message;
+    } else if (data?.detail) {
+      errorMessage = data.detail;
+    } else if (data?.error) {
+      errorMessage = data.error;
+    } else if (data?.errors && Array.isArray(data.errors)) {
+      errorMessage = data.errors.join(', ');
+    } else if (data?.email && Array.isArray(data.email)) {
+      // Handle Django-style field errors
+      errorMessage = `Email: ${data.email.join(', ')}`;
+    } else if (data?.otp && Array.isArray(data.otp)) {
+      errorMessage = `OTP: ${data.otp.join(', ')}`;
+    } else {
+      errorMessage = `Request failed with status ${response.status}`;
+    }
+  
+    console.error('API Error:', {
+      url: response.url,
+      status: response.status,
+      statusText: response.statusText,
+      data: data,
+      errorMessage: errorMessage
+    });
+    
     const error = new Error(errorMessage);
     error.status = response.status;
     error.data = data;
@@ -27,38 +53,34 @@ async function makeRequest(url, options = {}) {
       headers.Authorization = `Bearer ${token}`;
     }
   }
+ 
+  console.log('API Request:', {
+    url: url,
+    method: options.method || 'GET',
+    hasAuth: !!headers.Authorization,
+    body: options.body ? JSON.parse(options.body) : null
+  });
 
   try {
-    console.log(`📡 API Request: ${options.method || 'GET'} ${url}`);
     const response = await fetch(url, { ...options, headers });
-    
-    // Handle empty responses
-    let data = null;
-    const contentType = response.headers.get('content-type');
-    if (contentType && contentType.includes('application/json')) {
-      data = await response.json();
-    }
-    
-    if (!response.ok) {
-      console.error(`❌ API Error (${response.status}):`, data);
-    } else {
-      console.log(`✅ API Success:`, data);
-    }
+    const data = await response.json().catch(() => null);
+    console.log('API Response:', {
+      url: url,
+      status: response.status,
+      data: data
+    });
     
     return handleApiError(response, data);
   } catch (error) {
-    console.error('💥 API Request Error:', error);
-    
-    // Network errors
-    if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
-      throw new Error('Network error. Please check your connection.');
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      const networkError = new Error('Network error. Please check your internet connection.');
+      networkError.isNetworkError = true;
+      throw networkError;
     }
-    
     throw error;
   }
 }
 
-// ============ TOKEN HELPERS ============
 export const getToken = () => {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
@@ -66,15 +88,11 @@ export const getToken = () => {
 
 const setToken = (token, remember = true) => {
   if (typeof window === 'undefined') return;
-  
   if (!token) {
     localStorage.removeItem('authToken');
     sessionStorage.removeItem('authToken');
     return;
   }
-  
-  console.log('💾 Saving token:', token.substring(0, 20) + '...');
-  
   if (remember) {
     localStorage.setItem('authToken', token);
     sessionStorage.removeItem('authToken');
@@ -86,14 +104,42 @@ const setToken = (token, remember = true) => {
 
 const clearAuth = () => {
   if (typeof window === 'undefined') return;
-  console.log('🗑️ Clearing auth data');
   localStorage.removeItem('authToken');
   sessionStorage.removeItem('authToken');
   localStorage.removeItem('userInfo');
   localStorage.removeItem('tempRegister');
-  localStorage.removeItem('onboardingData');
-  localStorage.removeItem('kycData');
-  localStorage.removeItem('registrationState');
+  localStorage.removeItem('justRegistered'); // Clear registration flag
+  localStorage.removeItem('onboardingComplete'); // Clear onboarding flag
+};
+
+// NEW: Track if user just completed registration
+export const setJustRegistered = (value) => {
+  if (typeof window === 'undefined') return;
+  if (value) {
+    localStorage.setItem('justRegistered', 'true');
+  } else {
+    localStorage.removeItem('justRegistered');
+  }
+};
+
+export const getJustRegistered = () => {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem('justRegistered') === 'true';
+};
+
+// NEW: Track if user has completed onboarding (post-onboarding + KYC)
+export const setOnboardingComplete = (value) => {
+  if (typeof window === 'undefined') return;
+  if (value) {
+    localStorage.setItem('onboardingComplete', 'true');
+  } else {
+    localStorage.removeItem('onboardingComplete');
+  }
+};
+
+export const getOnboardingComplete = () => {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem('onboardingComplete') === 'true';
 };
 
 // ============ ENDPOINTS ============
@@ -154,32 +200,49 @@ export const getOTPEndpoint = async (userId) => {
   return data;
 };
 
+// VERIFY OTP - with detailed logging and validation
 export const verifyOTPEndpoint = async ({ email, otp }) => {
-  console.log('🔍 Verifying OTP for:', email);
-  
-  try {
-    const data = await makeRequest(`${API_BASE_URL}/verify_otp`, {
-      method: 'POST',
-      body: JSON.stringify({ email, otp }),
-      auth: true,
-    });
-
-    // Update token if provided
-    if (data?.token) {
-      setToken(data.token, true);
-    }
-
-    console.log('✅ OTP verification successful');
-
-    return {
-      user: data?.user || data?.data,
-      token: data?.token,
-      isVerified: true,
-    };
-  } catch (error) {
-    console.error('❌ OTP verification failed:', error);
-    throw error;
+  // Validate inputs before sending
+  if (!email || typeof email !== 'string') {
+    console.error('Invalid email:', email);
+    throw new Error('Email is required and must be a string');
   }
+  
+  if (!otp || typeof otp !== 'string') {
+    console.error('Invalid OTP:', otp);
+    throw new Error('OTP is required and must be a string');
+  }
+  
+  // Log what we're sending
+  console.log('Verifying OTP:', {
+    email: email,
+    otp: otp,
+    otpLength: otp.length,
+    otpType: typeof otp
+  });
+  
+  const payload = {
+    email: email.trim().toLowerCase(),
+    otp: otp.trim()
+  };
+  
+  console.log('Sending payload:', payload);
+  
+  const data = await makeRequest(`${API_BASE_URL}/verify_otp`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    auth: true,
+  });
+
+  if (data?.token) {
+    setToken(data.token, true);
+  }
+
+  return {
+    user: data?.user || data?.data,
+    token: data?.token,
+    isVerified: true,
+  };
 };
 
 export const resendOTPEndpoint = async (userId) => {
@@ -197,9 +260,4 @@ export const getUserInfoEndpoint = async () => {
 export const logoutEndpoint = () => {
   clearAuth();
   return { success: true };
-};
-
-// Helper to check if user is authenticated
-export const isAuthenticated = () => {
-  return !!getToken();
 };
