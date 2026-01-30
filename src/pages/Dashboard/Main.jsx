@@ -44,7 +44,7 @@ export default function Main() {
             {categories.map((cat, i) => (
               <button
                 key={i}
-                className="rounded-xl py-3 px-2 transition text-center hover:bg-gray-50"
+                className="rounded-xl py-3 transition text-center hover:bg-gray-50"
               >
                 <img
                   src={cat.icon}
