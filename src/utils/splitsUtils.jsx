@@ -36,15 +36,15 @@ export const getBadgeStyle = (category) => {
 export const getCategoryColor = (category) => {
   switch (category) {
     case "Food & Groceries":
-      return "bg-red-100 text-red-800";
+      return "bg-green-100 text-white";
     case "Transportation":
-      return "bg-blue-100 text-blue-800";
+      return "bg-green-100 text-white";
     case "Events & Tickets":
-      return "bg-purple-100 text-purple-800";
+      return "bg-green-100 text-white";
     case "Utilities":
-      return "bg-yellow-100 text-yellow-800";
+      return "bg-green-100 text-white";
     case "Entertainment":
-      return "bg-pink-100 text-pink-800";
+      return "bg-green-100 text-white";
     default:
       return "bg-gray-100 text-gray-800";
   }
@@ -69,11 +69,11 @@ export const formatPrice = (price) => {
 export const getStatusColor = (status) => {
   switch (status?.toLowerCase()) {
     case "active":
-      return "bg-green-100 text-green-800";
+      return "bg-green-100 text-white";
     case "pending":
-      return "bg-yellow-100 text-yellow-800";
+      return "bg-green-100 text-white";
     case "completed":
-      return "bg-blue-100 text-blue-800";
+      return "bg-green-100 text-white";
     default:
       return "bg-gray-100 text-gray-800";
   }
@@ -87,7 +87,7 @@ export const getTimeLeft = (endDate) => {
   const now = new Date();
   const diffMs = end - now;
   
-  if (diffMs <= 0) return 'Expired';
+  if (diffMs <= 0) return 'Expigreen';
   
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
   const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
