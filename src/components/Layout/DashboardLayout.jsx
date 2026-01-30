@@ -1,5 +1,5 @@
 // src/components/Layout/DashboardLayout.jsx
-// REFACTORED - Enforces registration flow
+// FIXED - Added search focus state context
 
 import { useState, useEffect, useCallback } from "react";
 import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
@@ -9,6 +9,7 @@ import { useUser, useRegistrationState } from "../../services/queries/auth";
 
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -19,6 +20,10 @@ export default function DashboardLayout() {
   const isPostOnboarding = location.pathname.includes("/dashboard/post-onboarding");
   const isKYCFlow = location.pathname.includes("/dashboard/kyc-flow");
   const hideNavigation = isPostOnboarding || isKYCFlow;
+
+  // Search focus handlers
+  const handleSearchFocus = () => setIsSearchFocused(true);
+  const handleSearchBlur = () => setIsSearchFocused(false);
 
   // Enforce registration flow
   useEffect(() => {
@@ -96,11 +101,15 @@ export default function DashboardLayout() {
       
       <div className="flex-1 flex flex-col overflow-hidden">
         {!hideNavigation && (
-          <DashboardHeader onMenuClick={toggleSidebar} />
+          <DashboardHeader 
+            onMenuClick={toggleSidebar}
+            onSearchFocus={handleSearchFocus}
+            onSearchBlur={handleSearchBlur}
+          />
         )}
         
         <main className="flex-1 overflow-y-auto">
-          <Outlet />
+          <Outlet context={{ isSearchFocused }} />
         </main>
       </div>
     </div>
