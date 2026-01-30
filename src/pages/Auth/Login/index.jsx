@@ -4,10 +4,10 @@ import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 import { FcGoogle } from "react-icons/fc";
 import { PiAppleLogoBold } from "react-icons/pi";
-import { useLogin, useUser } from "../../services/queries/auth";
-import { setJustRegistered } from "../../services/endpoints/auth";
-import loginlogo from "../../assets/login.jpg";
-import logo from "../../assets/logo.svg";
+import { useLogin, useUser } from "../../../services/queries/auth";
+import { setJustRegistered } from "../../../services/endpoints/auth";
+import loginlogo from "../../../assets/loginmain.jpg";
+import logo from "../../../assets/logo.svg";
 
 export default function Login() {
   const navigate = useNavigate();
