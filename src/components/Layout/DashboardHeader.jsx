@@ -1,3 +1,4 @@
+// src/components/Layout/DashboardHeader.jsx
 import {
   Bell,
   Settings,
@@ -12,7 +13,7 @@ import logo from "../../assets/logo.svg";
 import { useUser, useLogout } from "../../services/queries/auth";
 import { useState } from "react";
 
-export default function DashboardHeader({ onMenuClick }) {
+export default function DashboardHeader({ onMenuClick, onSearchFocus, onSearchBlur }) {
   const [searchQuery, setSearchQuery] = useState("");
   const { data: user } = useUser();
   const logout = useLogout();
@@ -31,9 +32,9 @@ export default function DashboardHeader({ onMenuClick }) {
 
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-gray-200">
-      <div className="px-4 sm:px-6 lg:px-8 py-3">
-        {/* Mobile Header - Adjusted spacing */}
-        <div className="flex items-center justify-between md:hidden mb-4">
+      <div className="px-4 sm:px-6 lg:px-8 py-2">
+        {/* Mobile Header */}
+        <div className="flex items-center justify-between md:hidden mb-2">
           <img
             src={logo}
             alt="Company Logo"
@@ -49,8 +50,8 @@ export default function DashboardHeader({ onMenuClick }) {
           </button>
         </div>
 
-        {/* Search and Filter Row - Improved spacing */}
-        <div className="flex gap-3 mb-4 md:mb-0">
+        {/* Search and Filter Row */}
+        <div className="flex gap-3 mb-2 md:mb-0">
           <div className="relative flex-1">
             <Search
               className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
@@ -61,6 +62,8 @@ export default function DashboardHeader({ onMenuClick }) {
               placeholder="Search splits..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={onSearchFocus}  // ✅ Trigger hide
+              onBlur={onSearchBlur}    // ✅ Trigger show
               className="
                 w-full
                 pl-11 pr-4 py-3
@@ -93,7 +96,7 @@ export default function DashboardHeader({ onMenuClick }) {
           </button>
         </div>
 
-        {/* Desktop Header - Better spacing between elements */}
+        {/* Desktop Header */}
         <div className="hidden md:flex items-center justify-between mt-5">
           <div className="flex items-center gap-3 text-gray-600 text-sm">
             <MapPin size={16} className="text-gray-500" />

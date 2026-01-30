@@ -1,4 +1,3 @@
-// src/components/Layout/DashboardLayout.jsx - NO CHANGES
 import { useState, useEffect, useCallback } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import DashboardSidebar from "./DashboardSidebar";
@@ -9,6 +8,7 @@ import Loading from "../../pages/Public/LoadingScreen";
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   
   const { data: user, isLoading } = useUser();
 
@@ -17,6 +17,9 @@ export default function DashboardLayout() {
   if (!isLoading && !user && !isPostOnboarding) {
     return <Navigate to="/login" replace />;
   }
+
+  const handleSearchFocus = () => setIsSearchFocused(true);
+  const handleSearchBlur = () => setIsSearchFocused(false);
 
   useEffect(() => {
     const handleResize = () => {
@@ -34,7 +37,7 @@ export default function DashboardLayout() {
     setSidebarOpen(false);
   }, []);
 
-  if (isLoading) return <Loading/>;
+  if (isLoading) return <Loading />;
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#F7F5F9]">
@@ -44,11 +47,15 @@ export default function DashboardLayout() {
       
       <div className="flex-1 flex flex-col overflow-hidden">
         {!isPostOnboarding && (
-          <DashboardHeader onMenuClick={toggleSidebar} />
+          <DashboardHeader 
+            onMenuClick={toggleSidebar} 
+            onSearchFocus={handleSearchFocus}
+            onSearchBlur={handleSearchBlur}
+          />
         )}
         
         <main className="flex-1 overflow-y-auto">
-          <Outlet />
+          <Outlet context={{ isSearchFocused }} />
         </main>
       </div>
     </div>
