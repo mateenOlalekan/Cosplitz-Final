@@ -1,3 +1,6 @@
+// src/pages/PostOnboarding/post-onboard.jsx
+// REFACTORED - Tracks completion state
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft } from "lucide-react";
@@ -24,6 +27,7 @@ import {
   Hotel,
   Truck,
 } from "lucide-react";
+import { useCompleteOnboarding } from "../../services/queries/auth";
 
 const steps = [
   {
@@ -100,7 +104,6 @@ const IconComponent = ({ IconType }) => (
   <IconType className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
 );
 
-// Loading Screen Component
 const LoadingScreen = () => (
   <div className="h-screen flex items-center justify-center bg-white">
     <div className="flex flex-col items-center gap-4">
@@ -112,6 +115,7 @@ const LoadingScreen = () => (
 
 export default function CoSplitzOnboarding() {
   const navigate = useNavigate();
+  const completeOnboarding = useCompleteOnboarding();
 
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -155,13 +159,15 @@ export default function CoSplitzOnboarding() {
     return selected.length > 0 || other.trim() !== "";
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!isStepComplete()) return;
 
     if (currentStep < steps.length - 1) {
       setCurrentStep((s) => s + 1);
     } else {
-      // Save onboarding data to localStorage
+      setIsLoading(true);
+      
+      // Prepare onboarding data
       const onboardingData = {
         interests: selections[0],
         situation: selections[1],
@@ -170,13 +176,20 @@ export default function CoSplitzOnboarding() {
         completedAt: new Date().toISOString(),
       };
       
-      localStorage.setItem('onboardingData', JSON.stringify(onboardingData));
-      
-      // Navigate to KYC flow
-      setIsLoading(true);
-      setTimeout(() => {
-        navigate('/dashboard/kyc-flow', { replace: true });
-      }, 1500);
+      try {
+        // Save onboarding completion
+        await completeOnboarding.mutateAsync(onboardingData);
+        
+        console.log('✅ Onboarding completed');
+        
+        // Navigate to KYC flow
+        setTimeout(() => {
+          navigate('/dashboard/kyc-flow', { replace: true });
+        }, 1500);
+      } catch (error) {
+        console.error('❌ Onboarding completion failed:', error);
+        setIsLoading(false);
+      }
     }
   };
 
@@ -194,7 +207,6 @@ export default function CoSplitzOnboarding() {
     <div className="h-screen flex flex-col bg-white text-gray-900">
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
         <div className="max-w-xl mx-auto flex flex-col h-full">
-          {/* Header */}
           <div className="mb-4">
             {currentStep > 0 && (
               <button
@@ -218,7 +230,6 @@ export default function CoSplitzOnboarding() {
             </div>
           </div>
 
-          {/* Content */}
           <div className="flex-1">
             <h1 className="text-lg sm:text-xl font-bold mb-1">{step.title}</h1>
             <p className="text-gray-500 text-xs sm:text-sm mb-3">
@@ -251,7 +262,6 @@ export default function CoSplitzOnboarding() {
               })}
             </div>
 
-            {/* Input */}
             <div className="mb-2">
               <label className="text-xs sm:text-sm text-gray-700 mb-1 block">
                 {step.input}
@@ -267,11 +277,10 @@ export default function CoSplitzOnboarding() {
             </div>
           </div>
 
-          {/* Continue Button */}
           <div className="sticky bottom-0 bg-white pt-1 pb-2">
             <button
               onClick={handleContinue}
-              disabled={!isStepComplete()}
+              disabled={!isStepComplete() || completeOnboarding.isPending}
               className={`w-full py-3 rounded-lg font-medium text-sm transition ${
                 isStepComplete()
                   ? "bg-green-600 text-white hover:bg-green-700"
@@ -279,7 +288,7 @@ export default function CoSplitzOnboarding() {
               }`}
             >
               {currentStep === steps.length - 1
-                ? "Complete Setup"
+                ? completeOnboarding.isPending ? "Saving..." : "Complete Setup"
                 : `Continue${selected.length > 0 ? ` (${selected.length})` : ""}`}
             </button>
           </div>

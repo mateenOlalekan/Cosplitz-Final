@@ -110,7 +110,7 @@ export default function DashboardSidebar({ isOpen, onClose }) {
           <img
             src={user?.image || user?.avatar || "/default-avatar.png"}
             alt="User"
-            className="w-10 h-10 rounded-full object-cover bg-gray-200"
+            className="w-5 h-5 rounded-full object-cover bg-gray-200"
           />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-gray-900 truncate">
@@ -119,16 +119,18 @@ export default function DashboardSidebar({ isOpen, onClose }) {
             <p className="text-xs text-gray-500 truncate">View profile & settings</p>
           </div>
         </Link>
+        <div className="hidden">
         <button
           onClick={handleLogout}
           disabled={logout.isPending}
-          className="mt-3 w-full flex md:hidden items-center gap-3 p-3 rounded-lg text-red-600 hover:bg-red-50 transition disabled:opacity-50"
+          className="mt-1 w-full flex md:hidden items-center gap-3 p-3 rounded-lg text-red-600 hover:bg-red-50 transition disabled:opacity-50"
         >
           <LogOut size={18} />
           <span className="text-sm font-semibold">
             {logout.isPending ? "Logging out..." : "Logout"}
           </span>
         </button>
+        </div>
       </div>
     </aside>
   );

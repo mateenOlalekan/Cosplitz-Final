@@ -34,7 +34,7 @@ export default function DashboardHeader({ onMenuClick, onSearchFocus, onSearchBl
     <header className="sticky top-0 z-30 bg-white border-b border-gray-200">
       <div className="px-4 sm:px-6 lg:px-8 pt-2">
         {/* Mobile Header */}
-        <div className="flex items-center justify-between md:hidden mb-2">
+        <div className="flex items-center justify-between md:hidden">
           <img
             src={logo}
             alt="Company Logo"

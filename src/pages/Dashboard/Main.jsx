@@ -117,7 +117,7 @@ export default function Main() {
 
         {/* Create Splitz Banner - Hidden when search focused */}
         {!isSearchFocused && (
-          <section className="flex flex-col md:px-0 px-4 mb-4 transition-all duration-300">
+          <section className="flex flex-col md:px-0  mb-4 transition-all duration-300">
             <div
               className="w-full bg-linear-to-r from-[#096A0F] to-[#1F8225]
               px-5 py-5 mt-5 flex flex-col sm:flex-row

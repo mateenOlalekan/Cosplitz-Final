@@ -1,13 +1,12 @@
 // src/services/endpoints/auth.js
-// FIXED VERSION - Based on actual backend API endpoints
+// COMPLETE REFACTOR - Proper token flow for registration
 
 const API_BASE_URL = 'https://cosplitz-backend.onrender.com/api';
 
 const handleApiError = (response, data) => {
   if (!response.ok) {
-    if (response.status === 401) {
-      clearAuth();
-    }
+    // Don't clear auth on 401 during registration flow
+    // Only clear on actual auth endpoints
     
     const errorMessage = data?.message || data?.detail || data?.error || `Request failed (${response.status})`;
     const error = new Error(errorMessage);
@@ -33,11 +32,19 @@ async function makeRequest(url, options = {}) {
   }
 
   try {
+    console.log(`📡 API Request: ${options.method || 'GET'} ${url}`);
     const response = await fetch(url, { ...options, headers });
     const data = await response.json().catch(() => null);
+    
+    if (!response.ok) {
+      console.error(`❌ API Error (${response.status}):`, data);
+    } else {
+      console.log(`✅ API Success:`, data);
+    }
+    
     return handleApiError(response, data);
   } catch (error) {
-    console.error('API Request Error:', error);
+    console.error('💥 API Request Error:', error);
     throw error;
   }
 }
@@ -57,6 +64,8 @@ const setToken = (token, remember = true) => {
     return;
   }
   
+  console.log('💾 Saving token:', token.substring(0, 20) + '...');
+  
   if (remember) {
     localStorage.setItem('authToken', token);
     sessionStorage.removeItem('authToken');
@@ -68,10 +77,13 @@ const setToken = (token, remember = true) => {
 
 const clearAuth = () => {
   if (typeof window === 'undefined') return;
+  console.log('🗑️ Clearing auth data');
   localStorage.removeItem('authToken');
   sessionStorage.removeItem('authToken');
   localStorage.removeItem('userInfo');
   localStorage.removeItem('tempRegister');
+  localStorage.removeItem('onboardingData');
+  localStorage.removeItem('kycData');
 };
 
 // ============ ENDPOINTS ============
@@ -132,9 +144,8 @@ export const getOTPEndpoint = async (userId) => {
   return data;
 };
 
-// FIXED: Correct endpoint is /verify_otp (NOT /verify_otp/)
 export const verifyOTPEndpoint = async ({ email, otp }) => {
-  console.log('🔍 Verifying OTP with endpoint:', `${API_BASE_URL}/verify_otp`);
+  console.log('🔍 Verifying OTP for:', email);
   
   try {
     const data = await makeRequest(`${API_BASE_URL}/verify_otp`, {
@@ -143,6 +154,7 @@ export const verifyOTPEndpoint = async ({ email, otp }) => {
       auth: true,
     });
 
+    // Update token if provided
     if (data?.token) {
       setToken(data.token, true);
     }

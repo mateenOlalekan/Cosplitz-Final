@@ -1,4 +1,6 @@
-// KYCFlow.jsx
+// src/pages/KYC/KYCFlow.jsx
+// REFACTORED - Tracks completion and navigates to dashboard
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PersonalInfoPage from "./PersonalInfo";
@@ -6,9 +8,12 @@ import ProofOfAddress from "./ProofOfAddress";
 import UploadDocument from "./UploadDocument";
 import KYCConfirmation from "./KYCConfirmation";
 import { motion } from "framer-motion";
+import { useCompleteKYC } from "../../services/queries/auth";
 
 function KYCFlow() {
   const navigate = useNavigate();
+  const completeKYC = useCompleteKYC();
+  
   const [step, setStep] = useState(1);
   const [personalInfo, setPersonalInfo] = useState({
     firstName: "",
@@ -27,11 +32,11 @@ function KYCFlow() {
     nationalId: null,
   });
 
-  const next = () => {
+  const next = async () => {
     if (step < 4) {
       setStep(step + 1);
     } else if (step === 4) {
-      // Save KYC data and navigate to dashboard
+      // Save KYC data and complete the flow
       const kycData = {
         personalInfo,
         proofOfAddress,
@@ -44,12 +49,19 @@ function KYCFlow() {
         status: 'pending',
       };
       
-      localStorage.setItem('kycData', JSON.stringify(kycData));
-      
-      // Navigate to dashboard
-      setTimeout(() => {
-        navigate('/dashboard', { replace: true });
-      }, 1000);
+      try {
+        // Mark KYC as complete
+        await completeKYC.mutateAsync(kycData);
+        
+        console.log('✅ KYC completed, navigating to dashboard');
+        
+        // Navigate to dashboard
+        setTimeout(() => {
+          navigate('/dashboard', { replace: true });
+        }, 1000);
+      } catch (error) {
+        console.error('❌ KYC completion failed:', error);
+      }
     }
   };
   
@@ -128,10 +140,8 @@ function KYCFlow() {
         {/* Progress Bar */}
         {step < 4 && (
           <div className="w-full mb-6 relative flex items-center justify-between">
-            {/* --- GRAY BACKGROUND LINE --- */}
             <div className="absolute left-0 right-0 top-1/2 h-4 bg-gray-300 -z-10"></div>
 
-            {/* --- GREEN PROGRESS LINE --- */}
             <motion.div
               className="absolute left-0 top-1/2 h-4 bg-green-500 -z-10"
               initial={{ width: 0 }}
@@ -148,7 +158,6 @@ function KYCFlow() {
               transition={{ duration: 0.4, ease: "easeInOut" }}
             />
 
-            {/* --- DOTS --- */}
             {steps.map((s) => (
               <motion.div
                 key={s.id}
@@ -223,7 +232,13 @@ function KYCFlow() {
             updateFiles={updateFiles}
           />
         )}
-        {step === 4 && <KYCConfirmation prev={prev} onDashboard={next} />}
+        {step === 4 && (
+          <KYCConfirmation 
+            prev={prev} 
+            onDashboard={next}
+            isLoading={completeKYC.isPending}
+          />
+        )}
       </div>
     </div>
   );

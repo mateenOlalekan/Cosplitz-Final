@@ -1,4 +1,3 @@
-// src/components/Layout/DashboardSettingLayout.jsx - NO CHANGES
 import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import DashboardSidebar from "../../pages/Dashboard/Settings/Sidebar";
