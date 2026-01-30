@@ -126,7 +126,7 @@ export const getOTPEndpoint = async (userId) => {
 };
 
 export const verifyOTPEndpoint = async ({ email, otp }) => {
-  const data = await makeRequest(`${API_BASE_URL}/verify_otp/`, {
+  const data = await makeRequest(`${API_BASE_URL}/verify_otp`, {
     method: 'POST',
     body: JSON.stringify({ email, otp }),
     auth: true,
