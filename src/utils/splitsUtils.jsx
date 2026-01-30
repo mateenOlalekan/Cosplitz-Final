@@ -147,19 +147,7 @@
 //   }
 // };
 
-// // Handle join split
-// export const handleJoinSplit = async (splitId, e) => {
-//   e.stopPropagation();
-//   const navigate = useNavigate();
-//   try {
-//     // await joinSplit(splitId);
-//     navigate(`/dashboard/splitz-details/${splitId}`);
-//   } catch (error) {
-//     console.error("Failed to join split:", error);
-//   }
-// };
 
-// // Categories for dashboard
 
 // // Calculate time left until end date
 // export const getTimeLeft = (endDate) => {

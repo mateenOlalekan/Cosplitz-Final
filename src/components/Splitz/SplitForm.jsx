@@ -8,8 +8,7 @@
 //   Shield,
 //   X
 // } from 'lucide-react';
-// import { SplitFormSchema } from '../../schemas/splitSchemas';
-// import { validateImageFile } from '../../formDataUtils';
+
 
 // const SplitForm = ({ 
 //   initialData = {}, 
