@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useRegistrationFlow, useTempRegister, useUser, useJustRegistered, useOnboardingComplete } from '../../../services/queries/auth';
+import { useRegistrationFlow, useTempRegister } from '../../../services/queries/auth';
 import loginlogo from "../../../assets/login.jpg";
 import logo from "../../../assets/logo.svg";
 import RegistrationForm from './RegistrationForm';
@@ -18,27 +18,7 @@ export default function Register() {
   const [currentStep, setCurrentStep] = useState(1);
   const [verificationError, setVerificationError] = useState('');
   const { data: tempRegister } = useTempRegister();
-  const { data: user, isLoading: isUserLoading, isError: isUserError } = useUser();
-  const { data: justRegistered } = useJustRegistered();
-  const { data: onboardingComplete } = useOnboardingComplete();
   const { executeFlow, verifyOTP, resendOTP, isVerifying } = useRegistrationFlow();
-
-  // IMPORTANT: Only redirect existing users who have completed onboarding
-  // Do NOT redirect users in the middle of registration flow
-  useEffect(() => {
-    if (
-      user && 
-      !isUserLoading && 
-      !isUserError && 
-      !tempRegister && // Not in registration flow
-      !justRegistered && // Not a new registration
-      onboardingComplete === true && // Has completed onboarding
-      currentStep === 1 // On first step (not in flow)
-    ) {
-      console.log('Existing user with completed onboarding detected, redirecting to dashboard');
-      navigate('/dashboard', { replace: true });
-    }
-  }, [user, isUserLoading, isUserError, tempRegister, justRegistered, onboardingComplete, currentStep, navigate]);
 
   // Restore step if user has temp registration (they started registering)
   useEffect(() => {
@@ -98,10 +78,6 @@ export default function Register() {
     
     try {
       await verifyOTP({ email: tempRegister.email, otp });
-      
-      // Move to success step
-      // The justRegistered flag is still true at this point
-      // User must click "Continue Setup" button to proceed
       setCurrentStep(3);
       
       return { success: true };
@@ -149,16 +125,10 @@ export default function Register() {
   const handleBackToRegistration = () => {
     localStorage.removeItem('tempRegister');
     localStorage.removeItem('justRegistered');
+    localStorage.removeItem('onboardingComplete');
+    localStorage.removeItem('kycComplete');
     window.location.reload();
   };
-
-  if (isUserLoading && !tempRegister) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-[#F7F5F9]">
-        <div className="w-8 h-8 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <div className="flex bg-[#F7F5F9] w-full h-screen justify-center overflow-hidden md:px-6 md:py-4">

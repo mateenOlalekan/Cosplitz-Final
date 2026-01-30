@@ -12,6 +12,8 @@ import {
   getJustRegistered,
   setOnboardingComplete,
   getOnboardingComplete,
+  setKYCComplete,
+  getKYCComplete,
 } from "../endpoints/auth";
 
 export const authKeys = {
@@ -20,6 +22,7 @@ export const authKeys = {
   tempRegister: () => [...authKeys.all, 'tempRegister'],
   justRegistered: () => [...authKeys.all, 'justRegistered'],
   onboardingComplete: () => [...authKeys.all, 'onboardingComplete'],
+  kycComplete: () => [...authKeys.all, 'kycComplete'],
 };
 
 const saveTempRegister = (data) => {
@@ -78,6 +81,15 @@ export const useOnboardingComplete = () => {
   });
 };
 
+export const useKYCComplete = () => {
+  return useQuery({
+    queryKey: authKeys.kycComplete(),
+    queryFn: getKYCComplete,
+    staleTime: Infinity,
+    enabled: typeof window !== 'undefined',
+  });
+};
+
 export const useLogin = () => {
   const queryClient = useQueryClient();
 
@@ -85,14 +97,18 @@ export const useLogin = () => {
     mutationFn: ({ credentials, remember }) =>
       loginEndpoint(credentials, remember),
     onSuccess: (data) => {
-      // Regular login - NOT from registration, so clear the flag
       setJustRegistered(false);
-      // Assume returning users have completed onboarding
-      setOnboardingComplete(true);
+      const kycComplete = localStorage.getItem('kycComplete') === 'true';
+      if (kycComplete) {
+        setOnboardingComplete(true);
+      } else {
+        setOnboardingComplete(false);
+      }
+      
       queryClient.setQueryData(authKeys.user(), data.user);
       queryClient.invalidateQueries({ queryKey: authKeys.user() });
       queryClient.setQueryData(authKeys.justRegistered(), false);
-      queryClient.setQueryData(authKeys.onboardingComplete(), true);
+      queryClient.setQueryData(authKeys.onboardingComplete(), kycComplete);
     },
   });
 };
@@ -103,18 +119,20 @@ export const useVerifyOTP = () => {
     mutationFn: verifyOTPEndpoint,
     onSuccess: (data) => {
       console.log('OTP Verification successful, updating cache with user:', data.user);
-      
-      // Clear temp registration data
+
       saveTempRegister(null);
       queryClient.removeQueries({ queryKey: authKeys.tempRegister() });
-      
-      // Set user data
       queryClient.setQueryData(authKeys.user(), data.user);
       queryClient.invalidateQueries({ queryKey: authKeys.user() });
+      setJustRegistered(true);
+      setOnboardingComplete(false); // Onboarding NOT complete until post-onboarding + KYC
+      setKYCComplete(false); // KYC NOT complete yet
       
-      // IMPORTANT: Keep the justRegistered flag true after OTP verification
-      // This flag will be checked to determine if user needs onboarding
-      console.log('User cache updated, AuthGuard should now allow access to onboarding flow');
+      queryClient.setQueryData(authKeys.justRegistered(), true);
+      queryClient.setQueryData(authKeys.onboardingComplete(), false);
+      queryClient.setQueryData(authKeys.kycComplete(), false);
+      
+      console.log('User cache updated, justRegistered=true, onboardingComplete=false');
     },
     onError: (error) => {
       console.error('OTP Verification failed:', error);
@@ -137,6 +155,41 @@ export const useLogout = () => {
       queryClient.setQueryData(authKeys.user(), null);
       queryClient.setQueryData(authKeys.justRegistered(), false);
       queryClient.setQueryData(authKeys.onboardingComplete(), false);
+      queryClient.setQueryData(authKeys.kycComplete(), false);
+    },
+  });
+};
+
+// NEW: Mutation to mark onboarding as complete (after KYC)
+export const useCompleteOnboarding = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async () => {
+      // This is a client-side only operation
+      setOnboardingComplete(true);
+      setJustRegistered(false); // Clear the justRegistered flag
+      return { success: true };
+    },
+    onSuccess: () => {
+      queryClient.setQueryData(authKeys.onboardingComplete(), true);
+      queryClient.setQueryData(authKeys.justRegistered(), false);
+      queryClient.invalidateQueries({ queryKey: authKeys.user() });
+    },
+  });
+};
+
+// NEW: Mutation to mark KYC as complete
+export const useCompleteKYC = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async () => {
+      setKYCComplete(true);
+      return { success: true };
+    },
+    onSuccess: () => {
+      queryClient.setQueryData(authKeys.kycComplete(), true);
     },
   });
 };
@@ -150,7 +203,12 @@ export const useRegistrationFlow = () => {
     
     // Set the flag that user is in registration flow
     setJustRegistered(true);
+    setOnboardingComplete(false);
+    setKYCComplete(false);
+    
     queryClient.setQueryData(authKeys.justRegistered(), true);
+    queryClient.setQueryData(authKeys.onboardingComplete(), false);
+    queryClient.setQueryData(authKeys.kycComplete(), false);
     
     const regData = await registerEndpoint({
       first_name: userData.first_name,

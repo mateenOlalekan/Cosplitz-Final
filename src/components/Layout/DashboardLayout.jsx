@@ -1,9 +1,8 @@
-// src/components/Layout/DashboardLayout.jsx
 import { useState, useEffect, useCallback } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import DashboardSidebar from "./DashboardSidebar";
 import DashboardHeader from "./DashboardHeader";
-import { useUser, useOnboardingComplete } from "../../services/queries/auth";
+import { useUser, useOnboardingComplete, useKYCComplete, useJustRegistered } from "../../services/queries/auth";
 
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -13,26 +12,58 @@ export default function DashboardLayout() {
   
   const { data: user, isLoading } = useUser();
   const { data: onboardingComplete } = useOnboardingComplete();
+  const { data: kycComplete } = useKYCComplete();
+  const { data: justRegistered } = useJustRegistered();
 
   // Hide sidebar and header on onboarding and KYC pages
   const isFullScreenPage = location.pathname.includes("/dashboard/post-onboarding") || 
                            location.pathname.includes("/dashboard/kyc-flow");
-
-  // CRITICAL: Redirect to onboarding if user hasn't completed it
-  // This runs for authenticated users who haven't finished the onboarding flow
   useEffect(() => {
-    // Only check if we have user data and it's not loading
+
     if (!user || isLoading) return;
     
     // If user is on a full-screen onboarding page, don't redirect
     if (isFullScreenPage) return;
     
-    // If onboarding is not complete, redirect to post-onboarding
-    if (onboardingComplete === false) {
-      console.log('User has not completed onboarding, redirecting to post-onboarding');
+    // Get fresh values from localStorage (more reliable than React Query cache)
+    const freshJustRegistered = localStorage.getItem('justRegistered') === 'true';
+    const freshOnboardingComplete = localStorage.getItem('onboardingComplete') === 'true';
+    const freshKYCComplete = localStorage.getItem('kycComplete') === 'true';
+    
+    console.log('DashboardLayout redirect check:', {
+      freshJustRegistered,
+      freshOnboardingComplete,
+      freshKYCComplete,
+      currentPath: location.pathname
+    });
+    
+    // SCENARIO 1: User just registered (after OTP) and hasn't clicked "Continue Setup"
+    // They should be allowed to see the success screen in Register component
+    // NOT redirected from here
+    
+    // SCENARIO 2: User is just registered (freshJustRegistered = true) but trying to access dashboard
+    // They should be redirected to post-onboarding
+    if (freshJustRegistered && location.pathname === '/dashboard') {
+      console.log('New user trying to access dashboard, redirecting to post-onboarding');
       navigate('/dashboard/post-onboarding', { replace: true });
+      return;
     }
-  }, [user, isLoading, onboardingComplete, isFullScreenPage, navigate]);
+    
+    // SCENARIO 3: User has completed registration but not KYC
+    // They should be on post-onboarding or kyc-flow
+    if (!freshKYCComplete && !isFullScreenPage) {
+      console.log('User needs KYC, redirecting to post-onboarding');
+      navigate('/dashboard/post-onboarding', { replace: true });
+      return;
+    }
+    
+    // SCENARIO 4: Returning user without KYC
+    if (!freshJustRegistered && !freshKYCComplete && !isFullScreenPage) {
+      console.log('Returning user needs KYC, redirecting to post-onboarding');
+      navigate('/dashboard/post-onboarding', { replace: true });
+      return;
+    }
+  }, [user, isLoading, location.pathname, isFullScreenPage, navigate]);
 
   useEffect(() => {
     const handleResize = () => {

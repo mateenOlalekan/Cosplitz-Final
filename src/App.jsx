@@ -44,9 +44,23 @@ function PublicOnly({ children }) {
   
   if (isLoading) return <LoadingScreen />;
   
-  // If user is authenticated, redirect to dashboard
   if (user) {
     return <Navigate to="/dashboard" replace state={{ from: location }} />;
+  }
+  
+  return children;
+}
+
+function KYCGate({ children }) {
+  const { data: user, isLoading } = useUser();
+  
+  if (isLoading) return <LoadingScreen />;
+  
+  const isKYCComplete = localStorage.getItem('kycComplete') === 'true';
+  const hasOnboardingComplete = localStorage.getItem('onboardingComplete') === 'true';
+  
+  if (user && (!isKYCComplete || !hasOnboardingComplete)) {
+    return <Navigate to="/dashboard/post-onboarding" replace />;
   }
   
   return children;
@@ -75,34 +89,35 @@ export default function App() {
               <Route path="post-onboarding" element={<PostOnboard />} />
               <Route path="kyc-flow" element={<KYCFlow />} />
               
-              {/* Main Dashboard Routes */}
-              <Route index element={<MainOverview />} />
-              <Route path="messages" element={<Messages />} />
-              <Route path="analytics" element={<Analytics />} />
-              <Route path="payment" element={<Payment />} />
-              <Route path="wallet" element={<Wallet />} />
-              <Route path="notification" element={<Notification />} />
-              
-              {/* Splits Routes */}
-              <Route path="allsplits" element={<AllSplitsPage />} />
-              <Route path="mysplitz" element={<MySplitz />} />
-              <Route path="create-splitz" element={<CreateSplitz />} />
-              <Route path="splitz-details/:id" element={<SplitzDetail />} />
-              <Route path="splitz-success" element={<SplitzSuccessful />} />
+              {/* Main Dashboard Routes - Protected by KYC Gate */}
+              <Route element={<KYCGate />}>
+                <Route index element={<MainOverview />} />
+                <Route path="messages" element={<Messages />} />
+                <Route path="analytics" element={<Analytics />} />
+                <Route path="payment" element={<Payment />} />
+                <Route path="wallet" element={<Wallet />} />
+                <Route path="notification" element={<Notification />} />
+                
+                {/* Splits Routes */}
+                <Route path="allsplits" element={<AllSplitsPage />} />
+                <Route path="mysplitz" element={<MySplitz />} />
+                <Route path="create-splitz" element={<CreateSplitz />} />
+                <Route path="splitz-details/:id" element={<SplitzDetail />} />
+                <Route path="splitz-success" element={<SplitzSuccessful />} />
 
-              {/* Settings Routes */}
-              <Route path="settings" element={<DashboardSettingLayout />}>
-                <Route index element={<MyProfile />} />
-                <Route path="profile" element={<MyProfile />} />
-                <Route path="notifications" element={<NotificationSettings />} />
-                <Route path="verification" element={<Verification />} />
-                <Route path="reset-password" element={<ResetPassword />} />
-                <Route path="support" element={<Support />} />
+                {/* Settings Routes */}
+                <Route path="settings" element={<DashboardSettingLayout />}>
+                  <Route index element={<MyProfile />} />
+                  <Route path="profile" element={<MyProfile />} />
+                  <Route path="notifications" element={<NotificationSettings />} />
+                  <Route path="verification" element={<Verification />} />
+                  <Route path="reset-password" element={<ResetPassword />} />
+                  <Route path="support" element={<Support />} />
+                </Route>
               </Route>
             </Route>
           </Route>
 
-          {/* 404 Not Found */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>

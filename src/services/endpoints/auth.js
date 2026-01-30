@@ -110,6 +110,7 @@ const clearAuth = () => {
   localStorage.removeItem('tempRegister');
   localStorage.removeItem('justRegistered'); // Clear registration flag
   localStorage.removeItem('onboardingComplete'); // Clear onboarding flag
+  localStorage.removeItem('kycComplete'); // Clear KYC flag
 };
 
 // NEW: Track if user just completed registration
@@ -142,7 +143,21 @@ export const getOnboardingComplete = () => {
   return localStorage.getItem('onboardingComplete') === 'true';
 };
 
-// ============ ENDPOINTS ============
+// NEW: Track if user has completed KYC verification
+export const setKYCComplete = (value) => {
+  if (typeof window === 'undefined') return;
+  if (value) {
+    localStorage.setItem('kycComplete', 'true');
+  } else {
+    localStorage.removeItem('kycComplete');
+  }
+};
+
+export const getKYCComplete = () => {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem('kycComplete') === 'true';
+};
+
 
 export const registerEndpoint = async (userData) => {
   const payload = {
