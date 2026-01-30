@@ -21,6 +21,8 @@ export default function Register() {
   const { data: tempRegister } = useTempRegister();
   const { data: user, isLoading: isUserLoading, isError: isUserError } = useUser();
   const { executeFlow, verifyOTP, resendOTP, isVerifying } = useRegistrationFlow();
+
+  // ONLY redirect if user is already logged in and NOT in registration flow
   useEffect(() => {
     if (user && !isUserLoading && !isUserError && !tempRegister && currentStep === 1 && !registrationComplete) {
       console.log('User already logged in, redirecting to dashboard');
@@ -28,9 +30,9 @@ export default function Register() {
     }
   }, [user, isUserLoading, isUserError, tempRegister, currentStep, registrationComplete, navigate]);
 
+  // Restore step if user has temp registration
   useEffect(() => {
     if (tempRegister && currentStep === 1) {
-      console.log('Restoring registration at step 2');
       setCurrentStep(2);
     }
   }, [tempRegister, currentStep]);
@@ -47,9 +49,7 @@ export default function Register() {
     };
 
     try {
-      console.log('Starting registration flow...');
       await executeFlow(payload);
-      console.log('Registration flow complete, moving to step 2');
       setCurrentStep(2);
       return { success: true };
     } catch (error) {
@@ -87,14 +87,9 @@ export default function Register() {
     }
     
     try {
-      console.log('Verifying OTP...');
       await verifyOTP({ email: tempRegister.email, otp });
       
-      console.log('OTP verified successfully!');
-      console.log('Setting registrationComplete = true');
-      console.log('Moving to step 3 (Success page)');
-      
-      // CRITICAL: Set registrationComplete FIRST, then change step
+      // IMPORTANT: Set registrationComplete FIRST to prevent redirect
       setRegistrationComplete(true);
       setCurrentStep(3);
       
@@ -129,10 +124,8 @@ export default function Register() {
     }
     
     try {
-      console.log('Resending OTP...');
       await resendOTP(tempRegister.userId);
       setVerificationError('');
-      console.log('OTP resent successfully');
       return { success: true };
     } catch (error) {
       console.error('Resend OTP error:', error);
@@ -143,7 +136,6 @@ export default function Register() {
   };
 
   const handleBackToRegistration = () => {
-    console.log('Going back to registration, clearing data...');
     localStorage.removeItem('tempRegister');
     window.location.reload();
   };

@@ -8,8 +8,8 @@ export default function Successful() {
   const [isNavigating, setIsNavigating] = useState(false);
 
   const handleContinue = () => {
-    console.log('Continue to Post-Onboarding clicked');
     setIsNavigating(true);
+    // Navigate immediately to post-onboarding (no timeout)
     navigate('/dashboard/post-onboarding');
   };
 
@@ -34,7 +34,7 @@ export default function Successful() {
         {isNavigating ? (
           <span className="flex items-center justify-center gap-2">
             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            Loading Setup...
+            Loading...
           </span>
         ) : (
           'Continue Setup'

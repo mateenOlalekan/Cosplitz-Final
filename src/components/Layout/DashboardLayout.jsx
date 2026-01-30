@@ -1,3 +1,4 @@
+// src/components/Layout/DashboardLayout.jsx
 import { useState, useEffect, useCallback } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import DashboardSidebar from "./DashboardSidebar";
@@ -11,8 +12,9 @@ export default function DashboardLayout() {
   
   const { data: user, isLoading } = useUser();
 
-  const isOnboardingPage = location.pathname.includes("/dashboard/pre-onboard") || 
-                          location.pathname.includes("/dashboard/post-onboarding");
+  // Hide sidebar and header on onboarding and KYC pages
+  const isFullScreenPage = location.pathname.includes("/dashboard/post-onboarding") || 
+                           location.pathname.includes("/dashboard/kyc-flow");
 
   useEffect(() => {
     const handleResize = () => {
@@ -40,12 +42,14 @@ export default function DashboardLayout() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#F7F5F9]">
-      {!isOnboardingPage && (
+      {/* Hide sidebar on full-screen pages (post-onboarding, kyc-flow) */}
+      {!isFullScreenPage && (
         <DashboardSidebar isOpen={sidebarOpen} onClose={closeSidebar} />
       )}
       
       <div className="flex-1 flex flex-col overflow-hidden">
-        {!isOnboardingPage && (
+        {/* Hide header on full-screen pages (post-onboarding, kyc-flow) */}
+        {!isFullScreenPage && (
           <DashboardHeader onMenuClick={toggleSidebar} hidden={hidden} setHidden={setHidden} />
         )}
         

@@ -63,6 +63,7 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgetPassword />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/password-reset-success" element={<PasswordResetSuccess />} />
+                        <Route path="pre-onboard" element={<PreOnboard />} />
 
           {/* Protected Routes */}
           <Route element={<AuthGuard />}>
@@ -70,7 +71,6 @@ export default function App() {
               <Route index element={<MainOverview />} />
               
               {/* Pre-onboarding and Post-onboarding */}
-              <Route path="pre-onboard" element={<PreOnboard />} />
               <Route path="post-onboarding" element={<PostOnboard />} />
               
               {/* Main Dashboard Routes */}
