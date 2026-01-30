@@ -31,13 +31,13 @@ export default function DashboardHeader({ onMenuClick }) {
 
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-gray-200">
-      <div className="px-4 sm:px-6 lg:px-8 py-4">
+      <div className="px-4 sm:px-6 lg:px-8 py-2">
         {/* Mobile Header */}
         <div className="flex items-center justify-between md:hidden">
           <img
             src={logo}
             alt="Company Logo"
-            className="w-16 h-16 object-contain select-none"
+            className="w-24 h-24 object-contain select-none"
             draggable="false"
           />
           <button onClick={onMenuClick} aria-label="Open menu">
@@ -46,7 +46,7 @@ export default function DashboardHeader({ onMenuClick }) {
         </div>
 
         {/* Search + Filter */}
-        <div className="mt-4 md:mt-0 flex flex-col sm:flex-row gap-3">
+        <div className="mt-1.5 md:mt-0 flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search
               className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
@@ -80,7 +80,6 @@ export default function DashboardHeader({ onMenuClick }) {
             "
           >
             <Filter size={18} />
-            <span className="hidden sm:inline">Filter</span>
           </button>
         </div>
 
