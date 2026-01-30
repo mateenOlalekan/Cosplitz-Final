@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useRegistrationFlow, useTempRegister, useUser, useJustRegistered, useOnboardingComplete } from '../../../services/queries/auth';
+import { useRegistrationFlow, useTempRegister, useUser } from '../../../services/queries/auth';
 import loginlogo from "../../../assets/login.jpg";
 import logo from "../../../assets/logo.svg";
 import RegistrationForm from './RegistrationForm';
@@ -17,30 +17,17 @@ export default function Register() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [verificationError, setVerificationError] = useState('');
+
   const { data: tempRegister } = useTempRegister();
   const { data: user, isLoading: isUserLoading, isError: isUserError } = useUser();
-  const { data: justRegistered } = useJustRegistered();
-  const { data: onboardingComplete } = useOnboardingComplete();
   const { executeFlow, verifyOTP, resendOTP, isVerifying } = useRegistrationFlow();
 
-  // IMPORTANT: Only redirect existing users who have completed onboarding
-  // Do NOT redirect users in the middle of registration flow
   useEffect(() => {
-    if (
-      user && 
-      !isUserLoading && 
-      !isUserError && 
-      !tempRegister && // Not in registration flow
-      !justRegistered && // Not a new registration
-      onboardingComplete === true && // Has completed onboarding
-      currentStep === 1 // On first step (not in flow)
-    ) {
-      console.log('Existing user with completed onboarding detected, redirecting to dashboard');
+    if (user && !isUserLoading && !isUserError) {
       navigate('/dashboard', { replace: true });
     }
-  }, [user, isUserLoading, isUserError, tempRegister, justRegistered, onboardingComplete, currentStep, navigate]);
+  }, [user, isUserLoading, isUserError, navigate]);
 
-  // Restore step if user has temp registration (they started registering)
   useEffect(() => {
     if (tempRegister && currentStep === 1) {
       setCurrentStep(2);
@@ -63,26 +50,7 @@ export default function Register() {
       setCurrentStep(2);
       return { success: true };
     } catch (error) {
-      console.error('Registration error:', error);
-      
-      let message = 'Registration failed. Please try again.';
-      
-      if (error?.message) {
-        const errorMsg = error.message.toLowerCase();
-        
-        if (errorMsg.includes('email') && (errorMsg.includes('already') || errorMsg.includes('exists') || errorMsg.includes('taken'))) {
-          message = 'This email is already registered. Please use a different email or try logging in.';
-        } else if (errorMsg.includes('password')) {
-          message = 'Password does not meet requirements. Please check and try again.';
-        } else if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
-          message = 'Network error. Please check your connection and try again.';
-        } else if (errorMsg.includes('invalid')) {
-          message = 'Invalid registration data. Please check your information.';
-        } else {
-          message = error.message;
-        }
-      }
-      
+      const message = error?.message || 'Registration failed';
       setVerificationError(message);
       return { success: false, error: message };
     }
@@ -97,33 +65,14 @@ export default function Register() {
     }
     
     try {
-      await verifyOTP({ email: tempRegister.email, otp });
-      
-      // Move to success step
-      // The justRegistered flag is still true at this point
-      // User must click "Continue Setup" button to proceed
+      await verifyOTP({ 
+        email: tempRegister.email, 
+        otp 
+      });
       setCurrentStep(3);
-      
       return { success: true };
     } catch (error) {
-      console.error('OTP verification error:', error);
-      
-      let message = 'Invalid verification code';
-      
-      if (error?.message) {
-        const errorMsg = error.message.toLowerCase();
-        
-        if (errorMsg.includes('invalid') || errorMsg.includes('incorrect')) {
-          message = 'Invalid verification code. Please check and try again.';
-        } else if (errorMsg.includes('expired')) {
-          message = 'Verification code has expired. Please request a new one.';
-        } else if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
-          message = 'Network error. Please try again.';
-        } else {
-          message = error.message;
-        }
-      }
-      
+      const message = error?.message || 'Invalid verification code';
       setVerificationError(message);
       return { success: false, error: message };
     }
@@ -131,28 +80,23 @@ export default function Register() {
 
   const handleResendOTP = async () => {
     if (!tempRegister?.userId) {
-      return { success: false, error: 'Session expired. Please register again.' };
+      return { success: false, error: 'Session expired' };
     }
     
     try {
       await resendOTP(tempRegister.userId);
-      setVerificationError('');
       return { success: true };
     } catch (error) {
-      console.error('Resend OTP error:', error);
-      
-      const message = error?.message || 'Failed to resend code. Please try again.';
-      return { success: false, error: message };
+      return { success: false, error: error?.message || 'Failed to resend code' };
     }
   };
 
   const handleBackToRegistration = () => {
     localStorage.removeItem('tempRegister');
-    localStorage.removeItem('justRegistered');
     window.location.reload();
   };
 
-  if (isUserLoading && !tempRegister) {
+  if (isUserLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-[#F7F5F9]">
         <div className="w-8 h-8 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />

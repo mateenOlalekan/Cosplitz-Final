@@ -5,7 +5,8 @@
 // import Overlay2 from "../../assets/Overlay1.svg";
 // import Overlay3 from "../../assets/Overlay2.svg";
 // import Overlay4 from "../../assets/Overlay3.svg";
-
+// import useSplitStore from "../../store/splitStore";
+// import useAuthStore from "../../store/authStore";
 // import DashOverview from "../../components/Headers/Overview";
 
 // function Overview() {
@@ -578,3 +579,12 @@
 
 // export default Overview;
 
+import React from 'react'
+
+function Overview() {
+  return (
+    <div className='w-full flex flex-col p-4'>Overview</div>
+  )
+}
+
+export default Overview
