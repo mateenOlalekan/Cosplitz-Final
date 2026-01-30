@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { MapPin, Navigation, Home, AlertCircle } from "lucide-react";
 
 function ProofOfAddress({ next, prev }) {

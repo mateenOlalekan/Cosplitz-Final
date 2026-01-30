@@ -54,7 +54,7 @@ export default function CoSplitzOnboarding() {
       setCurrentStep((s) => s + 1);
     } else {
       setIsLoading(true);
-      setTimeout(() => navigate("/kyc-flow"), 1500);}
+      setTimeout(() => navigate("/dashboard/kyc-flow"), 1500);}
   };
 
   const handleBack = () => {if (currentStep > 0) setCurrentStep((s) => s - 1);};

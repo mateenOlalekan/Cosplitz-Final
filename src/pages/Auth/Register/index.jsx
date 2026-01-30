@@ -17,20 +17,20 @@ export default function Register() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [verificationError, setVerificationError] = useState('');
-  const [registrationComplete, setRegistrationComplete] = useState(false);
   const { data: tempRegister } = useTempRegister();
   const { data: user, isLoading: isUserLoading, isError: isUserError } = useUser();
   const { executeFlow, verifyOTP, resendOTP, isVerifying } = useRegistrationFlow();
 
-  // ONLY redirect if user is already logged in and NOT in registration flow
+  // Only redirect if user is already fully authenticated AND has no temp registration
+  // This prevents redirecting during the registration flow
   useEffect(() => {
-    if (user && !isUserLoading && !isUserError && !tempRegister && currentStep === 1 && !registrationComplete) {
+    if (user && !isUserLoading && !isUserError && !tempRegister && currentStep === 1) {
       console.log('User already logged in, redirecting to dashboard');
       navigate('/dashboard', { replace: true });
     }
-  }, [user, isUserLoading, isUserError, tempRegister, currentStep, registrationComplete, navigate]);
+  }, [user, isUserLoading, isUserError, tempRegister, currentStep, navigate]);
 
-  // Restore step if user has temp registration
+  // Restore step if user has temp registration (they started registering)
   useEffect(() => {
     if (tempRegister && currentStep === 1) {
       setCurrentStep(2);
@@ -89,8 +89,7 @@ export default function Register() {
     try {
       await verifyOTP({ email: tempRegister.email, otp });
       
-      // IMPORTANT: Set registrationComplete FIRST to prevent redirect
-      setRegistrationComplete(true);
+      // Move to success step
       setCurrentStep(3);
       
       return { success: true };

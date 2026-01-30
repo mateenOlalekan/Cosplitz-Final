@@ -1,4 +1,4 @@
-// src/components/Auth/AuthGuard.jsx - NO CHANGES
+// src/components/Layout/AuthGuard.jsx
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useUser } from "../../services/queries/auth";
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Upload, CheckCircle, XCircle, FileText, Shield, Clock, ChevronRight } from "lucide-react";
 
 function UploadDocument({ next, prev }) {

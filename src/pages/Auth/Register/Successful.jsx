@@ -9,8 +9,7 @@ export default function Successful() {
 
   const handleContinue = () => {
     setIsNavigating(true);
-    // Navigate immediately to post-onboarding (no timeout)
-    navigate('/dashboard/post-onboarding');
+    navigate('/dashboard/post-onboarding', { replace: true });
   };
 
   return (

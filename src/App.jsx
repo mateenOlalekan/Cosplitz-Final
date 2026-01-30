@@ -44,6 +44,7 @@ function PublicOnly({ children }) {
   
   if (isLoading) return <LoadingScreen />;
   
+  // If user is authenticated, redirect to dashboard
   if (user) {
     return <Navigate to="/dashboard" replace state={{ from: location }} />;
   }
@@ -56,30 +57,31 @@ export default function App() {
     <>
       <Suspense fallback={<LoadingScreen />}>
         <Routes>
-          {/* Public Routes */}
+          {/* Public Routes - accessible without authentication */}
           <Route path="/" element={<Home />} />
-          <Route path="/login" element={<PublicOnly><Login /></PublicOnly>}/>
-          <Route path="/register" element={<PublicOnly><Register /></PublicOnly>}/>
+          <Route path="/pre-onboard" element={<PreOnboard />} />
+          
+          {/* Auth Routes - redirect to dashboard if already logged in */}
+          <Route path="/login" element={<PublicOnly><Login /></PublicOnly>} />
+          <Route path="/register" element={<PublicOnly><Register /></PublicOnly>} />
           <Route path="/forgot-password" element={<ForgetPassword />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/password-reset-success" element={<PasswordResetSuccess />} />
-                        <Route path="pre-onboard" element={<PreOnboard />} />
 
-          {/* Protected Routes */}
+          {/* Protected Routes - require authentication */}
           <Route element={<AuthGuard />}>
             <Route path="/dashboard" element={<DashboardLayout />}>
-              <Route index element={<MainOverview />} />
-              
-              {/* Pre-onboarding and Post-onboarding */}
+              {/* Post-registration flow - protected but with special layout */}
               <Route path="post-onboarding" element={<PostOnboard />} />
+              <Route path="kyc-flow" element={<KYCFlow />} />
               
               {/* Main Dashboard Routes */}
+              <Route index element={<MainOverview />} />
               <Route path="messages" element={<Messages />} />
               <Route path="analytics" element={<Analytics />} />
               <Route path="payment" element={<Payment />} />
               <Route path="wallet" element={<Wallet />} />
               <Route path="notification" element={<Notification />} />
-              <Route path="kyc-flow" element={<KYCFlow />} />
               
               {/* Splits Routes */}
               <Route path="allsplits" element={<AllSplitsPage />} />
