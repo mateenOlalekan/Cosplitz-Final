@@ -1,4 +1,3 @@
-// src/pages/Dashboard/Splits/AllSplitsPage.jsx
 import { useState } from "react";
 import { Search, Filter, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
