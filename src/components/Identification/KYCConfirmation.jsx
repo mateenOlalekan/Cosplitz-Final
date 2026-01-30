@@ -35,16 +35,16 @@ export default function KYCConfirmation({ prev }) {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center py-8 px-4">
+    <div className="flex flex-col items-center justify-center min-h-screen py-4 sm:py-6 px-3 sm:px-4">
       {/* Success Icon */}
       <motion.div
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ type: "spring", stiffness: 200, damping: 15 }}
-        className="mb-6"
+        className="mb-3 sm:mb-4"
       >
-        <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center">
-          <CheckCircle className="w-16 h-16 text-green-600" />
+        <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-green-100 rounded-full flex items-center justify-center">
+          <CheckCircle className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 text-green-600" />
         </div>
       </motion.div>
 
@@ -53,7 +53,7 @@ export default function KYCConfirmation({ prev }) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="text-2xl font-bold text-gray-900 mb-3 text-center"
+        className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mb-2 sm:mb-3 text-center px-4"
       >
         Verification Complete!
       </motion.h2>
@@ -63,7 +63,7 @@ export default function KYCConfirmation({ prev }) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
-        className="text-gray-600 text-center max-w-md mb-8"
+        className="text-xs sm:text-sm text-gray-600 text-center max-w-md mb-4 sm:mb-6 md:mb-8 px-4"
       >
         Thank you for completing your identity verification. Your account is now fully set up and ready to use.
       </motion.p>
@@ -73,26 +73,26 @@ export default function KYCConfirmation({ prev }) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
-        className="w-full max-w-md space-y-3 mb-8"
+        className="w-full max-w-md space-y-2 sm:space-y-2.5 md:space-y-3 mb-4 sm:mb-6 md:mb-8"
       >
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
-            <div>
-              <h3 className="font-semibold text-gray-900 text-sm">Identity Verified</h3>
-              <p className="text-xs text-gray-600 mt-1">
+        <div className="bg-green-50 border border-green-200 rounded-md sm:rounded-lg p-2.5 sm:p-3 md:p-4">
+          <div className="flex items-start gap-2 sm:gap-2.5 md:gap-3">
+            <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 mt-0.5 flex-shrink-0" />
+            <div className="min-w-0 flex-1">
+              <h3 className="font-semibold text-gray-900 text-xs sm:text-sm">Identity Verified</h3>
+              <p className="text-[10px] sm:text-xs text-gray-600 mt-0.5 sm:mt-1">
                 Your identity has been successfully verified and your account is now active.
               </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <CheckCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-            <div>
-              <h3 className="font-semibold text-gray-900 text-sm">Full Access Granted</h3>
-              <p className="text-xs text-gray-600 mt-1">
+        <div className="bg-blue-50 border border-blue-200 rounded-md sm:rounded-lg p-2.5 sm:p-3 md:p-4">
+          <div className="flex items-start gap-2 sm:gap-2.5 md:gap-3">
+            <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div className="min-w-0 flex-1">
+              <h3 className="font-semibold text-gray-900 text-xs sm:text-sm">Full Access Granted</h3>
+              <p className="text-[10px] sm:text-xs text-gray-600 mt-0.5 sm:mt-1">
                 You now have access to all features including creating splits, payments, and more.
               </p>
             </div>
@@ -101,7 +101,7 @@ export default function KYCConfirmation({ prev }) {
       </motion.div>
 
       {/* Action Buttons */}
-      <div className="flex flex-col sm:flex-row gap-3 w-full max-w-md">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-2.5 md:gap-3 w-full max-w-md px-4 sm:px-0">
         <motion.button
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -110,7 +110,7 @@ export default function KYCConfirmation({ prev }) {
           whileTap={{ scale: 0.98 }}
           onClick={prev}
           disabled={isNavigating}
-          className="flex-1 px-6 py-3 border-2 border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 px-4 sm:px-5 md:px-6 py-2 sm:py-2.5 md:py-3 border-2 border-gray-300 rounded-md sm:rounded-lg text-xs sm:text-sm font-semibold text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Back
         </motion.button>
@@ -123,17 +123,17 @@ export default function KYCConfirmation({ prev }) {
           whileTap={{ scale: isNavigating ? 1 : 0.98 }}
           onClick={handleComplete}
           disabled={isNavigating}
-          className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="flex-1 px-4 sm:px-5 md:px-6 py-2 sm:py-2.5 md:py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-md sm:rounded-lg text-xs sm:text-sm font-semibold hover:from-green-700 hover:to-emerald-700 active:from-green-800 active:to-emerald-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 sm:gap-2"
         >
           {isNavigating ? (
             <>
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               <span>Loading...</span>
             </>
           ) : (
             <>
               <span>Go to Dashboard</span>
-              <ArrowRight className="w-5 h-5" />
+              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
             </>
           )}
         </motion.button>
@@ -144,57 +144,10 @@ export default function KYCConfirmation({ prev }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.7 }}
-        className="text-xs text-gray-500 text-center mt-6"
+        className="text-[9px] sm:text-[10px] text-gray-500 text-center mt-3 sm:mt-4 md:mt-6 px-4"
       >
         You can update your verification details anytime in Settings
       </motion.p>
     </div>
   );
 }
-
-// import { useNavigate } from 'react-router-dom';
-// import { useCompleteKYC, useCompleteOnboarding } from '../../services/queries/auth';
-// import { useState } from 'react';
-
-// export default function CompleteKYC() {
-//   const navigate = useNavigate();
-//   const [isCompleting, setIsCompleting] = useState(false);
-//   const completeKYCMutation = useCompleteKYC();
-//   const completeOnboardingMutation = useCompleteOnboarding();
-
-//   const handleCompleteKYC = async () => {
-//     setIsCompleting(true);
-    
-//     try {
-//       // Mark KYC as complete
-//       await completeKYCMutation.mutateAsync();
-      
-//       // Mark onboarding as complete
-//       await completeOnboardingMutation.mutateAsync();
-      
-//       // Navigate to dashboard
-//       navigate('/dashboard', { replace: true });
-//     } catch (error) {
-//       console.error('Failed to complete KYC:', error);
-//       setIsCompleting(false);
-//     }
-//   };
-
-//   return (
-//     <div className="flex flex-col items-center justify-center min-h-screen p-4">
-//       <h1 className="text-2xl font-bold mb-4">KYC Verification Complete</h1>
-//       <p className="text-gray-600 mb-8 text-center">
-//         Your identity verification has been completed successfully.
-//         You can now access all features of the dashboard.
-//       </p>
-      
-//       <button
-//         onClick={handleCompleteKYC}
-//         disabled={isCompleting}
-//         className="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50"
-//       >
-//         {isCompleting ? 'Processing...' : 'Go to Dashboard'}
-//       </button>
-//     </div>
-//   );
-// }

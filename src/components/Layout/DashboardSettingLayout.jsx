@@ -1,7 +1,7 @@
 // src/components/Layout/DashboardSettingLayout.jsx - NO CHANGES
 import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
-import DashboardSidebar from "./DashboardSidebar";
+import DashboardSidebar from "../../pages/Dashboard/Settings/Sidebar";
 import LogoutModal from "../Settings/LogoutModal";
 import DeleteAccountModal from "../Settings/DeleteAccount";
 import { useLogout } from "../../services/queries/auth";
