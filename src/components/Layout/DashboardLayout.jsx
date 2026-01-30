@@ -4,6 +4,7 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 import DashboardSidebar from "./DashboardSidebar";
 import DashboardHeader from "./DashboardHeader";
 import { useUser } from "../../services/queries/auth";
+import Loading from "../../pages/Public/LoadingScreen";
 
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -33,13 +34,7 @@ export default function DashboardLayout() {
     setSidebarOpen(false);
   }, []);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-[#F7F5F9]">
-        <div className="w-8 h-8 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+  if (isLoading) return <Loading/>;
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#F7F5F9]">
