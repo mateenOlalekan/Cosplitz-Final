@@ -3,17 +3,27 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { CheckCircle, ArrowRight } from "lucide-react";
 import { setJustRegistered, setOnboardingComplete } from "../../services/endpoints/auth";
+import { useQueryClient } from "@tanstack/react-query";
+import { authKeys } from "../../services/queries/auth";
 
 export default function KYCConfirmation({ prev }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [isNavigating, setIsNavigating] = useState(false);
 
   const handleComplete = () => {
     setIsNavigating(true);
     
     // IMPORTANT: Clear the justRegistered flag and mark onboarding as complete
+    // This ensures that when user returns to the app, they go directly to dashboard
     setJustRegistered(false);
     setOnboardingComplete(true);
+    
+    // Update the query cache to reflect these changes
+    queryClient.setQueryData(authKeys.justRegistered(), false);
+    queryClient.setQueryData(authKeys.onboardingComplete(), true);
+    
+    console.log('Onboarding completed - flags cleared, redirecting to dashboard');
     
     // Optional: You can also send KYC completion status to backend here
     // await submitKYCCompletion();

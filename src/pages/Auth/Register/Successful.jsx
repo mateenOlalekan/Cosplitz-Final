@@ -9,6 +9,8 @@ export default function Successful() {
 
   const handleContinue = () => {
     setIsNavigating(true);
+    // Navigate to post-onboarding when user clicks the button
+    // The justRegistered flag is still true at this point
     navigate('/dashboard/post-onboarding', { replace: true });
   };
 

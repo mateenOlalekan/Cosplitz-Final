@@ -23,23 +23,19 @@ export default function Register() {
   const { data: onboardingComplete } = useOnboardingComplete();
   const { executeFlow, verifyOTP, resendOTP, isVerifying } = useRegistrationFlow();
 
-  // Only redirect to dashboard if:
-  // 1. User is authenticated AND
-  // 2. User is NOT in the middle of registration (no tempRegister) AND
-  // 3. User did NOT just complete registration (justRegistered is false) AND
-  // 4. User HAS completed onboarding (onboardingComplete is true) AND
-  // 5. We're on step 1 (not in the middle of the flow)
+  // IMPORTANT: Only redirect existing users who have completed onboarding
+  // Do NOT redirect users in the middle of registration flow
   useEffect(() => {
     if (
       user && 
       !isUserLoading && 
       !isUserError && 
-      !tempRegister && 
-      !justRegistered && 
-      onboardingComplete && 
-      currentStep === 1
+      !tempRegister && // Not in registration flow
+      !justRegistered && // Not a new registration
+      onboardingComplete === true && // Has completed onboarding
+      currentStep === 1 // On first step (not in flow)
     ) {
-      console.log('User already logged in with completed onboarding, redirecting to dashboard');
+      console.log('Existing user with completed onboarding detected, redirecting to dashboard');
       navigate('/dashboard', { replace: true });
     }
   }, [user, isUserLoading, isUserError, tempRegister, justRegistered, onboardingComplete, currentStep, navigate]);
@@ -105,6 +101,7 @@ export default function Register() {
       
       // Move to success step
       // The justRegistered flag is still true at this point
+      // User must click "Continue Setup" button to proceed
       setCurrentStep(3);
       
       return { success: true };

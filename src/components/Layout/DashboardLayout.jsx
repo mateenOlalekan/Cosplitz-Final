@@ -19,8 +19,16 @@ export default function DashboardLayout() {
                            location.pathname.includes("/dashboard/kyc-flow");
 
   // CRITICAL: Redirect to onboarding if user hasn't completed it
+  // This runs for authenticated users who haven't finished the onboarding flow
   useEffect(() => {
-    if (user && !isLoading && onboardingComplete === false && !isFullScreenPage) {
+    // Only check if we have user data and it's not loading
+    if (!user || isLoading) return;
+    
+    // If user is on a full-screen onboarding page, don't redirect
+    if (isFullScreenPage) return;
+    
+    // If onboarding is not complete, redirect to post-onboarding
+    if (onboardingComplete === false) {
       console.log('User has not completed onboarding, redirecting to post-onboarding');
       navigate('/dashboard/post-onboarding', { replace: true });
     }
