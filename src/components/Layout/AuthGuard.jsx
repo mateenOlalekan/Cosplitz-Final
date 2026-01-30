@@ -1,11 +1,9 @@
-// src/components/Layout/AuthGuard.jsx
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useUser } from "../../services/queries/auth";
 
 export default function AuthGuard() {
   const { data: user, isLoading } = useUser();
   const location = useLocation();
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-[#F7F5F9]">
