@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useRegistrationFlow, useTempRegister, useUser, useJustRegistered } from '../../../services/queries/auth';
+import { useRegistrationFlow, useTempRegister, useUser, useJustRegistered, useOnboardingComplete } from '../../../services/queries/auth';
 import loginlogo from "../../../assets/login.jpg";
 import logo from "../../../assets/logo.svg";
 import RegistrationForm from './RegistrationForm';
@@ -20,16 +20,31 @@ export default function Register() {
   const { data: tempRegister } = useTempRegister();
   const { data: user, isLoading: isUserLoading, isError: isUserError } = useUser();
   const { data: justRegistered } = useJustRegistered();
+  const { data: onboardingComplete } = useOnboardingComplete();
   const { executeFlow, verifyOTP, resendOTP, isVerifying } = useRegistrationFlow();
 
+  // Only redirect to dashboard if:
+  // 1. User is authenticated AND
+  // 2. User is NOT in the middle of registration (no tempRegister) AND
+  // 3. User did NOT just complete registration (justRegistered is false) AND
+  // 4. User HAS completed onboarding (onboardingComplete is true) AND
+  // 5. We're on step 1 (not in the middle of the flow)
   useEffect(() => {
-    if (user && !isUserLoading && !isUserError && !tempRegister && !justRegistered && currentStep === 1) {
-      console.log('User already logged in (not from registration), redirecting to dashboard');
+    if (
+      user && 
+      !isUserLoading && 
+      !isUserError && 
+      !tempRegister && 
+      !justRegistered && 
+      onboardingComplete && 
+      currentStep === 1
+    ) {
+      console.log('User already logged in with completed onboarding, redirecting to dashboard');
       navigate('/dashboard', { replace: true });
     }
-  }, [user, isUserLoading, isUserError, tempRegister, justRegistered, currentStep, navigate]);
+  }, [user, isUserLoading, isUserError, tempRegister, justRegistered, onboardingComplete, currentStep, navigate]);
 
-
+  // Restore step if user has temp registration (they started registering)
   useEffect(() => {
     if (tempRegister && currentStep === 1) {
       setCurrentStep(2);
@@ -87,6 +102,9 @@ export default function Register() {
     
     try {
       await verifyOTP({ email: tempRegister.email, otp });
+      
+      // Move to success step
+      // The justRegistered flag is still true at this point
       setCurrentStep(3);
       
       return { success: true };

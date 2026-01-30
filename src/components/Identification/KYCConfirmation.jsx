@@ -1,83 +1,143 @@
-import { CheckCircle, FileText, ArrowLeft, ArrowRight } from "lucide-react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import { CheckCircle, ArrowRight } from "lucide-react";
+import { setJustRegistered, setOnboardingComplete } from "../../services/endpoints/auth";
 
-function KYCConfirmation({ prev }) {
+export default function KYCConfirmation({ prev }) {
+  const navigate = useNavigate();
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  const handleComplete = () => {
+    setIsNavigating(true);
+    
+    // IMPORTANT: Clear the justRegistered flag and mark onboarding as complete
+    setJustRegistered(false);
+    setOnboardingComplete(true);
+    
+    // Optional: You can also send KYC completion status to backend here
+    // await submitKYCCompletion();
+    
+    // Navigate to main dashboard
+    setTimeout(() => {
+      navigate('/dashboard', { replace: true });
+    }, 1000);
+  };
+
   return (
-    <div className="w-full min-h-screen flex justify-center items-center bg-white px-4 py-10">
-      <div className="w-full max-w-lg p-6 sm:p-8 border border-slate-200 shadow-xl rounded-xl flex flex-col gap-6">
-
-        {/* Success Icon */}
-        <div className="flex justify-center">
-          <CheckCircle className="w-20 h-20 text-green-600 animate-pulse" />
+    <div className="flex flex-col items-center justify-center py-8 px-4">
+      {/* Success Icon */}
+      <motion.div
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        transition={{ type: "spring", stiffness: 200, damping: 15 }}
+        className="mb-6"
+      >
+        <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center">
+          <CheckCircle className="w-16 h-16 text-green-600" />
         </div>
+      </motion.div>
 
-        {/* Title */}
-        <h1 className="text-3xl sm:text-4xl font-semibold text-center text-green-700">
-          KYC Verification Submitted
-        </h1>
+      {/* Title */}
+      <motion.h2
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="text-2xl font-bold text-gray-900 mb-3 text-center"
+      >
+        Verification Complete!
+      </motion.h2>
 
-        {/* Description */}
-        <p className="text-center text-gray-600 text-sm sm:text-base leading-relaxed">
-          Your KYC verification details have been successfully submitted.  
-          Our compliance team is currently reviewing your documents to ensure 
-          they meet regulatory standards.  
-        </p>
+      {/* Description */}
+      <motion.p
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="text-gray-600 text-center max-w-md mb-8"
+      >
+        Thank you for completing your identity verification. Your account is now fully set up and ready to use.
+      </motion.p>
 
-        {/* Review Time Info */}
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex gap-3">
-          <FileText className="text-green-600 w-6 h-6" />
-          <p className="text-sm text-green-800">
-            The review process typically takes <span className="font-semibold">24–48 hours</span>.  
-            You will receive an email notification once your verification is complete.
-          </p>
-        </div>
-
-        {/* Summary Section */}
-        <div className="flex flex-col gap-4 border border-gray-200 rounded-lg p-5">
-          <h2 className="text-lg font-semibold text-gray-800">Summary of Submitted Information</h2>
-
-          <div className="text-sm text-gray-700 flex flex-col gap-1">
-            <p><span className="font-semibold">• Personal Information:</span> Submitted</p>
-            <p><span className="font-semibold">• Proof of Address:</span> Submitted</p>
-            <p><span className="font-semibold">• Identity Document:</span> Uploaded</p>
-            <p><span className="font-semibold">• Status:</span> <span className="text-green-600 font-semibold">Pending Review</span></p>
+      {/* Info Cards */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="w-full max-w-md space-y-3 mb-8"
+      >
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <h3 className="font-semibold text-gray-900 text-sm">Identity Verified</h3>
+              <p className="text-xs text-gray-600 mt-1">
+                Your identity has been successfully verified and your account is now active.
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row justify-between gap-4 mt-2">
-
-          {/* Previous */}
-          <button
-            onClick={prev}
-            className="flex items-center justify-center gap-2 w-full py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition-all"
-          >
-            <ArrowLeft size={18} /> Previous
-          </button>
-
-          {/* Download Receipt */}
-          <button
-            className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-all"
-          >
-            <FileText size={18} /> Download Receipt
-          </button>
-
-          
-          <button onClick={gotoDashboard}
-            className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-green-600 text-white font-medium hover:bg-green-700 transition-all"
-          >
-            Go to Dashboard <ArrowRight size={18} />
-          </button>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <CheckCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <h3 className="font-semibold text-gray-900 text-sm">Full Access Granted</h3>
+              <p className="text-xs text-gray-600 mt-1">
+                You now have access to all features including creating splits, payments, and more.
+              </p>
+            </div>
+          </div>
         </div>
+      </motion.div>
 
-        {/* Footer Info */}
-        <p className="text-center text-gray-500 text-xs mt-4">
-          If you believe any information submitted was incorrect,  
-          please contact support immediately.
-        </p>
+      {/* Action Buttons */}
+      <div className="flex flex-col sm:flex-row gap-3 w-full max-w-md">
+        <motion.button
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={prev}
+          disabled={isNavigating}
+          className="flex-1 px-6 py-3 border-2 border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Back
+        </motion.button>
+
+        <motion.button
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          whileHover={{ scale: isNavigating ? 1 : 1.02 }}
+          whileTap={{ scale: isNavigating ? 1 : 0.98 }}
+          onClick={handleComplete}
+          disabled={isNavigating}
+          className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          {isNavigating ? (
+            <>
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <span>Loading...</span>
+            </>
+          ) : (
+            <>
+              <span>Go to Dashboard</span>
+              <ArrowRight className="w-5 h-5" />
+            </>
+          )}
+        </motion.button>
       </div>
+
+      {/* Additional Info */}
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.7 }}
+        className="text-xs text-gray-500 text-center mt-6"
+      >
+        You can update your verification details anytime in Settings
+      </motion.p>
     </div>
   );
 }
-
-export default KYCConfirmation;

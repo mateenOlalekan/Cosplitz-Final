@@ -108,7 +108,8 @@ const clearAuth = () => {
   sessionStorage.removeItem('authToken');
   localStorage.removeItem('userInfo');
   localStorage.removeItem('tempRegister');
-  localStorage.removeItem('justRegistered'); // NEW: Clear registration flag
+  localStorage.removeItem('justRegistered'); // Clear registration flag
+  localStorage.removeItem('onboardingComplete'); // Clear onboarding flag
 };
 
 // NEW: Track if user just completed registration
@@ -124,6 +125,21 @@ export const setJustRegistered = (value) => {
 export const getJustRegistered = () => {
   if (typeof window === 'undefined') return false;
   return localStorage.getItem('justRegistered') === 'true';
+};
+
+// NEW: Track if user has completed onboarding (post-onboarding + KYC)
+export const setOnboardingComplete = (value) => {
+  if (typeof window === 'undefined') return;
+  if (value) {
+    localStorage.setItem('onboardingComplete', 'true');
+  } else {
+    localStorage.removeItem('onboardingComplete');
+  }
+};
+
+export const getOnboardingComplete = () => {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem('onboardingComplete') === 'true';
 };
 
 // ============ ENDPOINTS ============

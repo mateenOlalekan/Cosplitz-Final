@@ -10,6 +10,8 @@ import {
   getToken,
   setJustRegistered,
   getJustRegistered,
+  setOnboardingComplete,
+  getOnboardingComplete,
 } from "../endpoints/auth";
 
 export const authKeys = {
@@ -17,6 +19,7 @@ export const authKeys = {
   user: () => [...authKeys.all, 'user'],
   tempRegister: () => [...authKeys.all, 'tempRegister'],
   justRegistered: () => [...authKeys.all, 'justRegistered'],
+  onboardingComplete: () => [...authKeys.all, 'onboardingComplete'],
 };
 
 const saveTempRegister = (data) => {
@@ -65,6 +68,16 @@ export const useJustRegistered = () => {
   });
 };
 
+// NEW: Hook to check if user has completed onboarding
+export const useOnboardingComplete = () => {
+  return useQuery({
+    queryKey: authKeys.onboardingComplete(),
+    queryFn: getOnboardingComplete,
+    staleTime: Infinity,
+    enabled: typeof window !== 'undefined',
+  });
+};
+
 export const useLogin = () => {
   const queryClient = useQueryClient();
 
@@ -74,9 +87,12 @@ export const useLogin = () => {
     onSuccess: (data) => {
       // Regular login - NOT from registration, so clear the flag
       setJustRegistered(false);
+      // Assume returning users have completed onboarding
+      setOnboardingComplete(true);
       queryClient.setQueryData(authKeys.user(), data.user);
       queryClient.invalidateQueries({ queryKey: authKeys.user() });
       queryClient.setQueryData(authKeys.justRegistered(), false);
+      queryClient.setQueryData(authKeys.onboardingComplete(), true);
     },
   });
 };
@@ -120,6 +136,7 @@ export const useLogout = () => {
       queryClient.removeQueries({ queryKey: authKeys.all });
       queryClient.setQueryData(authKeys.user(), null);
       queryClient.setQueryData(authKeys.justRegistered(), false);
+      queryClient.setQueryData(authKeys.onboardingComplete(), false);
     },
   });
 };

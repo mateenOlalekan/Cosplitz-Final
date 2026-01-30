@@ -1,20 +1,30 @@
 // src/components/Layout/DashboardLayout.jsx
 import { useState, useEffect, useCallback } from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import DashboardSidebar from "./DashboardSidebar";
 import DashboardHeader from "./DashboardHeader";
-import { useUser } from "../../services/queries/auth";
+import { useUser, useOnboardingComplete } from "../../services/queries/auth";
 
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   
   const { data: user, isLoading } = useUser();
+  const { data: onboardingComplete } = useOnboardingComplete();
 
   // Hide sidebar and header on onboarding and KYC pages
   const isFullScreenPage = location.pathname.includes("/dashboard/post-onboarding") || 
                            location.pathname.includes("/dashboard/kyc-flow");
+
+  // CRITICAL: Redirect to onboarding if user hasn't completed it
+  useEffect(() => {
+    if (user && !isLoading && onboardingComplete === false && !isFullScreenPage) {
+      console.log('User has not completed onboarding, redirecting to post-onboarding');
+      navigate('/dashboard/post-onboarding', { replace: true });
+    }
+  }, [user, isLoading, onboardingComplete, isFullScreenPage, navigate]);
 
   useEffect(() => {
     const handleResize = () => {
