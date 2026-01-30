@@ -1,9 +1,11 @@
 // import { useState } from "react";
 // import { useNavigate } from "react-router-dom";
 // import { ChevronLeft } from "lucide-react";
-// import { lazy} from "react";
-// import {steps} from "../../Data/Alldata";
+// import { lazy } from "react";
+// import { steps } from "../../Data/Alldata";
+
 // const Loading = lazy(() => import("../Public/LoadingScreen"));
+
 // const IconComponent = ({ IconType }) => (
 //   <IconType className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
 // );
@@ -16,8 +18,11 @@
 
 //   const step = steps[currentStep];
 //   const { selected, other } = selections[currentStep];
-//   const toggleSelection = (id) => {const newSelections = [...selections];
+
+//   const toggleSelection = (id) => {
+//     const newSelections = [...selections];
 //     let newSelected = [...selected];
+    
 //     if (step.type === "single") {
 //       newSelected = [id];
 //     } else if (step.type === "multiple-limited") {
@@ -53,23 +58,30 @@
 //     if (currentStep < steps.length - 1) {
 //       setCurrentStep((s) => s + 1);
 //     } else {
+//       // On completion, navigate to KYC flow
 //       setIsLoading(true);
-//       setTimeout(() => navigate("/dashboard/kyc-flow"), 1500);}
+//       setTimeout(() => navigate("/dashboard/kyc-flow", { replace: true }), 1500);
+//     }
 //   };
 
-//   const handleBack = () => {if (currentStep > 0) setCurrentStep((s) => s - 1);};
+//   const handleBack = () => {
+//     if (currentStep > 0) setCurrentStep((s) => s - 1);
+//   };
 
 //   const progress = ((currentStep + 1) / steps.length) * 100;
 
 //   if (isLoading) {
-//     return (<><Loading/></>);
+//     return (
+//       <>
+//         <Loading />
+//       </>
+//     );
 //   }
 
 //   return (
 //     <div className="h-screen flex flex-col bg-white text-gray-900">
 //       <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
 //         <div className="max-w-xl mx-auto flex flex-col h-full">
-
 //           <div className="mb-4">
 //             {currentStep > 0 && (
 //               <button
@@ -165,11 +177,13 @@
 //     </div>
 //   );
 // }
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft } from "lucide-react";
 import { lazy } from "react";
 import { steps } from "../../Data/Alldata";
+import { setJustRegistered } from "../../services/endpoints/auth";
 
 const Loading = lazy(() => import("../Public/LoadingScreen"));
 
@@ -226,6 +240,7 @@ export default function CoSplitzOnboarding() {
       setCurrentStep((s) => s + 1);
     } else {
       // On completion, navigate to KYC flow
+      // Don't clear justRegistered flag yet - wait until after KYC
       setIsLoading(true);
       setTimeout(() => navigate("/dashboard/kyc-flow", { replace: true }), 1500);
     }

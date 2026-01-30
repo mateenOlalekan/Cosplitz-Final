@@ -108,6 +108,22 @@ const clearAuth = () => {
   sessionStorage.removeItem('authToken');
   localStorage.removeItem('userInfo');
   localStorage.removeItem('tempRegister');
+  localStorage.removeItem('justRegistered'); // NEW: Clear registration flag
+};
+
+// NEW: Track if user just completed registration
+export const setJustRegistered = (value) => {
+  if (typeof window === 'undefined') return;
+  if (value) {
+    localStorage.setItem('justRegistered', 'true');
+  } else {
+    localStorage.removeItem('justRegistered');
+  }
+};
+
+export const getJustRegistered = () => {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem('justRegistered') === 'true';
 };
 
 // ============ ENDPOINTS ============

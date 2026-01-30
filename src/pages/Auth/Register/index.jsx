@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useRegistrationFlow, useTempRegister, useUser } from '../../../services/queries/auth';
+import { useRegistrationFlow, useTempRegister, useUser, useJustRegistered } from '../../../services/queries/auth';
 import loginlogo from "../../../assets/login.jpg";
 import logo from "../../../assets/logo.svg";
 import RegistrationForm from './RegistrationForm';
@@ -19,18 +19,17 @@ export default function Register() {
   const [verificationError, setVerificationError] = useState('');
   const { data: tempRegister } = useTempRegister();
   const { data: user, isLoading: isUserLoading, isError: isUserError } = useUser();
+  const { data: justRegistered } = useJustRegistered();
   const { executeFlow, verifyOTP, resendOTP, isVerifying } = useRegistrationFlow();
 
-  // Only redirect if user is already fully authenticated AND has no temp registration
-  // This prevents redirecting during the registration flow
   useEffect(() => {
-    if (user && !isUserLoading && !isUserError && !tempRegister && currentStep === 1) {
-      console.log('User already logged in, redirecting to dashboard');
+    if (user && !isUserLoading && !isUserError && !tempRegister && !justRegistered && currentStep === 1) {
+      console.log('User already logged in (not from registration), redirecting to dashboard');
       navigate('/dashboard', { replace: true });
     }
-  }, [user, isUserLoading, isUserError, tempRegister, currentStep, navigate]);
+  }, [user, isUserLoading, isUserError, tempRegister, justRegistered, currentStep, navigate]);
 
-  // Restore step if user has temp registration (they started registering)
+
   useEffect(() => {
     if (tempRegister && currentStep === 1) {
       setCurrentStep(2);
@@ -88,8 +87,6 @@ export default function Register() {
     
     try {
       await verifyOTP({ email: tempRegister.email, otp });
-      
-      // Move to success step
       setCurrentStep(3);
       
       return { success: true };
@@ -136,6 +133,7 @@ export default function Register() {
 
   const handleBackToRegistration = () => {
     localStorage.removeItem('tempRegister');
+    localStorage.removeItem('justRegistered');
     window.location.reload();
   };
 
