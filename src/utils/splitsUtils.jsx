@@ -36,17 +36,17 @@ export const getBadgeStyle = (category) => {
 export const getCategoryColor = (category) => {
   switch (category) {
     case "Food & Groceries":
-      return "bg-green-100 text-white";
+      return "bg-green-500 text-white";
     case "Transportation":
-      return "bg-green-100 text-white";
+      return "bg-green-500 text-white";
     case "Events & Tickets":
-      return "bg-green-100 text-white";
+      return "bg-green-500 text-white";
     case "Utilities":
-      return "bg-green-100 text-white";
+      return "bg-green-500 text-white";
     case "Entertainment":
-      return "bg-green-100 text-white";
+      return "bg-green-500 text-white";
     default:
-      return "bg-gray-100 text-gray-800";
+      return "bg-green-500 text-gray-800";
   }
 };
 
@@ -69,11 +69,11 @@ export const formatPrice = (price) => {
 export const getStatusColor = (status) => {
   switch (status?.toLowerCase()) {
     case "active":
-      return "bg-green-100 text-white";
+      return "bg-green-500 text-white";
     case "pending":
-      return "bg-green-100 text-white";
+      return "bg-green-500 text-white";
     case "completed":
-      return "bg-green-100 text-white";
+      return "bg-green-500 text-white";
     default:
       return "bg-gray-100 text-gray-800";
   }
