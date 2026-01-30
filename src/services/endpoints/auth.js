@@ -1,13 +1,10 @@
 // src/services/endpoints/auth.js
-// COMPLETE REFACTOR - Proper token flow for registration
+// FIXED - Improved error handling and token management
 
 const API_BASE_URL = 'https://cosplitz-backend.onrender.com/api';
 
 const handleApiError = (response, data) => {
   if (!response.ok) {
-    // Don't clear auth on 401 during registration flow
-    // Only clear on actual auth endpoints
-    
     const errorMessage = data?.message || data?.detail || data?.error || `Request failed (${response.status})`;
     const error = new Error(errorMessage);
     error.status = response.status;
@@ -34,7 +31,13 @@ async function makeRequest(url, options = {}) {
   try {
     console.log(`📡 API Request: ${options.method || 'GET'} ${url}`);
     const response = await fetch(url, { ...options, headers });
-    const data = await response.json().catch(() => null);
+    
+    // Handle empty responses
+    let data = null;
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      data = await response.json();
+    }
     
     if (!response.ok) {
       console.error(`❌ API Error (${response.status}):`, data);
@@ -45,6 +48,12 @@ async function makeRequest(url, options = {}) {
     return handleApiError(response, data);
   } catch (error) {
     console.error('💥 API Request Error:', error);
+    
+    // Network errors
+    if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
+      throw new Error('Network error. Please check your connection.');
+    }
+    
     throw error;
   }
 }
@@ -84,6 +93,7 @@ const clearAuth = () => {
   localStorage.removeItem('tempRegister');
   localStorage.removeItem('onboardingData');
   localStorage.removeItem('kycData');
+  localStorage.removeItem('registrationState');
 };
 
 // ============ ENDPOINTS ============
@@ -187,4 +197,9 @@ export const getUserInfoEndpoint = async () => {
 export const logoutEndpoint = () => {
   clearAuth();
   return { success: true };
+};
+
+// Helper to check if user is authenticated
+export const isAuthenticated = () => {
+  return !!getToken();
 };

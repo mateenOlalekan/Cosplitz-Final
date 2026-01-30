@@ -1,5 +1,5 @@
 // src/pages/PostOnboarding/post-onboard.jsx
-// REFACTORED - Tracks completion state
+// FIXED - Better error handling and state management
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -119,6 +119,7 @@ export default function CoSplitzOnboarding() {
 
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const [selections, setSelections] = useState(
     steps.map(() => ({ selected: [], other: "" }))
@@ -134,23 +135,29 @@ export default function CoSplitzOnboarding() {
     if (step.type === "single") {
       newSelected = [id];
     } else if (step.type === "multiple-limited") {
-      if (newSelected.includes(id))
+      if (newSelected.includes(id)) {
         newSelected = newSelected.filter((s) => s !== id);
-      else if (newSelected.length < step.limit) newSelected.push(id);
+      } else if (newSelected.length < step.limit) {
+        newSelected.push(id);
+      }
     } else {
-      if (newSelected.includes(id))
+      if (newSelected.includes(id)) {
         newSelected = newSelected.filter((s) => s !== id);
-      else newSelected.push(id);
+      } else {
+        newSelected.push(id);
+      }
     }
 
     newSelections[currentStep].selected = newSelected;
     setSelections(newSelections);
+    setError(''); // Clear error when user makes a selection
   };
 
   const handleOtherChange = (e) => {
     const newSelections = [...selections];
     newSelections[currentStep].other = e.target.value;
     setSelections(newSelections);
+    setError(''); // Clear error when user types
   };
 
   const isStepComplete = () => {
@@ -160,12 +167,17 @@ export default function CoSplitzOnboarding() {
   };
 
   const handleContinue = async () => {
-    if (!isStepComplete()) return;
+    if (!isStepComplete()) {
+      setError('Please make a selection before continuing');
+      return;
+    }
 
     if (currentStep < steps.length - 1) {
       setCurrentStep((s) => s + 1);
+      setError('');
     } else {
       setIsLoading(true);
+      setError('');
       
       // Prepare onboarding data
       const onboardingData = {
@@ -177,24 +189,28 @@ export default function CoSplitzOnboarding() {
       };
       
       try {
-        // Save onboarding completion
+        console.log('💾 Completing onboarding');
         await completeOnboarding.mutateAsync(onboardingData);
         
         console.log('✅ Onboarding completed');
         
-        // Navigate to KYC flow
+        // Small delay for better UX
         setTimeout(() => {
           navigate('/dashboard/kyc-flow', { replace: true });
-        }, 1500);
+        }, 1000);
       } catch (error) {
         console.error('❌ Onboarding completion failed:', error);
+        setError(error?.message || 'Failed to save your preferences. Please try again.');
         setIsLoading(false);
       }
     }
   };
 
   const handleBack = () => {
-    if (currentStep > 0) setCurrentStep((s) => s - 1);
+    if (currentStep > 0) {
+      setCurrentStep((s) => s - 1);
+      setError('');
+    }
   };
 
   const progress = ((currentStep + 1) / steps.length) * 100;
@@ -207,11 +223,14 @@ export default function CoSplitzOnboarding() {
     <div className="h-screen flex flex-col bg-white text-gray-900">
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
         <div className="max-w-xl mx-auto flex flex-col h-full">
+          
+          {/* Header with back button and progress */}
           <div className="mb-4">
             {currentStep > 0 && (
               <button
                 onClick={handleBack}
-                className="text-green-600 mb-2 flex items-center text-sm hover:text-green-700"
+                disabled={isLoading}
+                className="text-green-600 mb-2 flex items-center text-sm hover:text-green-700 transition disabled:opacity-50"
               >
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 Back
@@ -226,27 +245,44 @@ export default function CoSplitzOnboarding() {
               <div
                 className="bg-green-600 h-2 rounded-full transition-all duration-300"
                 style={{ width: `${progress}%` }}
-              ></div>
+              />
             </div>
           </div>
 
+          {/* Error message */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-600 text-sm">{error}</p>
+            </div>
+          )}
+
+          {/* Content */}
           <div className="flex-1">
             <h1 className="text-lg sm:text-xl font-bold mb-1">{step.title}</h1>
             <p className="text-gray-500 text-xs sm:text-sm mb-3">
               {step.description}
             </p>
 
+            {/* Options grid */}
             <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4">
               {step.options.map((option) => {
                 const isSelected = selected.includes(option.id);
+                const isDisabled = 
+                  step.type === "multiple-limited" && 
+                  selected.length >= step.limit && 
+                  !isSelected;
+
                 return (
                   <button
                     key={option.id}
                     onClick={() => toggleSelection(option.id)}
-                    className={`p-3 rounded-lg border flex flex-col items-center transition ${
+                    disabled={isDisabled || isLoading}
+                    className={`p-3 rounded-lg border flex flex-col items-center transition-all ${
                       isSelected
                         ? "border-green-600 bg-green-50"
-                        : "border-gray-200 hover:border-gray-300"
+                        : isDisabled
+                        ? "border-gray-200 opacity-50 cursor-not-allowed"
+                        : "border-gray-200 hover:border-gray-300 hover:shadow-sm"
                     }`}
                   >
                     <IconComponent IconType={option.icon} />
@@ -262,6 +298,7 @@ export default function CoSplitzOnboarding() {
               })}
             </div>
 
+            {/* Other input */}
             <div className="mb-2">
               <label className="text-xs sm:text-sm text-gray-700 mb-1 block">
                 {step.input}
@@ -272,24 +309,33 @@ export default function CoSplitzOnboarding() {
                 value={other}
                 onChange={handleOtherChange}
                 placeholder={step.placeholder}
-                className="w-full text-xs sm:text-sm px-3 py-2 rounded-lg border border-green-400 outline-none focus:ring-2 focus:ring-green-500"
+                disabled={isLoading}
+                className="w-full text-xs sm:text-sm px-3 py-2 rounded-lg border border-green-400 outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition"
               />
             </div>
           </div>
 
+          {/* Continue button */}
           <div className="sticky bottom-0 bg-white pt-1 pb-2">
             <button
               onClick={handleContinue}
-              disabled={!isStepComplete() || completeOnboarding.isPending}
-              className={`w-full py-3 rounded-lg font-medium text-sm transition ${
-                isStepComplete()
-                  ? "bg-green-600 text-white hover:bg-green-700"
+              disabled={!isStepComplete() || isLoading}
+              className={`w-full py-3 rounded-lg font-medium text-sm transition-all ${
+                isStepComplete() && !isLoading
+                  ? "bg-green-600 text-white hover:bg-green-700 active:scale-[0.98]"
                   : "bg-gray-300 text-gray-500 cursor-not-allowed"
               }`}
             >
-              {currentStep === steps.length - 1
-                ? completeOnboarding.isPending ? "Saving..." : "Complete Setup"
-                : `Continue${selected.length > 0 ? ` (${selected.length})` : ""}`}
+              {isLoading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Saving...
+                </span>
+              ) : currentStep === steps.length - 1 ? (
+                "Complete Setup"
+              ) : (
+                `Continue${selected.length > 0 ? ` (${selected.length})` : ""}`
+              )}
             </button>
           </div>
         </div>
