@@ -1,4 +1,6 @@
 // src/services/endpoints/auth.js
+// FIXED VERSION - Based on actual backend API endpoints
+
 const API_BASE_URL = 'https://cosplitz-backend.onrender.com/api';
 
 const handleApiError = (response, data) => {
@@ -30,9 +32,14 @@ async function makeRequest(url, options = {}) {
     }
   }
 
-  const response = await fetch(url, { ...options, headers });
-  const data = await response.json().catch(() => null);
-  return handleApiError(response, data);
+  try {
+    const response = await fetch(url, { ...options, headers });
+    const data = await response.json().catch(() => null);
+    return handleApiError(response, data);
+  } catch (error) {
+    console.error('API Request Error:', error);
+    throw error;
+  }
 }
 
 // ============ TOKEN HELPERS ============
@@ -125,22 +132,32 @@ export const getOTPEndpoint = async (userId) => {
   return data;
 };
 
+// FIXED: Correct endpoint is /verify_otp (NOT /verify_otp/)
 export const verifyOTPEndpoint = async ({ email, otp }) => {
-  const data = await makeRequest(`${API_BASE_URL}/verify_otp/`, {
-    method: 'POST',
-    body: JSON.stringify({ email, otp }),
-    auth: true,
-  });
+  console.log('🔍 Verifying OTP with endpoint:', `${API_BASE_URL}/verify_otp`);
+  
+  try {
+    const data = await makeRequest(`${API_BASE_URL}/verify_otp`, {
+      method: 'POST',
+      body: JSON.stringify({ email, otp }),
+      auth: true,
+    });
 
-  if (data?.token) {
-    setToken(data.token, true);
+    if (data?.token) {
+      setToken(data.token, true);
+    }
+
+    console.log('✅ OTP verification successful');
+
+    return {
+      user: data?.user || data?.data,
+      token: data?.token,
+      isVerified: true,
+    };
+  } catch (error) {
+    console.error('❌ OTP verification failed:', error);
+    throw error;
   }
-
-  return {
-    user: data?.user || data?.data,
-    token: data?.token,
-    isVerified: true,
-  };
 };
 
 export const resendOTPEndpoint = async (userId) => {
