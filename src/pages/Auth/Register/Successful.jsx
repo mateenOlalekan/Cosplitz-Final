@@ -9,12 +9,8 @@ export default function Successful() {
 
   const handleContinue = () => {
     setIsNavigating(true);
-    
-    // Ensure all flags are set correctly before navigation
-    localStorage.setItem('justRegistered', 'true');
-    localStorage.setItem('onboardingComplete', 'false');
-    localStorage.setItem('kycComplete', 'false');
-  
+    // Navigate to post-onboarding when user clicks the button
+    // The justRegistered flag is still true at this point
     navigate('/dashboard/post-onboarding', { replace: true });
   };
 

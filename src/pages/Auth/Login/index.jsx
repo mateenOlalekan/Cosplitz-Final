@@ -6,8 +6,9 @@ import { FcGoogle } from "react-icons/fc";
 import { PiAppleLogoBold } from "react-icons/pi";
 import { useLogin, useUser } from "../../../services/queries/auth";
 import { setJustRegistered } from "../../../services/endpoints/auth";
-import loginlogo from "../../../assets/loginmain.jpg";
 import logo from "../../../assets/logo.svg";
+import LeftPanel from "../../../components/Home/LeftPanel";
+import LoadScreen from "../../../pages/Public/LoadingScreen";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -22,7 +23,6 @@ export default function Login() {
   const { data: user, isLoading: isUserLoading } = useUser();
   const login = useLogin();
 
-  // If already logged in, redirect to dashboard
   useEffect(() => {
     if (user && !isUserLoading) {
       navigate("/dashboard", { replace: true });
@@ -45,8 +45,6 @@ export default function Login() {
     }
 
     try {
-      // IMPORTANT: Clear justRegistered flag on login
-      // This ensures returning users go directly to dashboard
       setJustRegistered(false);
       
       await login.mutateAsync({
@@ -76,10 +74,7 @@ export default function Login() {
   };
 
   if (isUserLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-[#F7F5F9]">
-        <div className="w-8 h-8 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
-      </div>
+    return ( <LoadScreen/>
     );
   }
 
@@ -87,31 +82,14 @@ export default function Login() {
     <div className="flex bg-[#F7F5F9] w-full h-screen justify-center overflow-hidden md:px-6 md:py-4">
       <div className="flex max-w-screen-2xl w-full min-h-full rounded-xl overflow-hidden">
         {/* Left Side - Image */}
-        <div className="hidden lg:flex w-1/2 bg-[#F8EACD] rounded-xl p-6 items-center justify-center">
-          <div className="w-full flex flex-col items-center">
-            <img
-              src={loginlogo}
-              alt="Login"
-              className="rounded-lg w-full h-auto max-h-[400px] object-contain"
-            />
-            <div className="bg-gradient-to-br max-w-lg from-[#FAF3E8] to-[#F8EACD] mt-4 p-4 rounded-2xl shadow-sm text-center">
-              <h1 className="text-3xl font-semibold text-[#2D0D23] mb-1">
-                Welcome Back!
-              </h1>
-              <p className="text-xl font-medium text-[#4B4B4B] leading-relaxed">
-                Continue managing your shared expenses and connect with your community.
-              </p>
-            </div>
-          </div>
-        </div>
-
+        <LeftPanel/>
         {/* Right Side - Login Form */}
         <div className="flex flex-1 flex-col items-center p-3 sm:p-5 overflow-y-auto">
           <div className="w-full mb-4 flex justify-center md:justify-start">
             <img src={logo} alt="Logo" className="h-10 md:h-12" />
           </div>
 
-          <div className="w-full max-w-md p-5 rounded-xl shadow-none md:shadow-md bg-white">
+          <div className="w-full md:max-w-lg max-w-md p-5 rounded-xl shadow-none md:shadow-md md:bg-white">
             <h1 className="text-2xl sm:text-3xl text-center font-bold text-gray-900 mb-2">
               Log In to Your Account
             </h1>
