@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useRegistrationFlow, useTempRegister, useUser, useJustRegistered, useOnboardingComplete } from '../../../services/queries/auth';
+import { 
+  useRegistrationFlow, 
+  useTempRegister, 
+  useUser, 
+  useJustRegistered, 
+  useOnboardingComplete,
+  useRegistrationStep
+} from '../../../services/queries/auth';
+import { REGISTRATION_STEPS, getRegistrationStep, setRegistrationStep } from '../../../services/endpoints/auth';
 import loginlogo from "../../../assets/login.jpg";
 import logo from "../../../assets/logo.svg";
 import RegistrationForm from './RegistrationForm';
@@ -23,29 +31,43 @@ export default function Register() {
   const { data: onboardingComplete } = useOnboardingComplete();
   const { executeFlow, verifyOTP, resendOTP, isVerifying } = useRegistrationFlow();
 
-  // IMPORTANT: Only redirect existing users who have completed onboarding
-  // Do NOT redirect users in the middle of registration flow
+  // 🟢 Flow-aware redirect logic
   useEffect(() => {
+    const flowStep = getRegistrationStep();
+    
+    console.log('📊 Registration page state:', {
+      flowStep,
+      hasUser: !!user,
+      isUserLoading,
+      onboardingComplete,
+      currentStep
+    });
+    
+    // Only redirect if user is authenticated AND has completed full flow
     if (
       user && 
       !isUserLoading && 
-      !isUserError && 
-      !tempRegister && // Not in registration flow
-      !justRegistered && // Not a new registration
-      onboardingComplete === true && // Has completed onboarding
-      currentStep === 1 // On first step (not in flow)
+      !isUserError &&
+      flowStep === REGISTRATION_STEPS.COMPLETE &&
+      onboardingComplete === true
     ) {
-      console.log('Existing user with completed onboarding detected, redirecting to dashboard');
+      console.log('✅ User has completed full flow, redirecting to dashboard');
       navigate('/dashboard', { replace: true });
+      return;
     }
-  }, [user, isUserLoading, isUserError, tempRegister, justRegistered, onboardingComplete, currentStep, navigate]);
 
-  // Restore step if user has temp registration (they started registering)
-  useEffect(() => {
-    if (tempRegister && currentStep === 1) {
+    // 🟢 Restore step based on flow state
+    if (flowStep === REGISTRATION_STEPS.OTP_SENT && tempRegister) {
+      console.log('📧 Restoring to OTP verification step');
       setCurrentStep(2);
+    } else if (flowStep === REGISTRATION_STEPS.OTP_VERIFIED) {
+      console.log('✅ OTP verified, showing success step');
+      setCurrentStep(3);
+    } else if (flowStep === REGISTRATION_STEPS.SUCCESS_SHOWN) {
+      console.log('🎉 Success shown, ready for post-onboarding');
+      // User should be navigated to post-onboarding from Success component
     }
-  }, [tempRegister, currentStep]);
+  }, [user, isUserLoading, isUserError, tempRegister, onboardingComplete, navigate]);
 
   const handleRegister = async (formData) => {
     setVerificationError('');
@@ -59,11 +81,16 @@ export default function Register() {
     };
 
     try {
+      console.log('📝 Starting registration...');
       await executeFlow(payload);
-      setCurrentStep(2);
+      
+      // 🟢 Flow state is already set inside executeFlow
+      console.log('✅ Registration flow completed, moving to OTP step');
+      setCurrentStep(2); // Move to OTP verification UI
+      
       return { success: true };
     } catch (error) {
-      console.error('Registration error:', error);
+      console.error('❌ Registration error:', error);
       
       let message = 'Registration failed. Please try again.';
       
@@ -96,17 +123,26 @@ export default function Register() {
       return { success: false, error: 'Session expired' };
     }
     
+    // 🟢 Validate flow state before verifying
+    const flowStep = getRegistrationStep();
+    if (flowStep !== REGISTRATION_STEPS.OTP_SENT) {
+      console.error('❌ Invalid flow state for OTP verification:', flowStep);
+      setVerificationError('Invalid flow state. Please start registration again.');
+      return { success: false, error: 'Invalid state' };
+    }
+    
     try {
+      console.log('🔐 Verifying OTP...');
       await verifyOTP({ email: tempRegister.email, otp });
       
-      // Move to success step
-      // The justRegistered flag is still true at this point
-      // User must click "Continue Setup" button to proceed
+      // 🟢 Move to success step - flow state already updated in mutation
+      console.log('✅ OTP verified, showing success screen');
       setCurrentStep(3);
+      setRegistrationStep(REGISTRATION_STEPS.SUCCESS_SHOWN);
       
       return { success: true };
     } catch (error) {
-      console.error('OTP verification error:', error);
+      console.error('❌ OTP verification error:', error);
       
       let message = 'Invalid verification code';
       
@@ -135,11 +171,13 @@ export default function Register() {
     }
     
     try {
+      console.log('📧 Resending OTP...');
       await resendOTP(tempRegister.userId);
       setVerificationError('');
+      console.log('✅ OTP resent successfully');
       return { success: true };
     } catch (error) {
-      console.error('Resend OTP error:', error);
+      console.error('❌ Resend OTP error:', error);
       
       const message = error?.message || 'Failed to resend code. Please try again.';
       return { success: false, error: message };
@@ -147,8 +185,11 @@ export default function Register() {
   };
 
   const handleBackToRegistration = () => {
+    console.log('🔄 Resetting registration flow');
+    // 🟢 Clear all registration state
     localStorage.removeItem('tempRegister');
     localStorage.removeItem('justRegistered');
+    setRegistrationStep(REGISTRATION_STEPS.IDLE);
     window.location.reload();
   };
 
@@ -163,6 +204,7 @@ export default function Register() {
   return (
     <div className="flex bg-[#F7F5F9] w-full h-screen justify-center overflow-hidden md:px-6 md:py-4">
       <div className="flex max-w-screen-2xl w-full min-h-full rounded-xl overflow-hidden">
+        {/* Left side - Image and description */}
         <div className="hidden lg:flex w-1/2 bg-[#F8EACD] rounded-xl p-6 items-center justify-center">
           <div className="w-full flex flex-col items-center">
             <img src={loginlogo} alt="Register" className="rounded-lg w-full h-auto max-h-[400px] object-contain" />
@@ -176,11 +218,15 @@ export default function Register() {
             </div>
           </div>
         </div>
+
+        {/* Right side - Registration form */}
         <div className="flex flex-1 flex-col items-center p-3 sm:p-5 overflow-y-auto">
           <div className="w-full mb-4 flex justify-center md:justify-start">
             <img src={logo} alt="Logo" className="h-10 md:h-12" />
           </div>
+
           <div className="w-full max-w-2xl p-5 rounded-xl shadow-none md:shadow-md bg-white">
+            {/* Step Indicator */}
             <div className="w-full flex flex-col items-center py-4 mb-4">
               <div className="flex items-center gap-2 justify-center mb-2">
                 {steps.map((s, i) => (
@@ -202,17 +248,22 @@ export default function Register() {
                 {steps.find(s => s.id === currentStep)?.description}
               </p>
             </div>
+
+            {/* Error Display */}
             {verificationError && (
               <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-4 text-center">
                 {verificationError}
               </div>
             )}
+
+            {/* Step Content */}
             {currentStep === 1 && (
               <RegistrationForm
                 onSubmit={handleRegister}
                 loading={false}
               />
             )}
+
             {currentStep === 2 && tempRegister && (
               <EmailVerificationStep
                 email={tempRegister.email}
@@ -222,6 +273,7 @@ export default function Register() {
                 isLoading={isVerifying}
               />
             )}
+
             {currentStep === 3 && <Successful />}
           </div>
         </div>

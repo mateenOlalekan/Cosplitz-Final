@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Mail, AlertCircle } from 'lucide-react';
+import { getRegistrationStep, REGISTRATION_STEPS } from '../../../services/endpoints/auth';
 
 export default function EmailVerificationStep({
   email,
@@ -29,6 +30,15 @@ export default function EmailVerificationStep({
   // Auto-focus first input on mount
   useEffect(() => {
     inputRefs.current[0]?.focus();
+  }, []);
+
+  // 🟢 Validate flow state on mount
+  useEffect(() => {
+    const flowStep = getRegistrationStep();
+    if (flowStep !== REGISTRATION_STEPS.OTP_SENT) {
+      console.warn('⚠️ Invalid flow state for OTP verification:', flowStep);
+      setLocalError('Session expired. Please start registration again.');
+    }
   }, []);
 
   const handleChange = (value, index) => {
@@ -84,6 +94,14 @@ export default function EmailVerificationStep({
       return;
     }
 
+    // 🟢 Validate flow state before verifying
+    const flowStep = getRegistrationStep();
+    if (flowStep !== REGISTRATION_STEPS.OTP_SENT) {
+      setLocalError('Session expired. Please register again.');
+      return;
+    }
+
+    console.log('🔐 Submitting OTP for verification');
     const result = await onVerify(otpCode);
     
     if (!result.success) {
@@ -99,12 +117,14 @@ export default function EmailVerificationStep({
     setResendLoading(true);
     setLocalError('');
     
+    console.log('📧 Requesting new OTP');
     const result = await onResend();
     
     if (result.success) {
       setTimer(180);
       setOtp(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
+      console.log('✅ New OTP sent');
     } else {
       setLocalError(result.error || 'Failed to resend code');
     }

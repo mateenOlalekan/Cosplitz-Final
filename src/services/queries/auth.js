@@ -12,6 +12,10 @@ import {
   getJustRegistered,
   setOnboardingComplete,
   getOnboardingComplete,
+  REGISTRATION_STEPS,
+  getRegistrationStep,
+  setRegistrationStep,
+  clearRegistrationStep,
 } from "../endpoints/auth";
 
 export const authKeys = {
@@ -20,6 +24,7 @@ export const authKeys = {
   tempRegister: () => [...authKeys.all, 'tempRegister'],
   justRegistered: () => [...authKeys.all, 'justRegistered'],
   onboardingComplete: () => [...authKeys.all, 'onboardingComplete'],
+  registrationStep: () => [...authKeys.all, 'registrationStep'],
 };
 
 const saveTempRegister = (data) => {
@@ -58,7 +63,7 @@ export const useTempRegister = () => {
   });
 };
 
-// NEW: Hook to check if user just completed registration
+// Hook to check if user just completed registration
 export const useJustRegistered = () => {
   return useQuery({
     queryKey: authKeys.justRegistered(),
@@ -68,11 +73,21 @@ export const useJustRegistered = () => {
   });
 };
 
-// NEW: Hook to check if user has completed onboarding
+// Hook to check if user has completed onboarding
 export const useOnboardingComplete = () => {
   return useQuery({
     queryKey: authKeys.onboardingComplete(),
     queryFn: getOnboardingComplete,
+    staleTime: Infinity,
+    enabled: typeof window !== 'undefined',
+  });
+};
+
+// 🟢 NEW: Hook to track registration flow step
+export const useRegistrationStep = () => {
+  return useQuery({
+    queryKey: authKeys.registrationStep(),
+    queryFn: getRegistrationStep,
     staleTime: Infinity,
     enabled: typeof window !== 'undefined',
   });
@@ -89,20 +104,29 @@ export const useLogin = () => {
       setJustRegistered(false);
       // Assume returning users have completed onboarding
       setOnboardingComplete(true);
+      // 🟢 Clear registration flow state for regular login
+      clearRegistrationStep();
+      
       queryClient.setQueryData(authKeys.user(), data.user);
       queryClient.invalidateQueries({ queryKey: authKeys.user() });
       queryClient.setQueryData(authKeys.justRegistered(), false);
       queryClient.setQueryData(authKeys.onboardingComplete(), true);
+      queryClient.setQueryData(authKeys.registrationStep(), REGISTRATION_STEPS.IDLE);
     },
   });
 };
 
+// 🟢 UPDATED: Verify OTP with flow state management
 export const useVerifyOTP = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: verifyOTPEndpoint,
     onSuccess: (data) => {
-      console.log('OTP Verification successful, updating cache with user:', data.user);
+      console.log('✅ OTP Verification successful, updating cache with user:', data.user);
+      
+      // 🟢 Update flow state
+      setRegistrationStep(REGISTRATION_STEPS.OTP_VERIFIED);
+      queryClient.setQueryData(authKeys.registrationStep(), REGISTRATION_STEPS.OTP_VERIFIED);
       
       // Clear temp registration data
       saveTempRegister(null);
@@ -112,12 +136,11 @@ export const useVerifyOTP = () => {
       queryClient.setQueryData(authKeys.user(), data.user);
       queryClient.invalidateQueries({ queryKey: authKeys.user() });
       
-      // IMPORTANT: Keep the justRegistered flag true after OTP verification
-      // This flag will be checked to determine if user needs onboarding
-      console.log('User cache updated, AuthGuard should now allow access to onboarding flow');
+      // Keep justRegistered flag true - user needs onboarding
+      console.log('✅ User verified, ready for onboarding');
     },
     onError: (error) => {
-      console.error('OTP Verification failed:', error);
+      console.error('❌ OTP Verification failed:', error);
     }
   });
 };
@@ -137,51 +160,70 @@ export const useLogout = () => {
       queryClient.setQueryData(authKeys.user(), null);
       queryClient.setQueryData(authKeys.justRegistered(), false);
       queryClient.setQueryData(authKeys.onboardingComplete(), false);
+      queryClient.setQueryData(authKeys.registrationStep(), REGISTRATION_STEPS.IDLE);
     },
   });
 };
 
+// 🟢 UPDATED: Registration flow with explicit step tracking
 export const useRegistrationFlow = () => {
   const queryClient = useQueryClient();
   const verifyOTPMutation = useVerifyOTP();
 
   const executeFlow = async (userData) => {
-    console.log('Starting registration flow...');
+    console.log('🚀 Starting registration flow...');
     
-    // Set the flag that user is in registration flow
-    setJustRegistered(true);
-    queryClient.setQueryData(authKeys.justRegistered(), true);
-    
-    const regData = await registerEndpoint({
-      first_name: userData.first_name,
-      last_name: userData.last_name,
-      email: userData.email,
-      password: userData.password,
-      nationality: userData.nationality,
-    });
+    try {
+      // 🟢 Step 1: Register
+      const regData = await registerEndpoint({
+        first_name: userData.first_name,
+        last_name: userData.last_name,
+        email: userData.email,
+        password: userData.password,
+        nationality: userData.nationality,
+      });
+      console.log('✅ Registration successful');
+      setRegistrationStep(REGISTRATION_STEPS.REGISTERED);
+      queryClient.setQueryData(authKeys.registrationStep(), REGISTRATION_STEPS.REGISTERED);
 
-    console.log('Registration successful, logging in...');
+      // 🟢 Step 2: Auto-login (hidden from user)
+      await loginEndpoint({
+        email: userData.email,
+        password: userData.password,
+      }, true);
+      console.log('✅ Auto-login successful (hidden)');
+      setRegistrationStep(REGISTRATION_STEPS.AUTO_LOGGED_IN);
+      queryClient.setQueryData(authKeys.registrationStep(), REGISTRATION_STEPS.AUTO_LOGGED_IN);
 
-    await loginEndpoint({
-      email: userData.email,
-      password: userData.password,
-    }, true);
-
-    console.log('Login successful, requesting OTP...');
-    await getOTPEndpoint(regData.userId);
-    console.log('OTP sent');
-    
-    const tempData = {
-      userId: regData.userId,
-      email: regData.email,
-      firstName: regData.firstName,
-      lastName: regData.lastName,
-    };
-    
-    saveTempRegister(tempData);
-    queryClient.setQueryData(authKeys.tempRegister(), tempData);
-    
-    return tempData;
+      // 🟢 Step 3: Request OTP
+      await getOTPEndpoint(regData.userId);
+      console.log('✅ OTP sent');
+      setRegistrationStep(REGISTRATION_STEPS.OTP_SENT);
+      queryClient.setQueryData(authKeys.registrationStep(), REGISTRATION_STEPS.OTP_SENT);
+      
+      // 🟢 Save temp data for verification step
+      const tempData = {
+        userId: regData.userId,
+        email: regData.email,
+        firstName: regData.firstName,
+        lastName: regData.lastName,
+      };
+      
+      saveTempRegister(tempData);
+      queryClient.setQueryData(authKeys.tempRegister(), tempData);
+      
+      // 🟢 Set justRegistered flag ONLY after OTP is sent
+      setJustRegistered(true);
+      queryClient.setQueryData(authKeys.justRegistered(), true);
+      
+      return tempData;
+    } catch (error) {
+      console.error('❌ Registration flow failed:', error);
+      // Reset flow state on error
+      setRegistrationStep(REGISTRATION_STEPS.IDLE);
+      queryClient.setQueryData(authKeys.registrationStep(), REGISTRATION_STEPS.IDLE);
+      throw error;
+    }
   };
   
   return {
@@ -190,4 +232,42 @@ export const useRegistrationFlow = () => {
     resendOTP: useResendOTP().mutateAsync,
     isVerifying: verifyOTPMutation.isPending,
   };
+};
+
+// 🟢 NEW: Helper to complete onboarding
+export const useCompleteOnboarding = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async () => {
+      // This would call your backend API to mark onboarding complete
+      // For now, just update local state
+      setRegistrationStep(REGISTRATION_STEPS.POST_ONBOARDING_COMPLETE);
+      queryClient.setQueryData(authKeys.registrationStep(), REGISTRATION_STEPS.POST_ONBOARDING_COMPLETE);
+      return { success: true };
+    },
+  });
+};
+
+// 🟢 NEW: Helper to complete KYC
+export const useCompleteKYC = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async () => {
+      // This would call your backend API to mark KYC complete
+      // For now, just update local state
+      setRegistrationStep(REGISTRATION_STEPS.COMPLETE);
+      setOnboardingComplete(true);
+      
+      queryClient.setQueryData(authKeys.registrationStep(), REGISTRATION_STEPS.COMPLETE);
+      queryClient.setQueryData(authKeys.onboardingComplete(), true);
+      
+      // Clear registration-specific flags
+      setJustRegistered(false);
+      queryClient.setQueryData(authKeys.justRegistered(), false);
+      
+      return { success: true };
+    },
+  });
 };

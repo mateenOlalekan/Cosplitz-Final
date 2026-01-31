@@ -4,6 +4,7 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import DashboardSidebar from "./DashboardSidebar";
 import DashboardHeader from "./DashboardHeader";
 import { useUser, useOnboardingComplete } from "../../services/queries/auth";
+import { getRegistrationStep, REGISTRATION_STEPS } from "../../services/endpoints/auth";
 
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -18,8 +19,7 @@ export default function DashboardLayout() {
   const isFullScreenPage = location.pathname.includes("/dashboard/post-onboarding") || 
                            location.pathname.includes("/dashboard/kyc-flow");
 
-  // CRITICAL: Redirect to onboarding if user hasn't completed it
-  // This runs for authenticated users who haven't finished the onboarding flow
+  // 🟢 Flow-aware redirect logic
   useEffect(() => {
     // Only check if we have user data and it's not loading
     if (!user || isLoading) return;
@@ -27,12 +27,27 @@ export default function DashboardLayout() {
     // If user is on a full-screen onboarding page, don't redirect
     if (isFullScreenPage) return;
     
-    // If onboarding is not complete, redirect to post-onboarding
-    if (onboardingComplete === false) {
-      console.log('User has not completed onboarding, redirecting to post-onboarding');
+    const flowStep = getRegistrationStep();
+    
+    console.log('📊 DashboardLayout state:', {
+      flowStep,
+      onboardingComplete,
+      currentPath: location.pathname
+    });
+    
+    // 🟢 Redirect based on flow state
+    if (flowStep === REGISTRATION_STEPS.SUCCESS_SHOWN || flowStep === REGISTRATION_STEPS.OTP_VERIFIED) {
+      console.log('✅ User verified, redirecting to post-onboarding');
+      navigate('/dashboard/post-onboarding', { replace: true });
+    } else if (flowStep === REGISTRATION_STEPS.POST_ONBOARDING_COMPLETE) {
+      console.log('✅ Post-onboarding complete, redirecting to KYC');
+      navigate('/dashboard/kyc-flow', { replace: true });
+    } else if (onboardingComplete === false && flowStep !== REGISTRATION_STEPS.IDLE && flowStep !== REGISTRATION_STEPS.COMPLETE) {
+      // User hasn't completed onboarding and is in registration flow
+      console.log('⚠️ Onboarding incomplete, redirecting to post-onboarding');
       navigate('/dashboard/post-onboarding', { replace: true });
     }
-  }, [user, isLoading, onboardingComplete, isFullScreenPage, navigate]);
+  }, [user, isLoading, onboardingComplete, isFullScreenPage, navigate, location.pathname]);
 
   useEffect(() => {
     const handleResize = () => {

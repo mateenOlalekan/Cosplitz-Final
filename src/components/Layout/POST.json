@@ -1,0 +1,61 @@
+POST
+Register
+https://cosplitz-backend.onrender.com/api/register/
+{
+    "email": "w5mngxrc1l@bwmyga.com",
+    "password": "Test123456",
+    "first_name": "John",
+    "last_name": "Phil",
+    // "username": "johssnphilll",
+    "nationality" : "Nigeria"
+}
+
+POST
+Login
+https://cosplitz-backend.onrender.com/api/login/
+{
+    "email": "86btzppket@mrotzis.com",
+    "password": "Test123456"
+}
+
+GET
+user details
+https://cosplitz-backend.onrender.com/api/user/info
+
+{
+  "id": 6,
+  "last_login": null,
+  "is_superuser": false,
+  "created_at": "2025-10-28T18:17:32.522437Z",
+  "updated_at": "2025-10-28T18:22:44.681686Z",
+  "email": "etveis0nyd@daouse.com",
+  "first_name": "John",
+  "last_name": "Doe",
+  "username": "john_12",
+  "is_admin": false,
+  "is_active": true,
+  "groups": [],
+  "user_permissions": []
+}
+
+GET
+Get OTP
+https://cosplitz-backend.onrender.com/api/otp/11/
+curl --location --request GET 'http://localhost:8000/api/otp/3/' \
+--header 'Accept: application/json' \
+--data-raw '{
+    "email": "21l54o8q@qejjyl.com",
+    "password": "Ayoola@2233"
+}'
+{
+  "message": "OTP sent"
+}
+
+POST
+Verify_otp
+https://cosplitz-backend.onrender.com/api/verify_otp
+
+{
+    "email": "86btzppket@mrotzis.com",
+    "otp": "576528"
+}

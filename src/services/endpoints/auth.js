@@ -1,5 +1,38 @@
 const API_BASE_URL = 'https://cosplitz-backend.onrender.com/api';
 
+// 🟢 ADD - Flow state management
+export const REGISTRATION_STEPS = {
+  IDLE: 'idle',
+  REGISTERED: 'registered',
+  AUTO_LOGGED_IN: 'auto_logged_in',
+  OTP_SENT: 'otp_sent',
+  OTP_VERIFIED: 'otp_verified',
+  SUCCESS_SHOWN: 'success_shown',
+  POST_ONBOARDING_COMPLETE: 'post_onboarding_complete',
+  KYC_PENDING: 'kyc_pending',
+  COMPLETE: 'complete'
+};
+
+// 🟢 ADD - Flow state getters/setters
+export const getRegistrationStep = () => {
+  if (typeof window === 'undefined') return REGISTRATION_STEPS.IDLE;
+  return localStorage.getItem('registrationStep') || REGISTRATION_STEPS.IDLE;
+};
+
+export const setRegistrationStep = (step) => {
+  if (typeof window === 'undefined') return;
+  if (Object.values(REGISTRATION_STEPS).includes(step)) {
+    localStorage.setItem('registrationStep', step);
+    console.log(`🔄 Flow state updated: ${step}`);
+  }
+};
+
+export const clearRegistrationStep = () => {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem('registrationStep');
+  console.log('🗑️ Flow state cleared');
+};
+
 const handleApiError = (response, data) => {
   if (!response.ok) {
     const isOTPEndpoint = response.url.includes('/otp') || response.url.includes('/verify');
@@ -108,11 +141,12 @@ const clearAuth = () => {
   sessionStorage.removeItem('authToken');
   localStorage.removeItem('userInfo');
   localStorage.removeItem('tempRegister');
-  localStorage.removeItem('justRegistered'); // Clear registration flag
-  localStorage.removeItem('onboardingComplete'); // Clear onboarding flag
+  localStorage.removeItem('justRegistered');
+  localStorage.removeItem('onboardingComplete');
+  clearRegistrationStep(); // 🟢 Clear flow state on logout
 };
 
-// NEW: Track if user just completed registration
+// Track if user just completed registration
 export const setJustRegistered = (value) => {
   if (typeof window === 'undefined') return;
   if (value) {
@@ -127,7 +161,7 @@ export const getJustRegistered = () => {
   return localStorage.getItem('justRegistered') === 'true';
 };
 
-// NEW: Track if user has completed onboarding (post-onboarding + KYC)
+// Track if user has completed onboarding (post-onboarding + KYC)
 export const setOnboardingComplete = (value) => {
   if (typeof window === 'undefined') return;
   if (value) {

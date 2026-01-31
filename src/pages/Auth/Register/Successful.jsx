@@ -2,15 +2,22 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import Checknow from '../../../assets/Check.svg';
+import { setRegistrationStep, REGISTRATION_STEPS } from '../../../services/endpoints/auth';
 
 export default function Successful() {
   const navigate = useNavigate();
   const [isNavigating, setIsNavigating] = useState(false);
 
   const handleContinue = () => {
+    console.log('🎉 User clicked Continue Setup');
     setIsNavigating(true);
-    // Navigate to post-onboarding when user clicks the button
+    
+    // 🟢 Update flow state before navigation
+    setRegistrationStep(REGISTRATION_STEPS.SUCCESS_SHOWN);
+    
+    // Navigate to post-onboarding
     // The justRegistered flag is still true at this point
+    console.log('➡️ Navigating to post-onboarding');
     navigate('/dashboard/post-onboarding', { replace: true });
   };
 
