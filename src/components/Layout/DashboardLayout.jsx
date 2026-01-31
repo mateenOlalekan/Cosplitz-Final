@@ -1,5 +1,5 @@
 // src/components/Layout/DashboardLayout.jsx
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import DashboardSidebar from "./DashboardSidebar";
 import DashboardHeader from "./DashboardHeader";
@@ -14,38 +14,57 @@ export default function DashboardLayout() {
   
   const { data: user, isLoading } = useUser();
   const { data: onboardingComplete } = useOnboardingComplete();
+  
+  // 🟢 CRITICAL FIX: Use ref to prevent infinite redirect loops
+  const hasRedirected = useRef(false);
 
   // Hide sidebar and header on onboarding and KYC pages
   const isFullScreenPage = location.pathname.includes("/dashboard/post-onboarding") || 
                            location.pathname.includes("/dashboard/kyc-flow");
 
-  // 🟢 Flow-aware redirect logic
+  // 🟢 FIXED: Flow-aware redirect logic with loop prevention
   useEffect(() => {
     // Only check if we have user data and it's not loading
     if (!user || isLoading) return;
     
     // If user is on a full-screen onboarding page, don't redirect
-    if (isFullScreenPage) return;
+    if (isFullScreenPage) {
+      hasRedirected.current = false; // Reset when on valid pages
+      return;
+    }
+    
+    // 🟢 CRITICAL: Prevent infinite loops
+    if (hasRedirected.current) {
+      console.log('⚠️ Already redirected, preventing loop');
+      return;
+    }
     
     const flowStep = getRegistrationStep();
     
     console.log('📊 DashboardLayout state:', {
       flowStep,
       onboardingComplete,
-      currentPath: location.pathname
+      currentPath: location.pathname,
+      hasRedirected: hasRedirected.current
     });
     
     // 🟢 Redirect based on flow state
     if (flowStep === REGISTRATION_STEPS.SUCCESS_SHOWN || flowStep === REGISTRATION_STEPS.OTP_VERIFIED) {
       console.log('✅ User verified, redirecting to post-onboarding');
+      hasRedirected.current = true;
       navigate('/dashboard/post-onboarding', { replace: true });
     } else if (flowStep === REGISTRATION_STEPS.POST_ONBOARDING_COMPLETE) {
       console.log('✅ Post-onboarding complete, redirecting to KYC');
+      hasRedirected.current = true;
       navigate('/dashboard/kyc-flow', { replace: true });
     } else if (onboardingComplete === false && flowStep !== REGISTRATION_STEPS.IDLE && flowStep !== REGISTRATION_STEPS.COMPLETE) {
       // User hasn't completed onboarding and is in registration flow
       console.log('⚠️ Onboarding incomplete, redirecting to post-onboarding');
+      hasRedirected.current = true;
       navigate('/dashboard/post-onboarding', { replace: true });
+    } else {
+      // User is in a valid state for this route
+      hasRedirected.current = false;
     }
   }, [user, isLoading, onboardingComplete, isFullScreenPage, navigate, location.pathname]);
 
