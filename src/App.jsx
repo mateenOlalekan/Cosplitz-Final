@@ -43,8 +43,6 @@ function PublicOnly({ children }) {
   const location = useLocation();
   
   if (isLoading) return <LoadingScreen />;
-  
-  // If user is authenticated, redirect to dashboard
   if (user) {
     return <Navigate to="/dashboard" replace state={{ from: location }} />;
   }
