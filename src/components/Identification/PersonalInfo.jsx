@@ -155,20 +155,7 @@ function PersonalInfoPage({ next }) {
             placeholder="United States"
           />
 
-          {/* Validation Tips */}
-          <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mt-2">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="text-blue-600 mt-0.5" size={16} />
-              <div className="flex-1">
-                <h4 className="text-sm font-medium text-blue-800 mb-1">Tips for accurate information</h4>
-                <ul className="text-xs text-blue-700 space-y-1">
-                  <li>• Use your legal name as it appears on official documents</li>
-                  <li>• Provide an email you regularly check for verification updates</li>
-                  <li>• Enter your current nationality accurately</li>
-                </ul>
-              </div>
-            </div>
-          </div>
+
 
           <div className="flex justify-end mt-6">
             <button

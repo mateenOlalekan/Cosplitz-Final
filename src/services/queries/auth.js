@@ -24,8 +24,13 @@ export const authKeys = {
 
 const saveTempRegister = (data) => {
   if (typeof window === 'undefined') return;
-  if (data) localStorage.setItem('tempRegister', JSON.stringify(data));
-  else localStorage.removeItem('tempRegister');
+  if (data) {
+    localStorage.setItem('tempRegister', JSON.stringify(data));
+    console.log('Temp registration data saved:', data);
+  } else {
+    localStorage.removeItem('tempRegister');
+    console.log('Temp registration data cleared');
+  }
 };
 
 const getTempRegister = () => {
@@ -58,7 +63,7 @@ export const useTempRegister = () => {
   });
 };
 
-// NEW: Hook to check if user just completed registration
+// Hook to check if user just completed registration
 export const useJustRegistered = () => {
   return useQuery({
     queryKey: authKeys.justRegistered(),
@@ -68,7 +73,7 @@ export const useJustRegistered = () => {
   });
 };
 
-// NEW: Hook to check if user has completed onboarding
+// Hook to check if user has completed onboarding
 export const useOnboardingComplete = () => {
   return useQuery({
     queryKey: authKeys.onboardingComplete(),
@@ -85,6 +90,7 @@ export const useLogin = () => {
     mutationFn: ({ credentials, remember }) =>
       loginEndpoint(credentials, remember),
     onSuccess: (data) => {
+      console.log('Login successful - regular login (not registration)');
       // Regular login - NOT from registration, so clear the flag
       setJustRegistered(false);
       // Assume returning users have completed onboarding
@@ -94,6 +100,9 @@ export const useLogin = () => {
       queryClient.setQueryData(authKeys.justRegistered(), false);
       queryClient.setQueryData(authKeys.onboardingComplete(), true);
     },
+    onError: (error) => {
+      console.error('Login failed:', error);
+    }
   });
 };
 
@@ -102,7 +111,8 @@ export const useVerifyOTP = () => {
   return useMutation({
     mutationFn: verifyOTPEndpoint,
     onSuccess: (data) => {
-      console.log('OTP Verification successful, updating cache with user:', data.user);
+      console.log('✓ OTP Verification successful');
+      console.log('✓ User authenticated:', data.user);
       
       // Clear temp registration data
       saveTempRegister(null);
@@ -114,10 +124,10 @@ export const useVerifyOTP = () => {
       
       // IMPORTANT: Keep the justRegistered flag true after OTP verification
       // This flag will be checked to determine if user needs onboarding
-      console.log('User cache updated, AuthGuard should now allow access to onboarding flow');
+      console.log('✓ User cache updated - ready for onboarding flow');
     },
     onError: (error) => {
-      console.error('OTP Verification failed:', error);
+      console.error('✗ OTP Verification failed:', error);
     }
   });
 };
@@ -125,6 +135,12 @@ export const useVerifyOTP = () => {
 export const useResendOTP = () => {
   return useMutation({
     mutationFn: resendOTPEndpoint,
+    onSuccess: () => {
+      console.log('✓ OTP resent successfully');
+    },
+    onError: (error) => {
+      console.error('✗ Failed to resend OTP:', error);
+    }
   });
 };
 
@@ -133,6 +149,7 @@ export const useLogout = () => {
   return useMutation({
     mutationFn: logoutEndpoint,
     onSuccess: () => {
+      console.log('Logout successful - clearing all auth data');
       queryClient.removeQueries({ queryKey: authKeys.all });
       queryClient.setQueryData(authKeys.user(), null);
       queryClient.setQueryData(authKeys.justRegistered(), false);
@@ -146,12 +163,17 @@ export const useRegistrationFlow = () => {
   const verifyOTPMutation = useVerifyOTP();
 
   const executeFlow = async (userData) => {
-    console.log('Starting registration flow...');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('REGISTRATION FLOW STARTED');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
     // Set the flag that user is in registration flow
     setJustRegistered(true);
     queryClient.setQueryData(authKeys.justRegistered(), true);
+    console.log('✓ Registration flag set to TRUE');
     
+    // Step 1: Register user
+    console.log('→ Step 1: Creating account...');
     const regData = await registerEndpoint({
       first_name: userData.first_name,
       last_name: userData.last_name,
@@ -159,17 +181,20 @@ export const useRegistrationFlow = () => {
       password: userData.password,
       nationality: userData.nationality,
     });
+    console.log('✓ Account created:', regData);
 
-    console.log('Registration successful, logging in...');
-
+    // Step 2: Login user
+    console.log('→ Step 2: Logging in...');
     await loginEndpoint({
       email: userData.email,
       password: userData.password,
     }, true);
+    console.log('✓ Login successful');
 
-    console.log('Login successful, requesting OTP...');
+    // Step 3: Request OTP
+    console.log('→ Step 3: Requesting OTP...');
     await getOTPEndpoint(regData.userId);
-    console.log('OTP sent');
+    console.log('✓ OTP sent to:', userData.email);
     
     const tempData = {
       userId: regData.userId,
@@ -180,6 +205,10 @@ export const useRegistrationFlow = () => {
     
     saveTempRegister(tempData);
     queryClient.setQueryData(authKeys.tempRegister(), tempData);
+    
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('REGISTRATION FLOW: Awaiting Email Verification');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
     return tempData;
   };

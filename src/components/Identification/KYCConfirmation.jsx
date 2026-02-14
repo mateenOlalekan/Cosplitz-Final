@@ -13,22 +13,11 @@ export default function KYCConfirmation({ prev }) {
 
   const handleComplete = () => {
     setIsNavigating(true);
-    
-    // IMPORTANT: Clear the justRegistered flag and mark onboarding as complete
-    // This ensures that when user returns to the app, they go directly to dashboard
     setJustRegistered(false);
     setOnboardingComplete(true);
-    
-    // Update the query cache to reflect these changes
     queryClient.setQueryData(authKeys.justRegistered(), false);
     queryClient.setQueryData(authKeys.onboardingComplete(), true);
-    
     console.log('Onboarding completed - flags cleared, redirecting to dashboard');
-    
-    // Optional: You can also send KYC completion status to backend here
-    // await submitKYCCompletion();
-    
-    // Navigate to main dashboard
     setTimeout(() => {
       navigate('/dashboard', { replace: true });
     }, 1000);
@@ -151,50 +140,3 @@ export default function KYCConfirmation({ prev }) {
     </div>
   );
 }
-
-// import { useNavigate } from 'react-router-dom';
-// import { useCompleteKYC, useCompleteOnboarding } from '../../services/queries/auth';
-// import { useState } from 'react';
-
-// export default function CompleteKYC() {
-//   const navigate = useNavigate();
-//   const [isCompleting, setIsCompleting] = useState(false);
-//   const completeKYCMutation = useCompleteKYC();
-//   const completeOnboardingMutation = useCompleteOnboarding();
-
-//   const handleCompleteKYC = async () => {
-//     setIsCompleting(true);
-    
-//     try {
-//       // Mark KYC as complete
-//       await completeKYCMutation.mutateAsync();
-      
-//       // Mark onboarding as complete
-//       await completeOnboardingMutation.mutateAsync();
-      
-//       // Navigate to dashboard
-//       navigate('/dashboard', { replace: true });
-//     } catch (error) {
-//       console.error('Failed to complete KYC:', error);
-//       setIsCompleting(false);
-//     }
-//   };
-
-//   return (
-//     <div className="flex flex-col items-center justify-center min-h-screen p-4">
-//       <h1 className="text-2xl font-bold mb-4">KYC Verification Complete</h1>
-//       <p className="text-gray-600 mb-8 text-center">
-//         Your identity verification has been completed successfully.
-//         You can now access all features of the dashboard.
-//       </p>
-      
-//       <button
-//         onClick={handleCompleteKYC}
-//         disabled={isCompleting}
-//         className="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50"
-//       >
-//         {isCompleting ? 'Processing...' : 'Go to Dashboard'}
-//       </button>
-//     </div>
-//   );
-// }

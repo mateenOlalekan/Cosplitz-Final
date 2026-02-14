@@ -6,6 +6,7 @@ import logo from "../../../assets/logo.svg";
 import RegistrationForm from './RegistrationForm';
 import EmailVerificationStep from './EmailVerificationStep';
 import Successful from './Successful';
+import Loading from '../../Public/LoadingScreen';
 
 const steps = [
   { id: 1, label: 'Account', description: 'Create your account' },
@@ -43,6 +44,7 @@ export default function Register() {
   // Restore step if user has temp registration (they started registering)
   useEffect(() => {
     if (tempRegister && currentStep === 1) {
+      console.log('Restoring registration flow to email verification step');
       setCurrentStep(2);
     }
   }, [tempRegister, currentStep]);
@@ -59,7 +61,9 @@ export default function Register() {
     };
 
     try {
+      console.log('Starting registration with:', { ...payload, password: '[REDACTED]' });
       await executeFlow(payload);
+      console.log('Registration successful, moving to step 2');
       setCurrentStep(2);
       return { success: true };
     } catch (error) {
@@ -92,13 +96,16 @@ export default function Register() {
     setVerificationError('');
     
     if (!tempRegister?.email) {
-      setVerificationError('Session expired. Please register again.');
-      return { success: false, error: 'Session expired' };
+      const message = 'Session expired. Please register again.';
+      setVerificationError(message);
+      return { success: false, error: message };
     }
     
     try {
+      console.log('Verifying OTP for email:', tempRegister.email);
       await verifyOTP({ email: tempRegister.email, otp });
       
+      console.log('OTP verified successfully, moving to success step');
       // Move to success step
       // The justRegistered flag is still true at this point
       // User must click "Continue Setup" button to proceed
@@ -131,38 +138,41 @@ export default function Register() {
 
   const handleResendOTP = async () => {
     if (!tempRegister?.userId) {
-      return { success: false, error: 'Session expired. Please register again.' };
+      const message = 'Session expired. Please register again.';
+      setVerificationError(message);
+      return { success: false, error: message };
     }
     
     try {
+      console.log('Resending OTP for user:', tempRegister.userId);
       await resendOTP(tempRegister.userId);
       setVerificationError('');
       return { success: true };
     } catch (error) {
       console.error('Resend OTP error:', error);
-      
       const message = error?.message || 'Failed to resend code. Please try again.';
+      setVerificationError(message);
       return { success: false, error: message };
     }
   };
 
   const handleBackToRegistration = () => {
+    console.log('Returning to registration form');
     localStorage.removeItem('tempRegister');
     localStorage.removeItem('justRegistered');
+    setCurrentStep(1);
+    setVerificationError('');
     window.location.reload();
   };
 
   if (isUserLoading && !tempRegister) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-[#F7F5F9]">
-        <div className="w-8 h-8 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <Loading />
   }
 
   return (
     <div className="flex bg-[#F7F5F9] w-full h-screen justify-center overflow-hidden md:px-6 md:py-4">
       <div className="flex max-w-screen-2xl w-full min-h-full rounded-xl overflow-hidden">
+        {/* Left Side - Image */}
         <div className="hidden lg:flex w-1/2 bg-[#F8EACD] rounded-xl p-6 items-center justify-center">
           <div className="w-full flex flex-col items-center">
             <img src={loginlogo} alt="Register" className="rounded-lg w-full h-auto max-h-[400px] object-contain" />
@@ -176,22 +186,28 @@ export default function Register() {
             </div>
           </div>
         </div>
+
+        {/* Right Side - Form */}
         <div className="flex flex-1 flex-col items-center p-3 sm:p-5 overflow-y-auto">
+          {/* Logo */}
           <div className="w-full mb-4 flex justify-center md:justify-start">
             <img src={logo} alt="Logo" className="h-10 md:h-12" />
           </div>
+
+          {/* Main Card */}
           <div className="w-full max-w-2xl p-5 rounded-xl shadow-none md:shadow-md bg-white">
+            {/* Step Indicator */}
             <div className="w-full flex flex-col items-center py-4 mb-4">
               <div className="flex items-center gap-2 justify-center mb-2">
                 {steps.map((s, i) => (
                   <div key={s.id} className="flex items-center">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 text-xs font-semibold ${
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 text-xs font-semibold transition-all ${
                       currentStep >= s.id ? 'bg-green-600 border-green-600 text-white' : 'bg-white border-gray-300 text-gray-400'
                     }`}>
                       {s.id}
                     </div>
                     {i < steps.length - 1 && (
-                      <div className={`w-16 md:w-24 border-t-2 mx-2 ${
+                      <div className={`w-16 md:w-24 border-t-2 mx-2 transition-all ${
                         currentStep > s.id ? 'border-green-600' : 'border-gray-300'
                       }`} />
                     )}
@@ -202,17 +218,23 @@ export default function Register() {
                 {steps.find(s => s.id === currentStep)?.description}
               </p>
             </div>
-            {verificationError && (
+
+            {/* Global Error Message */}
+            {verificationError && currentStep !== 1 && (
               <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-4 text-center">
                 {verificationError}
               </div>
             )}
+
+            {/* Step 1: Registration Form */}
             {currentStep === 1 && (
               <RegistrationForm
                 onSubmit={handleRegister}
                 loading={false}
               />
             )}
+
+            {/* Step 2: Email Verification */}
             {currentStep === 2 && tempRegister && (
               <EmailVerificationStep
                 email={tempRegister.email}
@@ -222,6 +244,8 @@ export default function Register() {
                 isLoading={isVerifying}
               />
             )}
+
+            {/* Step 3: Success */}
             {currentStep === 3 && <Successful />}
           </div>
         </div>

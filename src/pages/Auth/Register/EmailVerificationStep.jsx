@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Mail, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Mail, AlertCircle, CheckCircle } from 'lucide-react';
 
 export default function EmailVerificationStep({
   email,
@@ -12,6 +12,7 @@ export default function EmailVerificationStep({
   const [timer, setTimer] = useState(180); // 3 minutes
   const [localError, setLocalError] = useState('');
   const [resendLoading, setResendLoading] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState(false);
   
   const inputRefs = useRef([]);
 
@@ -84,6 +85,7 @@ export default function EmailVerificationStep({
       return;
     }
 
+    console.log('Submitting OTP verification...');
     const result = await onVerify(otpCode);
     
     if (!result.success) {
@@ -98,13 +100,19 @@ export default function EmailVerificationStep({
     
     setResendLoading(true);
     setLocalError('');
+    setResendSuccess(false);
     
+    console.log('Requesting new OTP...');
     const result = await onResend();
     
     if (result.success) {
       setTimer(180);
       setOtp(['', '', '', '', '', '']);
+      setResendSuccess(true);
       inputRefs.current[0]?.focus();
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setResendSuccess(false), 3000);
     } else {
       setLocalError(result.error || 'Failed to resend code');
     }
@@ -126,6 +134,7 @@ export default function EmailVerificationStep({
         onClick={onBack}
         disabled={isLoading}
         className="absolute left-0 top-0 text-gray-600 hover:text-green-600 transition disabled:opacity-50"
+        title="Back to registration"
       >
         <ArrowLeft size={28} />
       </button>
@@ -163,16 +172,26 @@ export default function EmailVerificationStep({
             onChange={(e) => handleChange(e.target.value, index)}
             onKeyDown={(e) => handleKeyDown(index, e)}
             disabled={isLoading}
-            className="w-12 h-12 text-center text-lg font-bold border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-600 focus:border-green-600 outline-none disabled:opacity-50 transition-all"
+            className={`w-12 h-12 text-center text-lg font-bold border-2 rounded-lg focus:ring-2 focus:ring-green-600 focus:border-green-600 outline-none disabled:opacity-50 transition-all ${
+              localError ? 'border-red-300' : 'border-gray-300'
+            }`}
           />
         ))}
       </div>
 
       {/* Error Message */}
       {localError && (
-        <div className="flex items-center gap-2 text-red-600 text-sm">
+        <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 px-4 py-2 rounded-lg">
           <AlertCircle size={16} />
           <span>{localError}</span>
+        </div>
+      )}
+
+      {/* Success Message (Resend) */}
+      {resendSuccess && (
+        <div className="flex items-center gap-2 text-green-600 text-sm bg-green-50 px-4 py-2 rounded-lg">
+          <CheckCircle size={16} />
+          <span>New code sent successfully!</span>
         </div>
       )}
 
@@ -181,7 +200,7 @@ export default function EmailVerificationStep({
         {timer > 0 ? (
           <p className="text-sm text-gray-600">
             Resend code in{' '}
-            <span className="font-semibold">{formatTime(timer)}</span>
+            <span className="font-semibold text-green-600">{formatTime(timer)}</span>
           </p>
         ) : (
           <button
@@ -189,7 +208,14 @@ export default function EmailVerificationStep({
             disabled={resendLoading || isLoading}
             className="text-green-600 hover:text-green-700 font-medium text-sm disabled:opacity-50 transition-colors"
           >
-            {resendLoading ? 'Resending...' : 'Resend Code'}
+            {resendLoading ? (
+              <span className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+                Resending...
+              </span>
+            ) : (
+              'Resend Code'
+            )}
           </button>
         )}
       </div>
@@ -213,6 +239,11 @@ export default function EmailVerificationStep({
           'Verify Email'
         )}
       </button>
+
+      {/* Help Text */}
+      <p className="text-xs text-gray-500 text-center max-w-xs mt-2">
+        Didn't receive the code? Check your spam folder or click resend when the timer expires.
+      </p>
 
     </div>
   );

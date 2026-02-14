@@ -158,19 +158,7 @@ function ProofOfAddress({ next, prev }) {
             </div>
           </div>
 
-          {/* Address Example */}
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-            <h5 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-              <MapPin size={14} className="text-gray-500" />
-              Address Format Example
-            </h5>
-            <div className="text-xs text-gray-600 bg-white p-3 rounded border border-gray-100">
-              <p className="font-medium">Correct:</p>
-              <p className="text-gray-500">123 Main Street, Apt 4B, Manhattan, New York, NY 10001</p>
-              <p className="font-medium mt-2">Avoid:</p>
-              <p className="text-gray-500">Near the park, blue house (too vague)</p>
-            </div>
-          </div>
+
 
           {/* Buttons */}
           <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-100">
