@@ -5,7 +5,6 @@ import { Eye, EyeOff } from "lucide-react";
 import { FcGoogle } from "react-icons/fc";
 import { PiAppleLogoBold } from "react-icons/pi";
 import { useLogin, useUser } from "../../../services/queries/auth";
-import { setJustRegistered } from "../../../services/endpoints/auth";
 import logo from "../../../assets/logo.svg";
 import LeftPanel from "../../../components/Home/LeftPanel";
 import LoadScreen from "../../../pages/Public/LoadingScreen";
@@ -23,8 +22,10 @@ export default function Login() {
   const { data: user, isLoading: isUserLoading } = useUser();
   const login = useLogin();
 
+  // If user is already logged in, redirect to dashboard
   useEffect(() => {
     if (user && !isUserLoading) {
+      console.log('User already logged in, redirecting to dashboard');
       navigate("/dashboard", { replace: true });
     }
   }, [user, isUserLoading, navigate]);
@@ -45,13 +46,16 @@ export default function Login() {
     }
 
     try {
-      setJustRegistered(false);
+      console.log('Logging in user:', formData.email);
       
+      // The useLogin hook will handle clearing justRegistered flag
+      // and setting onboardingComplete to true for returning users
       await login.mutateAsync({
         credentials: formData,
         remember: rememberMe,
       });
       
+      console.log('Login successful, redirecting to dashboard');
       navigate("/dashboard", { replace: true });
     } catch (err) {
       console.error("Login error:", err);
@@ -60,7 +64,7 @@ export default function Login() {
       
       if (err?.message) {
         const msg = err.message.toLowerCase();
-        if (msg.includes("invalid") || msg.includes("incorrect")) {
+        if (msg.includes("invalid") || msg.includes("incorrect") || msg.includes("credentials")) {
           errorMessage = "Invalid email or password";
         } else if (msg.includes("network")) {
           errorMessage = "Network error. Please check your connection.";
@@ -74,15 +78,15 @@ export default function Login() {
   };
 
   if (isUserLoading) {
-    return ( <LoadScreen/>
-    );
+    return <LoadScreen />;
   }
 
   return (
     <div className="flex bg-[#F7F5F9] w-full h-screen justify-center overflow-hidden md:px-6 md:py-4">
       <div className="flex max-w-screen-2xl w-full min-h-full rounded-xl overflow-hidden">
         {/* Left Side - Image */}
-        <LeftPanel/>
+        <LeftPanel />
+        
         {/* Right Side - Login Form */}
         <div className="flex flex-1 flex-col items-center p-3 sm:p-5 overflow-y-auto">
           <div className="w-full mb-4 flex justify-center md:justify-start">

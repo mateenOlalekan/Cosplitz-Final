@@ -24,16 +24,16 @@ export default function KYCConfirmation({ prev }) {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center py-8 px-4">
+    <div className="flex flex-col items-center justify-center py-6 sm:py-8 px-4 sm:px-6">
       {/* Success Icon */}
       <motion.div
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ type: "spring", stiffness: 200, damping: 15 }}
-        className="mb-6"
+        className="mb-4 sm:mb-6"
       >
-        <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center">
-          <CheckCircle className="w-16 h-16 text-green-600" />
+        <div className="w-20 h-20 sm:w-24 sm:h-24 bg-green-100 rounded-full flex items-center justify-center">
+          <CheckCircle className="w-12 h-12 sm:w-16 sm:h-16 text-green-600" />
         </div>
       </motion.div>
 
@@ -42,7 +42,7 @@ export default function KYCConfirmation({ prev }) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="text-2xl font-bold text-gray-900 mb-3 text-center"
+        className="text-xl sm:text-2xl font-bold text-gray-900 mb-2 sm:mb-3 text-center px-4"
       >
         Verification Complete!
       </motion.h2>
@@ -52,7 +52,7 @@ export default function KYCConfirmation({ prev }) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
-        className="text-gray-600 text-center max-w-md mb-8"
+        className="text-sm sm:text-base text-gray-600 text-center max-w-md mb-6 sm:mb-8 px-4"
       >
         Thank you for completing your identity verification. Your account is now fully set up and ready to use.
       </motion.p>
@@ -62,13 +62,13 @@ export default function KYCConfirmation({ prev }) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
-        className="w-full max-w-md space-y-3 mb-8"
+        className="w-full max-w-md space-y-3 mb-6 sm:mb-8"
       >
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+        <div className="bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4">
+          <div className="flex items-start gap-2 sm:gap-3">
+            <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 mt-0.5 flex-shrink-0" />
             <div>
-              <h3 className="font-semibold text-gray-900 text-sm">Identity Verified</h3>
+              <h3 className="font-semibold text-gray-900 text-xs sm:text-sm">Identity Verified</h3>
               <p className="text-xs text-gray-600 mt-1">
                 Your identity has been successfully verified and your account is now active.
               </p>
@@ -76,11 +76,11 @@ export default function KYCConfirmation({ prev }) {
           </div>
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <CheckCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+          <div className="flex items-start gap-2 sm:gap-3">
+            <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 mt-0.5 flex-shrink-0" />
             <div>
-              <h3 className="font-semibold text-gray-900 text-sm">Full Access Granted</h3>
+              <h3 className="font-semibold text-gray-900 text-xs sm:text-sm">Full Access Granted</h3>
               <p className="text-xs text-gray-600 mt-1">
                 You now have access to all features including creating splits, payments, and more.
               </p>
@@ -90,7 +90,7 @@ export default function KYCConfirmation({ prev }) {
       </motion.div>
 
       {/* Action Buttons */}
-      <div className="flex flex-col sm:flex-row gap-3 w-full max-w-md">
+      <div className="flex flex-col sm:flex-row gap-3 w-full max-w-md px-4 sm:px-0">
         <motion.button
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -99,7 +99,7 @@ export default function KYCConfirmation({ prev }) {
           whileTap={{ scale: 0.98 }}
           onClick={prev}
           disabled={isNavigating}
-          className="flex-1 px-6 py-3 border-2 border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 px-5 sm:px-6 py-2.5 sm:py-3 border-2 border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
         >
           Back
         </motion.button>
@@ -112,17 +112,17 @@ export default function KYCConfirmation({ prev }) {
           whileTap={{ scale: isNavigating ? 1 : 0.98 }}
           onClick={handleComplete}
           disabled={isNavigating}
-          className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="flex-1 px-5 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
         >
           {isNavigating ? (
             <>
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
               <span>Loading...</span>
             </>
           ) : (
             <>
               <span>Go to Dashboard</span>
-              <ArrowRight className="w-5 h-5" />
+              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
             </>
           )}
         </motion.button>
@@ -133,7 +133,7 @@ export default function KYCConfirmation({ prev }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.7 }}
-        className="text-xs text-gray-500 text-center mt-6"
+        className="text-xs text-gray-500 text-center mt-4 sm:mt-6 px-4"
       >
         You can update your verification details anytime in Settings
       </motion.p>

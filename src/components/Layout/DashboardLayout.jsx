@@ -1,9 +1,8 @@
-// src/components/Layout/DashboardLayout.jsx
 import { useState, useEffect, useCallback } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import DashboardSidebar from "./DashboardSidebar";
 import DashboardHeader from "./DashboardHeader";
-import { useUser, useOnboardingComplete } from "../../services/queries/auth";
+import { useUser, useJustRegistered, useOnboardingComplete } from "../../services/queries/auth";
 
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -12,6 +11,7 @@ export default function DashboardLayout() {
   const navigate = useNavigate();
   
   const { data: user, isLoading } = useUser();
+  const { data: justRegistered } = useJustRegistered();
   const { data: onboardingComplete } = useOnboardingComplete();
 
   // Hide sidebar and header on onboarding and KYC pages
@@ -19,20 +19,25 @@ export default function DashboardLayout() {
                            location.pathname.includes("/dashboard/kyc-flow");
 
   // CRITICAL: Redirect to onboarding if user hasn't completed it
-  // This runs for authenticated users who haven't finished the onboarding flow
   useEffect(() => {
-    // Only check if we have user data and it's not loading
-    if (!user || isLoading) return;
+    // Skip checks if still loading or no user
+    if (isLoading || !user) return;
     
-    // If user is on a full-screen onboarding page, don't redirect
+    // Don't redirect if already on onboarding pages
     if (isFullScreenPage) return;
     
-    // If onboarding is not complete, redirect to post-onboarding
-    if (onboardingComplete === false) {
-      console.log('User has not completed onboarding, redirecting to post-onboarding');
+    console.log('DashboardLayout - Checking onboarding status:', {
+      justRegistered,
+      onboardingComplete,
+      currentPath: location.pathname
+    });
+    
+    // If user just registered and hasn't completed onboarding, redirect to post-onboarding
+    if (justRegistered === true && onboardingComplete === false) {
+      console.log('User needs onboarding, redirecting to post-onboarding');
       navigate('/dashboard/post-onboarding', { replace: true });
     }
-  }, [user, isLoading, onboardingComplete, isFullScreenPage, navigate]);
+  }, [user, isLoading, justRegistered, onboardingComplete, isFullScreenPage, location.pathname, navigate]);
 
   useEffect(() => {
     const handleResize = () => {

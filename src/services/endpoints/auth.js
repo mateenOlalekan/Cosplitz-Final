@@ -16,7 +16,6 @@ const handleApiError = (response, data) => {
     } else if (data?.errors && Array.isArray(data.errors)) {
       errorMessage = data.errors.join(', ');
     } else if (data?.email && Array.isArray(data.email)) {
-      // Handle Django-style field errors
       errorMessage = `Email: ${data.email.join(', ')}`;
     } else if (data?.otp && Array.isArray(data.otp)) {
       errorMessage = `OTP: ${data.otp.join(', ')}`;
@@ -108,11 +107,11 @@ const clearAuth = () => {
   sessionStorage.removeItem('authToken');
   localStorage.removeItem('userInfo');
   localStorage.removeItem('tempRegister');
-  localStorage.removeItem('justRegistered'); // Clear registration flag
-  localStorage.removeItem('onboardingComplete'); // Clear onboarding flag
+  localStorage.removeItem('justRegistered');
+  localStorage.removeItem('onboardingComplete');
 };
 
-// NEW: Track if user just completed registration
+// Track if user just completed registration
 export const setJustRegistered = (value) => {
   if (typeof window === 'undefined') return;
   if (value) {
@@ -127,7 +126,7 @@ export const getJustRegistered = () => {
   return localStorage.getItem('justRegistered') === 'true';
 };
 
-// NEW: Track if user has completed onboarding (post-onboarding + KYC)
+// Track if user has completed onboarding (post-onboarding + KYC)
 export const setOnboardingComplete = (value) => {
   if (typeof window === 'undefined') return;
   if (value) {
@@ -200,7 +199,6 @@ export const getOTPEndpoint = async (userId) => {
   return data;
 };
 
-// VERIFY OTP - with detailed logging and validation
 export const verifyOTPEndpoint = async ({ email, otp }) => {
   // Validate inputs before sending
   if (!email || typeof email !== 'string') {
@@ -213,7 +211,6 @@ export const verifyOTPEndpoint = async ({ email, otp }) => {
     throw new Error('OTP is required and must be a string');
   }
   
-  // Log what we're sending
   console.log('Verifying OTP:', {
     email: email,
     otp: otp,

@@ -17,7 +17,7 @@ export const proofOfAddressSchema = z.object({
 
 /* ---------------- UPLOADED DOCUMENTS ---------------- */
 export const uploadDocumentSchema = z.object({
-  driversId: z.any().refine((f) => f, "Driver’s license must be uploaded"),
+  driversId: z.any().refine((f) => f, "Driver's license must be uploaded"),
   passport: z.any().refine((f) => f, "Passport must be uploaded"),
   nationalId: z.any().refine((f) => f, "National ID must be uploaded"),
 });

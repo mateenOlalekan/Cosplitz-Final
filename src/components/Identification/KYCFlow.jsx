@@ -13,45 +13,43 @@ function KYCFlow() {
   const prev = () => step > 1 && setStep(step - 1);
 
   const steps = [
-    { id: 1, label: "Personal Info", icon: Shield },
-    { id: 2, label: "Proof Address", icon: Shield },
-    { id: 3, label: "Upload Document", icon: Shield },
-    { id: 4, label: "Confirmation", icon: CheckCircle }
+    { id: 1, label: "Personal Info", shortLabel: "Personal", icon: Shield },
+    { id: 2, label: "Proof Address", shortLabel: "Address", icon: Shield },
+    { id: 3, label: "Upload Document", shortLabel: "Documents", icon: Shield },
+    { id: 4, label: "Confirmation", shortLabel: "Done", icon: CheckCircle }
   ];
 
   return (
-    <div className="w-full min-h-screen bg-gradient-to-br from-gray-50 to-white flex flex-col items-center justify-center md:py-10 md:px-4">
+    <div className="w-full min-h-screen bg-gradient-to-br from-gray-50 to-white flex flex-col items-center justify-start md:justify-center md:py-4 px-0 md:px-4">
       {/* Main Container */}
-      <div className="w-full max-w-4xl bg-white rounded-xl shadow-2xl overflow-hidden border border-gray-100">
+      <div className="w-full max-w-4xl bg-white md:shadow-2xl overflow-hidden md:border border-gray-100 md:rounded-2xl min-h-screen md:min-h-0">
         {/* Header with Gradient */}
-        <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4">
+        <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
-                <Shield className="text-white" size={20} />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="bg-white/20 p-1.5 sm:p-2 rounded-lg backdrop-blur-sm">
+                <Shield className="text-white" size={18} />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-white">KYC Verification</h1>
-                <p className="text-green-100 text-sm">Complete your identity verification in 4 simple steps</p>
+                <h1 className="text-base sm:text-xl font-bold text-white">KYC Verification</h1>
+                <p className="text-green-100 text-xs sm:text-sm hidden sm:block">Complete your identity verification in 4 simple steps</p>
               </div>
             </div>
-            <div className="hidden md:block">
-              <div className="bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
-                <span className="text-white text-sm font-medium">
-                  Step {step} of {steps.length}
-                </span>
-              </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-full px-3 py-1.5 sm:px-4 sm:py-2">
+              <span className="text-white text-xs sm:text-sm font-medium">
+                {step}/{steps.length}
+              </span>
             </div>
           </div>
         </div>
 
         {/* Progress Bar Section */}
-        <div className="px-6 py-8 border-b border-gray-100">
-          <div className="w-full relative">
+        <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-gray-100 overflow-x-auto">
+          <div className="w-full relative min-w-[280px]">
             {/* Progress Line */}
-            <div className="absolute left-0 right-0 top-1/2 h-2 bg-gray-200 rounded-full -z-10"></div>
+            <div className="absolute left-0 right-0 top-1/2 h-1.5 sm:h-2 bg-gray-200 rounded-full -z-10"></div>
             <motion.div
-              className="absolute left-0 top-1/2 h-2 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full -z-10"
+              className="absolute left-0 top-1/2 h-1.5 sm:h-2 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full -z-10"
               initial={{ width: 0 }}
               animate={{
                 width:
@@ -82,7 +80,7 @@ function KYCFlow() {
                     transition={{ delay: s.id * 0.1 }}
                   >
                     <motion.div
-                      className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 ${
+                      className={`w-7 h-7 sm:w-9 sm:h-9 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 ${
                         isCompleted
                           ? "bg-gradient-to-br from-green-500 to-emerald-500"
                           : isCurrent
@@ -96,14 +94,14 @@ function KYCFlow() {
                       whileHover={{ scale: 1.05 }}
                     >
                       {isCompleted ? (
-                        <CheckCircle className="text-white w-6 h-6" />
+                        <CheckCircle className="text-white w-3 h-3 sm:w-4 sm:h-4" />
                       ) : (
-                        <div className={`font-semibold ${isCurrent ? "text-green-600" : "text-gray-400"}`}>
-                          {isCurrent ? <Icon className="w-5 h-5" /> : s.id}
+                        <div className={`font-semibold text-xs sm:text-sm ${isCurrent ? "text-green-600" : "text-gray-400"}`}>
+                          {isCurrent ? <Icon className="w-3 h-3 sm:w-4 sm:h-4" /> : s.id}
                         </div>
                       )}
                     </motion.div>
-                    <div className="mt-3 text-center">
+                    <div className="mt-1.5 sm:mt-2 text-center">
                       <p className={`text-xs font-medium ${
                         isCompleted
                           ? "text-green-600"
@@ -111,13 +109,14 @@ function KYCFlow() {
                           ? "text-gray-900 font-semibold"
                           : "text-gray-500"
                       }`}>
-                        {s.label}
+                        <span className="hidden sm:inline">{s.label}</span>
+                        <span className="sm:hidden">{s.shortLabel}</span>
                       </p>
                       {isCurrent && (
                         <motion.p
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
-                          className="text-xs text-green-600 mt-1"
+                          className="text-xs text-green-600 mt-0.5 sm:mt-1 hidden sm:block"
                         >
                           Active
                         </motion.p>
@@ -131,7 +130,7 @@ function KYCFlow() {
         </div>
 
         {/* Content Area */}
-        <div className="p-6 md:p-8">
+        <div className="px-0 sm:px-6 overflow-y-auto">
           {step === 1 && <PersonalInfoPage next={next} />}
           {step === 2 && <ProofOfAddress next={next} prev={prev} />}
           {step === 3 && <UploadDocument next={next} prev={prev} />}
