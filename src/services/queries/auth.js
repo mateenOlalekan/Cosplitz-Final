@@ -111,10 +111,6 @@ export const useVerifyOTP = () => {
       
       // Set user data
       queryClient.setQueryData(authKeys.user(), data.user);
-      
-      // IMPORTANT: Keep the justRegistered flag true after OTP verification
-      // This ensures the user is directed to post-onboarding
-      // The flag will be cleared after they complete the onboarding flow
       console.log('Keeping justRegistered flag true for onboarding redirect');
       
       // Invalidate to refresh
